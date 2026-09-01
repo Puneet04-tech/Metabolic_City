@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Access Gateway — MetabolicCity AI</title>
+<style>
+  :root {
+    --primary: #1B2A4A;
+    --accent: #E4572E;
+    --text: #12131A;
+    --muted: #555968;
+    --border: #E1E4EA;
+    --bg-alt: #F8F9FA;
+    --error: #D32F2F;
+    --success: #2E7D32;
+    --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-heading);
+    background-color: #0D1117;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .login-card {
+    background: #FFFFFF;
+    width: 100%;
+    max-width: 460px;
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .card-header {
+    background: var(--primary);
+    color: #FFFFFF;
+    padding: 28px 24px;
+    text-align: left;
+  }
+
+  .doc-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #FFF;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .card-header h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .card-header p {
+    font-size: 12px;
+    color: #A0AEC0;
+    margin-top: 4px;
+  }
+
+  .role-tabs {
+    display: flex;
+    background: var(--bg-alt);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+  }
+
+  .tab-btn:hover {
+    color: var(--primary);
+  }
+
+  .tab-btn.active {
+    color: var(--primary);
+    background: #FFFFFF;
+    border-bottom-color: var(--accent);
+  }
+
+  .card-body {
+    padding: 24px;
+  }
+
+  .notice-box {
+    background: #FFF8F6;
+    border-left: 3px solid var(--accent);
+    padding: 10px 12px;
+    border-radius: 0 4px 4px 0;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.4;
+  }
+
+  .notice-box strong {
+    color: var(--accent);
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+
+  .form-group input, .form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #FFFFFF;
+  }
+
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(27, 42, 74, 0.1);
+  }
+
+  .btn-submit {
+    width: 100%;
+    background: var(--primary);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: var(--font-mono);
+    margin-top: 8px;
+  }
+
+  .btn-submit:hover {
+    background: #253963;
+  }
+
+  /* Zero Silent Failure Error/Alert Box */
+  .alert-banner {
+    display: none;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 16px;
+    font-family: var(--font-mono);
+  }
+
+  .alert-banner.error {
+    background: #FFEBEE;
+    color: var(--error);
+    border: 1px solid #FFCDD2;
+  }
+
+  .alert-banner.success {
+    background: #E8F5E9;
+    color: var(--success);
+    border: 1px solid #C8E6C9;
+  }
+
+  .card-footer {
+    background: var(--bg-alt);
+    border-top: 1px solid var(--border);
+    padding: 12px 24px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .field-group-dynamic {
+    display: none;
+  }
+
+  .field-group-dynamic.active {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="card-header">
+    <div class="doc-badge">METABOLICCITY AI — V1 GATEWAY</div>
+    <h1>Municipal Access Portal</h1>
+    <p>Software-First Urban Intelligence Command System</p>
+  </div>
+
+  <!-- ROLE TABS -->
+  <div class="role-tabs">
+    <button class="tab-btn active" onclick="switchRole('OPERATOR', this)">Dispatch Operator</button>
+    <button class="tab-btn" onclick="switchRole('FIELD_CREW', this)">Field Crew</button>
+    <button class="tab-btn" onclick="switchRole('ADMINISTRATOR', this)">Administrator</button>
+  </div>
+
+  <div class="card-body">
+    <!-- ZERO SILENT FAILURE ERROR DISPLAY -->
+    <div id="alertBanner" class="alert-banner"></div>
+
+    <!-- EXPLICIT OUT-OF-SCOPE BANNER -->
+    <div class="notice-box">
+      <strong>Public Notice:</strong> Citizens do not log in here. Incident reports are ingested automatically via municipal hotlines and soft-sensing feeds.
+    </div>
+
+    <form id="loginForm" onsubmit="handleAuthSubmit(event)">
+      <!-- COMMON FIELD: MUNICIPALITY CODE -->
+      <div class="form-group">
+        <label for="municipalityCode">Municipality / City Code</label>
+        <input type="text" id="municipalityCode" placeholder="e.g. CITY-IND-BPL8" required>
+      </div>
+
+      <!-- DYNAMIC ROLE FIELDS: OPERATOR -->
+      <div id="groupOperator" class="field-group-dynamic active">
+        <div class="form-group">
+          <label for="opStaffId">Operator Console ID</label>
+          <input type="text" id="opStaffId" placeholder="e.g. OP-8842">
+        </div>
+        <div class="form-group">
+          <label for="opPassword">Security Clearance Password</label>
+          <input type="password" id="opPassword" placeholder="••••••••••••">
+        </div>
+      </div>
+
+      <!-- DYNAMIC ROLE FIELDS: FIELD CREW -->
+      <div id="groupFieldCrew" class="field-group-dynamic">
+        <div class="form-group">
+          <label for="crewPhone">Registered Mobile Number</label>
+          <input type="tel" id="crewPhone" placeholder="+91 98765 43210">
+        </div>
+        <div class="form-group">
+          <label for="crewPasscode">SMS Gateway OTP / Passcode</label>
+          <input type="password" id="crewPasscode" placeholder="6-digit PIN">
+        </div>
+      </div>
+
+      <!-- DYNAMIC ROLE FIELDS: ADMIN -->
+      <div id="groupAdmin" class="field-group-dynamic">
+        <div class="form-group">
+          <label for="adminId">Administrator Account</label>
+          <input type="text" id="adminId" placeholder="e.g. ADM-SYS-01">
+        </div>
+        <div class="form-group">
+          <label for="adminToken">Hardware Token / Password</label>
+          <input type="password" id="adminToken" placeholder="••••••••••••">
+        </div>
+      </div>
+
+      <!-- SUBMIT ACTION -->
+      <button type="submit" id="submitBtn" class="btn-submit">Authenticate Operator Console</button>
+    </form>
+  </div>
+
+  <div class="card-footer">
+    Deterministic Safety Logic & Audit Log Enabled<br>
+    System Engine v1.0.4 — MongoDB Atlas Session Cluster
+  </div>
+</div>
+
+<script>
+  let currentRole = 'OPERATOR';
+
+  function switchRole(role, targetTab) {
+    currentRole = role;
+
+    // Update active tab styling
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    targetTab.classList.add('active');
+
+    // Hide all dynamic field groups
+    document.querySelectorAll('.field-group-dynamic').forEach(group => group.classList.remove('active'));
+
+    // Clear alert banner
+    hideAlert();
+
+    // Show selected role fields and update submit label
+    const submitBtn = document.getElementById('submitBtn');
+    if (role === 'OPERATOR') {
+      document.getElementById('groupOperator').classList.add('active');
+      submitBtn.innerText = 'Authenticate Operator Console';
+    } else if (role === 'FIELD_CREW') {
+      document.getElementById('groupFieldCrew').classList.add('active');
+      submitBtn.innerText = 'Access Dispatch Queue (SMS)';
+    } else if (role === 'ADMINISTRATOR') {
+      document.getElementById('groupAdmin').classList.add('active');
+      submitBtn.innerText = 'Access System Configuration';
+    }
+  }
+
+  function showAlert(message, type = 'error') {
+    const banner = document.getElementById('alertBanner');
+    banner.className = `alert-banner ${type}`;
+    banner.innerText = message;
+    banner.style.display = 'block';
+  }
+
+  function hideAlert() {
+    const banner = document.getElementById('alertBanner');
+    banner.style.display = 'none';
+  }
+
+  function handleAuthSubmit(event) {
+    event.preventDefault();
+    hideAlert();
+
+    const cityCode = document.getElementById('municipalityCode').value.trim();
+
+    // Zero Silent Failure validation: Check inputs per role
+    if (!cityCode) {
+      showAlert('ERR_VALIDATION: Municipality / City Code is required.');
+      return;
+    }
+
+    if (currentRole === 'OPERATOR') {
+      const staffId = document.getElementById('opStaffId').value.trim();
+      const pass = document.getElementById('opPassword').value;
+
+      if (!staffId || !pass) {
+        showAlert('ERR_AUTH_MISSING_CREDENTIALS: Staff ID and Password are required for Dispatchers.');
+        return;
+      }
+
+      // Demo redirect simulation
+      showAlert('Authenticating Dispatcher... Launching Command Dashboard.', 'success');
+      setTimeout(() => alert(`[DEMO SUCCESS] Redirecting to Central Command Center for ${cityCode}`), 600);
+    } 
+    else if (currentRole === 'FIELD_CREW') {
+      const phone = document.getElementById('crewPhone').value.trim();
+      const pin = document.getElementById('crewPasscode').value.trim();
+
+      if (!phone || !pin) {
+        showAlert('ERR_AUTH_SMS: Phone Number and OTP PIN are required for Field Crew.');
+        return;
+      }
+
+      showAlert('Verifying Mobile Session...', 'success');
+      setTimeout(() => alert(`[DEMO SUCCESS] Launching Field Dispatch Mobile View for ${phone}`), 600);
+    } 
+    else if (currentRole === 'ADMINISTRATOR') {
+      const adminId = document.getElementById('adminId').value.trim();
+      const token = document.getElementById('adminToken').value;
+
+      if (!adminId || !token) {
+        showAlert('ERR_AUTH_ADMIN: Administrator ID and Token are required.');
+        return;
+      }
+
+      showAlert('Elevating Security Clearance...', 'success');
+      setTimeout(() => alert(`[DEMO SUCCESS] Redirecting to Seasonal Risk Weight Portal`), 600);
+    }
+  }
+</script>
+
+</body>
+</html>
