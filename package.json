@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.1"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
   }
 }

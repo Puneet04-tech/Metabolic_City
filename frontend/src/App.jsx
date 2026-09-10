@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-
-const API_URL = 'http://localhost:5000/api';
+import { apiRequest, setSession, clearSession, getStoredUser } from './api.js';
+import RequireAuth from './RequireAuth.jsx';
 
 const roleLabels = {
   OPERATOR: 'Dispatch Operator',
@@ -43,6 +43,19 @@ function AuthForm() {
     setAlert({ message, type });
   };
 
+  const buildPayload = () => {
+    const cityCode = form.municipalityCode.trim();
+    const base = { cityCode, role: currentRole.toLowerCase().replace('_', '') };
+
+    if (currentRole === 'OPERATOR') {
+      return { ...base, role: 'operator', staffId: form.opStaffId.trim(), password: form.opPassword };
+    }
+    if (currentRole === 'FIELD_CREW') {
+      return { ...base, role: 'field_crew', phone: form.crewPhone.trim(), password: form.crewPasscode.trim() };
+    }
+    return { ...base, role: 'administrator', adminId: form.adminId.trim(), password: form.adminToken };
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setAlert({ message: '', type: '' });
@@ -53,154 +66,44 @@ function AuthForm() {
       return;
     }
 
-    if (mode === 'signup') {
-      if (!form.name.trim() || !form.email.trim()) {
-        showAlert('ERR_VALIDATION: Full name and email are required for signup.');
-        return;
-      }
-    }
-
-    if (currentRole === 'OPERATOR') {
-      const staffId = form.opStaffId.trim();
-      const pass = form.opPassword;
-      if (!staffId || !pass) {
-        showAlert(mode === 'signup'
-          ? 'ERR_SIGNUP: Operator ID and Password are required.'
-          : 'ERR_AUTH_MISSING_CREDENTIALS: Staff ID and Password are required for Dispatchers.');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const endpoint = mode === 'signup' ? '/auth/signup' : '/auth/login';
-        const payload = mode === 'signup'
-          ? {
-              name: form.name,
-              email: form.email,
-              cityCode,
-              role: 'operator',
-              staffId,
-              password: pass,
-            }
-          : {
-              cityCode,
-              role: 'operator',
-              staffId,
-              password: pass,
-            };
-
-        const response = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Authentication failed');
-
-        localStorage.setItem('metabolic-city-token', data.token);
-        localStorage.setItem('metabolic-city-user', JSON.stringify(data.user));
-        showAlert(mode === 'signup' ? 'Operator account created successfully.' : 'Authenticating Dispatcher... Launching Command Dashboard.', 'success');
-        setTimeout(() => navigate('/dashboard'), 600);
-      } catch (error) {
-        showAlert(error.message || 'Authentication failed.');
-      } finally {
-        setLoading(false);
-      }
+    if (mode === 'signup' && (!form.name.trim() || !form.email.trim())) {
+      showAlert('ERR_VALIDATION: Full name and email are required for signup.');
       return;
     }
 
-    if (currentRole === 'FIELD_CREW') {
-      const phone = form.crewPhone.trim();
-      const pin = form.crewPasscode.trim();
-      if (!phone || !pin) {
-        showAlert(mode === 'signup'
-          ? 'ERR_SIGNUP: Mobile number and password are required for field crew.'
-          : 'ERR_AUTH_SMS: Phone Number and OTP PIN are required for Field Crew.');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const endpoint = mode === 'signup' ? '/auth/signup' : '/auth/login';
-        const payload = mode === 'signup'
-          ? {
-              name: form.name,
-              email: form.email,
-              cityCode,
-              role: 'field_crew',
-              phone,
-              password: pin,
-            }
-          : {
-              cityCode,
-              role: 'field_crew',
-              phone,
-              password: pin,
-            };
-
-        const response = await fetch(`${API_URL}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Authentication failed');
-
-        localStorage.setItem('metabolic-city-token', data.token);
-        localStorage.setItem('metabolic-city-user', JSON.stringify(data.user));
-        showAlert(mode === 'signup' ? 'Field crew account created successfully.' : 'Verifying Mobile Session...', 'success');
-        setTimeout(() => navigate('/dashboard'), 600);
-      } catch (error) {
-        showAlert(error.message || 'Authentication failed.');
-      } finally {
-        setLoading(false);
-      }
+    // Role-specific required checks.
+    if (currentRole === 'OPERATOR' && (!form.opStaffId.trim() || !form.opPassword)) {
+      showAlert(mode === 'signup' ? 'Operator ID and Password are required.' : 'Staff ID and Password are required.');
+      return;
+    }
+    if (currentRole === 'FIELD_CREW' && (!form.crewPhone.trim() || !form.crewPasscode.trim())) {
+      showAlert(mode === 'signup' ? 'Mobile number and password are required.' : 'Phone Number and PIN are required.');
+      return;
+    }
+    if (currentRole === 'ADMINISTRATOR' && (!form.adminId.trim() || !form.adminToken)) {
+      showAlert(mode === 'signup' ? 'Administrator ID and Password are required.' : 'Administrator ID and Token are required.');
       return;
     }
 
-    const adminId = form.adminId.trim();
-    const token = form.adminToken;
-    if (!adminId || !token) {
-      showAlert(mode === 'signup'
-        ? 'ERR_SIGNUP: Administrator ID and Password are required.'
-        : 'ERR_AUTH_ADMIN: Administrator ID and Token are required.');
+    // Enforce password policy on signup.
+    if (mode === 'signup' && form.opPassword && form.opPassword.length < 8) {
+      showAlert('Password must be at least 8 characters, with a letter and a number.');
       return;
     }
 
     setLoading(true);
     try {
       const endpoint = mode === 'signup' ? '/auth/signup' : '/auth/login';
-      const payload = mode === 'signup'
-        ? {
-            name: form.name,
-            email: form.email,
-            cityCode,
-            role: 'administrator',
-            adminId,
-            password: token,
-          }
-        : {
-            cityCode,
-            role: 'administrator',
-            adminId,
-            password: token,
-          };
+      const payload = mode === 'signup' ? { name: form.name.trim(), email: form.email.trim(), ...buildPayload() } : buildPayload();
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const data = await apiRequest(endpoint, { method: 'POST', body: payload });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Authentication failed');
-
-      localStorage.setItem('metabolic-city-token', data.token);
-      localStorage.setItem('metabolic-city-user', JSON.stringify(data.user));
-      showAlert(mode === 'signup' ? 'Administrator account created successfully.' : 'Elevating Security Clearance...', 'success');
-      setTimeout(() => navigate('/dashboard'), 600);
+      setSession(data.token, data.user);
+      showAlert(
+        mode === 'signup' ? 'Account created successfully.' : 'Authentication successful.',
+        'success'
+      );
+      setTimeout(() => navigate('/dashboard'), 400);
     } catch (error) {
       showAlert(error.message || 'Authentication failed.');
     } finally {
@@ -208,23 +111,37 @@ function AuthForm() {
     }
   };
 
+  const handleLogout = () => {
+    apiRequest('/auth/logout', { method: 'POST' }).catch(() => {});
+    clearSession();
+    navigate('/');
+  };
+
+  const signupFields = mode === 'signup' && (
+    <>
+      <div className="form-group">
+        <label htmlFor="name">Full Name</label>
+        <input id="name" name="name" type="text" value={form.name} onChange={handleFieldChange} placeholder="Enter full name" />
+      </div>
+      <div className="form-group">
+        <label htmlFor="email">Email Address</label>
+        <input id="email" name="email" type="email" value={form.email} onChange={handleFieldChange} placeholder="name@municipality.gov" />
+      </div>
+    </>
+  );
+
   return (
     <div className="page-shell">
       <div className="login-card">
         <div className="card-header">
-          <div className="doc-badge">METABOLICCITY AI — V1 GATEWAY</div>
+          <div className="doc-badge">METABOLICCITY AI - V1 GATEWAY</div>
           <h1>Municipal Access Portal</h1>
           <p>Software-First Urban Intelligence Command System</p>
         </div>
 
         <div className="role-tabs">
           {Object.entries(roleLabels).map(([role, label]) => (
-            <button
-              key={role}
-              type="button"
-              className={currentRole === role ? 'tab-btn active' : 'tab-btn'}
-              onClick={() => handleRoleSwitch(role)}
-            >
+            <button key={role} type="button" className={currentRole === role ? 'tab-btn active' : 'tab-btn'} onClick={() => handleRoleSwitch(role)}>
               {label}
             </button>
           ))}
@@ -232,168 +149,74 @@ function AuthForm() {
 
         <div className="card-body">
           <div className="auth-mode-switch">
-            <button
-              type="button"
-              className={mode === 'login' ? 'mode-btn active' : 'mode-btn'}
-              onClick={() => setMode('login')}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              className={mode === 'signup' ? 'mode-btn active' : 'mode-btn'}
-              onClick={() => setMode('signup')}
-            >
-              Sign Up
-            </button>
+            <button type="button" className={mode === 'login' ? 'mode-btn active' : 'mode-btn'} onClick={() => setMode('login')}>Login</button>
+            <button type="button" className={mode === 'signup' ? 'mode-btn active' : 'mode-btn'} onClick={() => setMode('signup')}>Sign Up</button>
           </div>
 
-          {alert.message && <div className={`alert-banner ${alert.type}`}>{alert.message}</div>}
+          {alert.message && <div className={`alert-banner ${alert.type || 'error'}`}>{alert.message}</div>}
 
           <div className="notice-box">
             <strong>Public Notice:</strong> Citizens do not log in here. Incident reports are ingested automatically via municipal hotlines and soft-sensing feeds.
           </div>
 
           <form id="loginForm" onSubmit={handleSubmit}>
-            {mode === 'signup' && (
+            {signupFields}
+
+            <div className="form-group">
+              <label htmlFor="municipalityCode">Municipality / City Code</label>
+              <input id="municipalityCode" name="municipalityCode" type="text" value={form.municipalityCode} onChange={handleFieldChange} placeholder="e.g. CITY-IND-BPL8" required />
+            </div>
+
+            {currentRole === 'OPERATOR' && (
               <>
                 <div className="form-group">
-                  <label htmlFor="name">Full Name</label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    value={form.name}
-                    onChange={handleFieldChange}
-                    placeholder="Enter full name"
-                  />
+                  <label htmlFor="opStaffId">Operator Console ID</label>
+                  <input id="opStaffId" name="opStaffId" type="text" value={form.opStaffId} onChange={handleFieldChange} placeholder="e.g. OP-8842" />
                 </div>
-
                 <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={handleFieldChange}
-                    placeholder="name@municipality.gov"
-                  />
+                  <label htmlFor="opPassword">Security Clearance Password</label>
+                  <input id="opPassword" name="opPassword" type="password" value={form.opPassword} onChange={handleFieldChange} placeholder="8+ characters" />
                 </div>
               </>
             )}
 
-            <div className="form-group">
-              <label htmlFor="municipalityCode">Municipality / City Code</label>
-              <input
-                id="municipalityCode"
-                name="municipalityCode"
-                type="text"
-                value={form.municipalityCode}
-                onChange={handleFieldChange}
-                placeholder="e.g. CITY-IND-BPL8"
-                required
-              />
-            </div>
-
-            {currentRole === 'OPERATOR' && (
-              <div className="field-group-dynamic active">
-                <div className="form-group">
-                  <label htmlFor="opStaffId">Operator Console ID</label>
-                  <input
-                    id="opStaffId"
-                    name="opStaffId"
-                    type="text"
-                    value={form.opStaffId}
-                    onChange={handleFieldChange}
-                    placeholder="e.g. OP-8842"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="opPassword">Security Clearance Password</label>
-                  <input
-                    id="opPassword"
-                    name="opPassword"
-                    type="password"
-                    value={form.opPassword}
-                    onChange={handleFieldChange}
-                    placeholder="••••••••••••"
-                  />
-                </div>
-              </div>
-            )}
-
             {currentRole === 'FIELD_CREW' && (
-              <div className="field-group-dynamic active">
+              <>
                 <div className="form-group">
                   <label htmlFor="crewPhone">Registered Mobile Number</label>
-                  <input
-                    id="crewPhone"
-                    name="crewPhone"
-                    type="tel"
-                    value={form.crewPhone}
-                    onChange={handleFieldChange}
-                    placeholder="+91 98765 43210"
-                  />
+                  <input id="crewPhone" name="crewPhone" type="tel" value={form.crewPhone} onChange={handleFieldChange} placeholder="+91 98765 43210" />
                 </div>
                 <div className="form-group">
                   <label htmlFor="crewPasscode">SMS Gateway OTP / Passcode</label>
-                  <input
-                    id="crewPasscode"
-                    name="crewPasscode"
-                    type="password"
-                    value={form.crewPasscode}
-                    onChange={handleFieldChange}
-                    placeholder="6-digit PIN"
-                  />
+                  <input id="crewPasscode" name="crewPasscode" type="password" value={form.crewPasscode} onChange={handleFieldChange} placeholder="6-digit PIN" />
                 </div>
-              </div>
+              </>
             )}
 
             {currentRole === 'ADMINISTRATOR' && (
-              <div className="field-group-dynamic active">
+              <>
                 <div className="form-group">
                   <label htmlFor="adminId">Administrator Account</label>
-                  <input
-                    id="adminId"
-                    name="adminId"
-                    type="text"
-                    value={form.adminId}
-                    onChange={handleFieldChange}
-                    placeholder="e.g. ADM-SYS-01"
-                  />
+                  <input id="adminId" name="adminId" type="text" value={form.adminId} onChange={handleFieldChange} placeholder="e.g. ADM-SYS-01" />
                 </div>
                 <div className="form-group">
                   <label htmlFor="adminToken">Hardware Token / Password</label>
-                  <input
-                    id="adminToken"
-                    name="adminToken"
-                    type="password"
-                    value={form.adminToken}
-                    onChange={handleFieldChange}
-                    placeholder="••••••••••••"
-                  />
+                  <input id="adminToken" name="adminToken" type="password" value={form.adminToken} onChange={handleFieldChange} placeholder="8+ characters" />
                 </div>
-              </div>
+              </>
             )}
 
             <button type="submit" id="submitBtn" className="btn-submit" disabled={loading}>
               {loading
                 ? mode === 'signup' ? 'Creating account...' : 'Authenticating...'
-                : mode === 'signup'
-                  ? `Create ${roleLabels[currentRole].replace(' ', ' ')} Account`
-                  : currentRole === 'OPERATOR'
-                    ? 'Authenticate Operator Console'
-                    : currentRole === 'FIELD_CREW'
-                      ? 'Access Dispatch Queue (SMS)'
-                      : 'Access System Configuration'}
+                : mode === 'signup' ? `Create ${roleLabels[currentRole]} Account` : 'Authenticate'}
             </button>
           </form>
         </div>
 
         <div className="card-footer">
           Deterministic Safety Logic & Audit Log Enabled<br />
-          System Engine v1.0.4 — MongoDB Atlas Session Cluster
+          System Engine v1.0.4 - MongoDB Atlas Session Cluster
         </div>
       </div>
     </div>
@@ -401,7 +224,18 @@ function AuthForm() {
 }
 
 function Dashboard() {
-  const user = JSON.parse(localStorage.getItem('metabolic-city-user') || '{}');
+  const user = getStoredUser();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' });
+    } catch {
+      // ignore network errors; clear local session regardless
+    }
+    clearSession();
+    navigate('/');
+  };
 
   return (
     <div className="dashboard-shell">
@@ -410,6 +244,7 @@ function Dashboard() {
         <p>Welcome, {user.name || 'Operator'}.</p>
         <p>Role: {user.role || 'operator'}</p>
         <p>City: {user.cityCode || 'N/A'}</p>
+        <button type="button" className="btn-submit" onClick={handleLogout}>Logout</button>
       </div>
     </div>
   );
@@ -419,7 +254,14 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<AuthForm />} />
-      <Route path="/dashboard" element={<Dashboard />} />
+      <Route
+        path="/dashboard"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
