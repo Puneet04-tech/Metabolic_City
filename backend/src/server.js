@@ -3,8 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { rateLimit } from 'express-rate-limit';
 import authRoutes from './routes/auth.js';
+import telemetryRoutes from './routes/telemetry.js';
+import streamRoutes from './routes/stream.js';
+import spatialCellRoutes from './routes/spatialCells.js';
+import { startTelemetryPollers } from './services/pollers.js';
 import { connectDB } from './config/db.js';
 
 dotenv.config();
@@ -59,11 +64,27 @@ app.use(
   })
 );
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Metabolic City API is running.' });
-});
+const healthHandler = (req, res) => {
+  const databaseReady = mongoose.connection.readyState === 1;
+  res.status(databaseReady ? 200 : 503).json({
+    status: databaseReady ? 'healthy' : 'degraded',
+    timestamp: new Date().toISOString(),
+    version: '5.0',
+    services: {
+      mongodb: databaseReady ? 'ready' : 'unavailable',
+      authentication: 'ready',
+      h3: 'ready',
+    },
+  });
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 app.use('/api/auth', authRoutes);
+app.use('/api/v1/telemetry', telemetryRoutes);
+app.use('/api/v1/stream', streamRoutes);
+app.use('/api/v1/spatial-cells', spatialCellRoutes);
 
 // 404 for unknown API routes.
 app.use('/api', (req, res) => {
@@ -88,6 +109,7 @@ app.use((err, req, res, next) => {
 
 connectDB()
   .then(() => {
+    startTelemetryPollers();
     app.listen(port, () => {
       console.log(`Server running on http://localhost:${port} (${process.env.NODE_ENV || 'development'})`);
     });

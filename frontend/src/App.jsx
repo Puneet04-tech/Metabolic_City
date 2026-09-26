@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest, setSession, clearSession, getStoredUser } from './api.js';
 import RequireAuth from './RequireAuth.jsx';
@@ -226,6 +226,58 @@ function AuthForm() {
 function Dashboard() {
   const user = getStoredUser();
   const navigate = useNavigate();
+  const [cells, setCells] = useState([]);
+  const [connection, setConnection] = useState('connecting');
+
+  useEffect(() => {
+    let cancelled = false;
+    let streamResponse;
+
+    const loadLiveConsole = async () => {
+      try {
+        const snapshot = await apiRequest('/v1/spatial-cells');
+        if (!cancelled) setCells(snapshot.cells || []);
+
+        streamResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/v1/stream/h3`, {
+          headers: { Authorization: `Bearer ${sessionStorage.getItem('metabolic-city-token')}` },
+          credentials: 'include',
+        });
+        if (!streamResponse.ok) throw new Error('Live stream unavailable.');
+        if (!cancelled) setConnection('live');
+
+        const reader = streamResponse.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const messages = buffer.split('\n\n');
+          buffer = messages.pop() || '';
+          for (const message of messages) {
+            const dataLine = message.split('\n').find((line) => line.startsWith('data: '));
+            if (!dataLine) continue;
+            const data = JSON.parse(dataLine.slice(6));
+            if (Array.isArray(data.cells)) {
+              setCells((previous) => {
+                const next = new Map(previous.map((cell) => [cell.h3Index, cell]));
+                data.cells.forEach((cell) => next.set(cell.h3Index, cell));
+                return [...next.values()].sort((left, right) => right.compositeRisk - left.compositeRisk);
+              });
+            }
+          }
+        }
+      } catch {
+        if (!cancelled) setConnection('degraded');
+      }
+    };
+
+    loadLiveConsole();
+    return () => {
+      cancelled = true;
+      streamResponse?.body?.cancel();
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -244,6 +296,20 @@ function Dashboard() {
         <p>Welcome, {user.name || 'Operator'}.</p>
         <p>Role: {user.role || 'operator'}</p>
         <p>City: {user.cityCode || 'N/A'}</p>
+        <p>Telemetry stream: <strong>{connection}</strong></p>
+        <h3>Live H3 Risk Cells</h3>
+        {cells.length === 0 ? <p>No telemetry has been received for this jurisdiction.</p> : (
+          <div className="cell-list">
+            {cells.map((cell) => (
+              <article className={`risk-cell risk-${cell.compositeRisk >= 7 ? 'critical' : cell.compositeRisk >= 4 ? 'warning' : 'normal'}`} key={cell.h3Index}>
+                <strong>{cell.h3Index}</strong>
+                <span>Risk {cell.compositeRisk.toFixed(2)}</span>
+                <small>M {cell.scores.mobility.toFixed(1)} / C {cell.scores.climate.toFixed(1)} / V {cell.scores.vulnerability.toFixed(1)}</small>
+                {cell.isDegraded && <small>DEGRADED_DATA</small>}
+              </article>
+            ))}
+          </div>
+        )}
         <button type="button" className="btn-submit" onClick={handleLogout}>Logout</button>
       </div>
     </div>
@@ -262,6 +328,9 @@ export default function App() {
           </RequireAuth>
         }
       />
+      <Route path="/operator/*" element={<RequireAuth roles={['operator']}><Dashboard /></RequireAuth>} />
+      <Route path="/field/*" element={<RequireAuth roles={['field']}><Dashboard /></RequireAuth>} />
+      <Route path="/admin/*" element={<RequireAuth roles={['admin']}><Dashboard /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

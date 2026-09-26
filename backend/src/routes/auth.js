@@ -1,8 +1,10 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
 import { User } from '../models/User.js';
+import { TokenSession } from '../models/TokenSession.js';
 import { protect, authorize, revokeToken, getJwtSecret } from '../middleware/auth.js';
 import { rateLimit } from 'express-rate-limit';
 
@@ -10,8 +12,65 @@ const router = express.Router();
 
 const ROLES = ['operator', 'field_crew', 'administrator'];
 
-const createToken = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, getJwtSecret(), { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+const ACCESS_TOKEN_TTL = '15m';
+const REFRESH_TOKEN_TTL = '7d';
+
+const roleAliases = {
+  field: 'field_crew',
+  field_crew: 'field_crew',
+  admin: 'administrator',
+  administrator: 'administrator',
+  operator: 'operator',
+};
+
+const toPlanRole = (role) => (role === 'field_crew' ? 'field' : role === 'administrator' ? 'admin' : role);
+
+const createToken = (user, type, expiresIn) => {
+  const tokenId = crypto.randomUUID();
+  const payload = {
+    sub: user._id.toString(),
+    id: user._id.toString(),
+    role: toPlanRole(user.role),
+    jurisdiction: user.jurisdiction || user.cityCode,
+    type,
+    jti: tokenId,
+  };
+  return { token: jwt.sign(payload, getJwtSecret(), { expiresIn }), tokenId };
+};
+
+const persistSession = async (user, tokenId, expiresAt) => {
+  await TokenSession.create({ jti: tokenId, userId: user._id, expiresAt });
+};
+
+const setRefreshCookie = (res, token) => {
+  const serialized = `metabolic_city_refresh=${encodeURIComponent(token)}; Max-Age=604800; Path=/api/auth; HttpOnly; SameSite=Strict${
+    process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  }`;
+  res.setHeader('Set-Cookie', serialized);
+};
+
+const clearRefreshCookie = (res) => {
+  res.setHeader(
+    'Set-Cookie',
+    'metabolic_city_refresh=; Max-Age=0; Path=/api/auth; HttpOnly; SameSite=Strict' +
+      (process.env.NODE_ENV === 'production' ? '; Secure' : '')
+  );
+};
+
+const readRefreshCookie = (req) => {
+  const cookies = (req.headers.cookie || '').split(';').map((part) => part.trim());
+  const value = cookies.find((part) => part.startsWith('metabolic_city_refresh='));
+  return value ? decodeURIComponent(value.slice('metabolic_city_refresh='.length)) : null;
+};
+
+const issueSession = async (res, user) => {
+  const access = createToken(user, 'access', ACCESS_TOKEN_TTL);
+  const refresh = createToken(user, 'refresh', REFRESH_TOKEN_TTL);
+  await persistSession(user, access.tokenId, new Date(Date.now() + 15 * 60 * 1000));
+  await persistSession(user, refresh.tokenId, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  setRefreshCookie(res, refresh.token);
+  return access.token;
+};
 
 // Login / signup brute-force protection (stricter than the global limit).
 const authLimiter = rateLimit({
@@ -22,7 +81,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many authentication attempts. Please try again later.' },
 });
 
-const normalizeRole = (role) => (role || '').toString().trim().toLowerCase();
+const normalizeRole = (role) => roleAliases[(role || '').toString().trim().toLowerCase()] || '';
 
 const validateBody = (req, res) => {
   const errors = validationResult(req);
@@ -50,6 +109,7 @@ const sanitizeUser = (user) => ({
   phone: user.phone,
   adminId: user.adminId,
   organization: user.organization,
+  jurisdiction: user.jurisdiction || user.cityCode,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
@@ -105,6 +165,7 @@ router.post('/signup', authLimiter, signupValidators, async (req, res) => {
       email: req.body.email,
       password: hashedPassword,
       cityCode: req.body.cityCode,
+      jurisdiction: req.body.jurisdiction || req.body.cityCode,
       role,
       staffId: role === 'operator' ? req.body.staffId : undefined,
       phone: role === 'field_crew' ? req.body.phone : undefined,
@@ -112,7 +173,7 @@ router.post('/signup', authLimiter, signupValidators, async (req, res) => {
       organization: req.body.organization || 'Metabolic City',
     });
 
-    const token = createToken(user);
+    const token = await issueSession(res, user);
     return res.status(201).json({ token, user: sanitizeUser(user) });
   } catch (error) {
     console.error('Signup error:', error);
@@ -155,11 +216,43 @@ router.post('/login', authLimiter, commonValidators, async (req, res) => {
       return res.status(401).json({ message: 'Incorrect password or access token.' });
     }
 
-    const token = createToken(user);
+    const token = await issueSession(res, user);
     return res.json({ token, user: sanitizeUser(user) });
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).json({ message: 'Login failed. Please try again.' });
+  }
+});
+
+router.post('/refresh', async (req, res) => {
+  const refreshToken = readRefreshCookie(req);
+  if (!refreshToken) return res.status(401).json({ message: 'Refresh session is required.' });
+
+  try {
+    const decoded = jwt.verify(refreshToken, getJwtSecret());
+    if (decoded.type !== 'refresh' || !decoded.jti) {
+      clearRefreshCookie(res);
+      return res.status(401).json({ message: 'Invalid refresh session.' });
+    }
+
+    const session = await TokenSession.findOne({ jti: decoded.jti, revokedAt: null });
+    if (!session) {
+      clearRefreshCookie(res);
+      return res.status(401).json({ message: 'Refresh session has been revoked.' });
+    }
+
+    await TokenSession.updateOne({ jti: decoded.jti }, { $set: { revokedAt: new Date() } });
+    const user = await User.findById(decoded.sub);
+    if (!user) {
+      clearRefreshCookie(res);
+      return res.status(401).json({ message: 'User not found.' });
+    }
+
+    const token = await issueSession(res, user);
+    return res.json({ token, user: sanitizeUser(user) });
+  } catch {
+    clearRefreshCookie(res);
+    return res.status(401).json({ message: 'Invalid or expired refresh session.' });
   }
 });
 
@@ -168,7 +261,18 @@ router.get('/me', protect, async (req, res) => {
 });
 
 router.post('/logout', protect, async (req, res) => {
+  await TokenSession.updateOne({ jti: req.auth.jti }, { $set: { revokedAt: new Date() } });
+  const refreshToken = readRefreshCookie(req);
+  if (refreshToken) {
+    try {
+      const decoded = jwt.verify(refreshToken, getJwtSecret());
+      if (decoded.jti) await TokenSession.updateOne({ jti: decoded.jti }, { $set: { revokedAt: new Date() } });
+    } catch {
+      // The access session is still revoked even when the refresh cookie is stale.
+    }
+  }
   revokeToken(req.token);
+  clearRefreshCookie(res);
   return res.status(204).end();
 });
 

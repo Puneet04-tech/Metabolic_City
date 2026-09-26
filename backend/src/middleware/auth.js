@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { TokenSession } from '../models/TokenSession.js';
 
 let secret;
 export function getJwtSecret() {
@@ -39,9 +40,12 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
     }
 
-    if (revokedTokens.has(token)) {
+    if (revokedTokens.has(token) || !decoded.jti || decoded.type !== 'access') {
       return res.status(401).json({ message: 'Unauthorized: Token has been revoked.' });
     }
+
+    const session = await TokenSession.findOne({ jti: decoded.jti, revokedAt: null });
+    if (!session) return res.status(401).json({ message: 'Unauthorized: Token has been revoked.' });
 
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -51,6 +55,7 @@ export const protect = async (req, res, next) => {
     delete user.password;
     req.user = user;
     req.token = token;
+    req.auth = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
@@ -60,7 +65,8 @@ export const protect = async (req, res, next) => {
 // Restrict a route to a set of roles.
 export const authorize = (...roles) => (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Unauthorized.' });
-  if (!roles.includes(req.user.role)) {
+  const role = req.user.role === 'field_crew' ? 'field' : req.user.role === 'administrator' ? 'admin' : req.user.role;
+  if (!roles.includes(req.user.role) && !roles.includes(role)) {
     return res.status(403).json({ message: 'Forbidden: insufficient permissions.' });
   }
   next();

@@ -10,6 +10,7 @@ Metabolic City AI is an integrated platform that enables:
 - **Real-time Incident Response** - GPS-tagged reporting with photo evidence
 - **Cross-jurisdiction Data Sharing** - Coordinated operations across municipal boundaries
 - **AI-powered Risk Assessment** - Dynamic risk weights and guardrails for urban infrastructure
+- **Live H3 Telemetry** - Transit, weather, and citizen events mapped to resolution-8 cells
 
 ## 🏗️ Architecture
 
@@ -43,7 +44,19 @@ Metabolic_City/
 │   │   ├── middleware/
 │   │   │   └── auth.js            # JWT auth & role-based authorization
 │   │   ├── models/
-│   │   │   └── User.js            # User schema with role-specific fields
+│   │   │   ├── User.js            # User schema with role-specific fields
+│   │   │   ├── TelemetryEvent.js  # Raw telemetry time-series events
+│   │   │   ├── SpatialCell.js     # H3 risk grid state
+│   │   │   └── DeadLetterMessage.js # Invalid telemetry retention
+│   │   ├── engine/
+│   │   │   ├── risk.js            # H3 normalization and deterministic scoring
+│   │   │   └── stream.js           # Server-Sent Events broadcaster
+│   │   ├── routes/
+│   │   │   ├── telemetry.js       # Transit, weather, citizen ingestion
+│   │   │   ├── spatialCells.js    # Live risk-cell snapshots
+│   │   │   └── stream.js          # H3 SSE stream
+│   │   ├── services/
+│   │   │   └── pollers.js         # Optional OpenWeather and GTFS-RT polling
 │   │   ├── routes/
 │   │   │   └── auth.js            # Authentication endpoints
 │   │   ├── data/
@@ -201,8 +214,28 @@ This starts both backend (port 5000) and frontend (port 5173) concurrently.
 - `npm run dev` - Start both backend and frontend in development mode
 - `npm run build` - Build frontend for production
 - `npm start` - Start backend server only
+- `npm run seed:synthetic --prefix backend` - Seed the permitted survey workbooks as marked calibration telemetry
 
 ## 📡 API Endpoints
+
+### Phase 2 Telemetry
+
+#### POST `/api/v1/telemetry/citizen`
+Public citizen report ingestion. Requires `latitude`, `longitude`, and an ISO timestamp. Optional fields include `reportText`, `senderId`, and `imageUrls`.
+
+#### POST `/api/v1/telemetry/weather`
+Authenticated weather ingestion. Accepts rainfall in `rainMmHr`, visibility, and wind data.
+
+#### POST `/api/v1/telemetry/transit`
+Authenticated transit ingestion. Accepts vehicle coordinates, route/vehicle IDs, and delay minutes or seconds.
+
+#### GET `/api/v1/spatial-cells`
+Returns current resolution-8 H3 cells and their Mobility, Climate, Vulnerability, and composite risk scores.
+
+#### GET `/api/v1/stream/h3`
+Authenticated Server-Sent Events stream. Sends an initial snapshot and cell updates whenever telemetry changes a cell.
+
+Invalid telemetry is written to the MongoDB `deadlettermessages` collection with a 30-day TTL. Raw telemetry is retained for seven days. Risk scoring uses `$R_c = 0.4S_m + 0.4S_c + 0.2S_v$` by default and marks missing inputs as `DEGRADED_DATA`.
 
 ### Authentication
 

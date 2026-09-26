@@ -32,6 +32,7 @@ export function isAuthenticated() {
 }
 
 export async function apiRequest(path, options = {}) {
+  const canRefresh = !options._retried && !path.startsWith('/auth/refresh') && !path.startsWith('/auth/login') && !path.startsWith('/auth/signup');
   const headers = { ...(options.headers || {}) };
   if (options.body && typeof options.body === 'object') {
     headers['Content-Type'] = 'application/json';
@@ -45,10 +46,23 @@ export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    credentials: 'include',
     body: options.body && typeof options.body === 'object' ? JSON.stringify(options.body) : options.body,
   });
 
   if (response.status === 401) {
+    if (canRefresh && getToken()) {
+      try {
+        const refreshResponse = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+        if (refreshResponse.ok) {
+          const refreshed = await refreshResponse.json();
+          setSession(refreshed.token, refreshed.user);
+          return apiRequest(path, { ...options, _retried: true });
+        }
+      } catch {
+        // Fall through to the normal session-clearing path.
+      }
+    }
     clearSession();
   }
 

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "seed:synthetic": "node src/scripts/seedSyntheticTelemetry.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -13,11 +14,14 @@
     "express": "^4.19.2",
     "express-rate-limit": "^8.7.0",
     "express-validator": "^7.3.2",
+    "gtfs-realtime-bindings": "^2.2.0",
+    "h3-js": "^4.5.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "lowdb": "^7.0.0",
     "mongoose": "^9.9.4",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "helmet-csp": "^4.1.0"

@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     cityCode: { type: String, required: true },
     role: { type: String, enum: ['operator', 'field_crew', 'administrator'], required: true },
+    jurisdiction: { type: String },
     staffId: { type: String, sparse: true },
     phone: { type: String, sparse: true },
     adminId: { type: String, sparse: true },

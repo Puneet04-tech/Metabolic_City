@@ -264,3 +264,33 @@ button, input {
   margin-bottom: 8px;
   color: var(--muted);
 }
+
+.dashboard-card h3 {
+  margin: 24px 0 12px;
+  color: var(--primary);
+  font-size: 16px;
+}
+
+.cell-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.risk-cell {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  padding: 12px;
+  border-left: 4px solid var(--success);
+  background: var(--bg-alt);
+  font-size: 12px;
+}
+
+.risk-cell span,
+.risk-cell small { color: var(--muted); }
+
+.risk-cell small { grid-column: 1 / -1; font-family: var(--font-mono); }
+.risk-warning { border-left-color: #D99A00; }
+.risk-critical { border-left-color: var(--error); }
