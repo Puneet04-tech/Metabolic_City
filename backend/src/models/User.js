@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
     adminId: { type: String, sparse: true },
     password: { type: String, required: true, select: false },
     organization: { type: String, default: 'Metabolic City' },
+    active: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
@@ -88,5 +89,9 @@ export const User = {
       console.error('User.create error:', error);
       throw error;
     }
+  },
+
+  async updateOne(id, update) {
+    return UserModel.updateOne({ _id: id }, update);
   },
 };

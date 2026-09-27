@@ -3,6 +3,8 @@ import { protect, authorize } from '../middleware/auth.js';
 import { ConfigWeights } from '../models/ConfigWeights.js';
 import { SpatialCell } from '../models/SpatialCell.js';
 import { getActiveWeights } from '../engine/risk.js';
+import { User } from '../models/User.js';
+import { AuditLog } from '../models/AuditLog.js';
 
 const router = express.Router();
 
@@ -38,8 +40,21 @@ router.put('/weights', protect, authorize('admin'), async (req, res, next) => {
       { $set: { ...weights, key: 'active', updatedBy: req.user._id } },
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     ).lean();
+    await AuditLog.create({ actorId: req.user._id, action: 'WEIGHTS_UPDATED', entityType: 'config_weights', entityId: 'active', metadata: weights });
     return res.json({ weights: configured });
   } catch (error) { return res.status(422).json({ message: error.message }); }
+});
+
+router.get('/users', protect, authorize('admin'), async (req, res, next) => {
+  try { return res.json({ users: (await User.find({ cityCode: req.user.cityCode })).map(({ password, ...user }) => user) }); } catch (error) { return next(error); }
+});
+
+router.patch('/users/:userId/active', protect, authorize('admin'), async (req, res, next) => {
+  try {
+    const user = await User.updateOne(req.params.userId, { $set: { active: Boolean(req.body?.active) } });
+    await AuditLog.create({ actorId: req.user._id, action: 'USER_STATUS_UPDATED', entityType: 'user', entityId: req.params.userId, metadata: { active: Boolean(req.body?.active) } });
+    return res.json({ updated: user.modifiedCount === 1 });
+  } catch (error) { return next(error); }
 });
 
 export default router;

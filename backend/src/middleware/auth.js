@@ -48,7 +48,7 @@ export const protect = async (req, res, next) => {
     if (!session) return res.status(401).json({ message: 'Unauthorized: Token has been revoked.' });
 
     const user = await User.findById(decoded.id);
-    if (!user) {
+    if (!user || user.active === false) {
       return res.status(401).json({ message: 'Unauthorized: User not found.' });
     }
 

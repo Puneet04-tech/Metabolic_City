@@ -14,6 +14,7 @@ import incidentRoutes from './routes/incidents.js';
 import fieldRoutes from './routes/field.js';
 import adminRoutes from './routes/admin.js';
 import { startEscalationMonitor } from './services/escalation.js';
+import analyticsRoutes from './routes/analytics.js';
 import { connectDB } from './config/db.js';
 
 dotenv.config();
@@ -93,6 +94,7 @@ app.use('/api/v1/spatial-cells', spatialCellRoutes);
 app.use('/api/v1/incidents', incidentRoutes);
 app.use('/api/v1/field', fieldRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 
 // 404 for unknown API routes.
 app.use('/api', (req, res) => {

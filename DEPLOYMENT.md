@@ -41,6 +41,8 @@ Create a Vercel project with `frontend` as the Root Directory. Vercel detects Vi
 VITE_API_URL=https://your-render-service.onrender.com/api
 ```
 
+The same setting is documented in `frontend/.env.example`.
+
 `frontend/vercel.json` keeps client-side React routes working on refresh and adds browser security headers.
 
 After deployment, update Render's `CORS_ORIGINS` to the final Vercel URL and verify:
@@ -64,3 +66,16 @@ Render should alert on elevated HTTP 5xx responses, restart loops, and sustained
 6. Run the synthetic seed only in a non-production database.
 7. Test telemetry ingestion, SSE, critical-cell approval, field sync, and admin weight dry-run.
 8. Configure Render alerts and an email/pager notification channel.
+
+## Application routes
+
+After authentication, the completed role experiences are available at:
+
+```text
+/operator   H3 map console, live stream, critical action drawer
+/field      Offline-capable field task console and status sync
+/admin      Risk weights, dry-run simulation, and municipal users
+/analytics  Incident history and audit trail for operators/admins
+```
+
+The frontend uses OpenStreetMap tiles without a map token. Replace the tile provider only if your deployment requires a different tile service or usage policy.

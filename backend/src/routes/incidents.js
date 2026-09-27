@@ -4,6 +4,7 @@ import { CellLock } from '../models/CellLock.js';
 import { Incident } from '../models/Incident.js';
 import { SpatialCell } from '../models/SpatialCell.js';
 import { synthesizeAction } from '../services/actionSynthesizer.js';
+import { AuditLog } from '../models/AuditLog.js';
 
 const router = express.Router();
 
@@ -71,10 +72,24 @@ router.post('/:h3Index/decision', protect, authorize('operator'), async (req, re
       lockOwnerId: req.user._id,
     });
     await CellLock.deleteOne({ _id: lock._id });
+    await AuditLog.create({ actorId: req.user._id, action: `INCIDENT_${decision.toUpperCase()}`, entityType: 'incident', entityId: incident._id.toString(), metadata: { h3Index: cell.h3Index, riskScore: cell.compositeRisk } });
     return res.status(201).json({ incident });
   } catch (error) {
     return next(error);
   }
+});
+
+router.patch('/:incidentId/assign', protect, authorize('operator', 'admin'), async (req, res, next) => {
+  try {
+    const incident = await Incident.findByIdAndUpdate(
+      req.params.incidentId,
+      { $set: { assignedCrewId: req.body?.crewId, status: 'DISPATCHED', dispatchedAt: new Date() } },
+      { returnDocument: 'after' }
+    ).lean();
+    if (!incident) return res.status(404).json({ message: 'Incident not found.' });
+    await AuditLog.create({ actorId: req.user._id, action: 'INCIDENT_ASSIGNED', entityType: 'incident', entityId: incident._id.toString(), metadata: { crewId: req.body?.crewId } });
+    return res.json({ incident });
+  } catch (error) { return next(error); }
 });
 
 export default router;

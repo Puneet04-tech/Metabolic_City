@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import L from 'leaflet';
+import { cellToBoundary } from 'h3-js';
+import 'leaflet/dist/leaflet.css';
 import { apiRequest, setSession, clearSession, getStoredUser } from './api.js';
 import RequireAuth from './RequireAuth.jsx';
 import { enqueueFieldUpdate, flushFieldOutbox } from './fieldOutbox.js';
@@ -456,21 +459,71 @@ function Dashboard() {
   );
 }
 
+function ProductShell({ title, children }) {
+  const user = getStoredUser();
+  const navigate = useNavigate();
+  const logout = async () => { try { await apiRequest('/auth/logout', { method: 'POST' }); } catch { /* clear local session */ } clearSession(); navigate('/'); };
+  return <main className="app-shell"><header className="app-bar"><div><span className="eyebrow">{user.cityCode}</span><h1>{title}</h1></div><div className="app-user"><span>{user.name}</span><button type="button" onClick={logout}>Sign out</button></div></header>{children}</main>;
+}
+
+function H3Map({ cells, onSelect }) {
+  const [node, setNode] = useState(null);
+  useEffect(() => {
+    if (!node) return undefined;
+    const map = L.map(node).setView([23.2, 77.2], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    const layers = cells.map((cell) => {
+      const color = cell.compositeRisk >= 7 ? '#c8392b' : cell.compositeRisk >= 4 ? '#c58a00' : '#287c61';
+      const polygon = L.polygon(cellToBoundary(cell.h3Index, true), { color, fillColor: color, fillOpacity: 0.42, weight: 2 }).addTo(map);
+      polygon.bindTooltip(`Risk ${cell.compositeRisk.toFixed(2)}`); polygon.on('click', () => onSelect(cell)); return polygon;
+    });
+    if (cells.length) map.fitBounds(L.latLngBounds(cells.flatMap((cell) => cellToBoundary(cell.h3Index, true))), { padding: [20, 20] });
+    return () => { layers.forEach((layer) => layer.remove()); map.remove(); };
+  }, [node, cells, onSelect]);
+  return <div className="map-canvas" ref={setNode} />;
+}
+
+function LiveCells({ cells, onSelect }) { return <div className="cell-grid">{cells.map((cell) => <button type="button" key={cell.h3Index} onClick={() => onSelect(cell)} className={`cell-card ${cell.compositeRisk >= 7 ? 'critical' : cell.compositeRisk >= 4 ? 'warning' : ''}`}><strong>{cell.h3Index}</strong><span>{cell.compositeRisk.toFixed(2)}</span><small>M {cell.scores.mobility.toFixed(1)} / C {cell.scores.climate.toFixed(1)} / V {cell.scores.vulnerability.toFixed(1)}{cell.isDegraded ? ' / DEGRADED' : ''}</small></button>)}</div>; }
+
+function useLiveCells() {
+  const [cells, setCells] = useState([]); const [connection, setConnection] = useState('connecting');
+  useEffect(() => { let stopped = false; let response;
+    (async () => { try { const snapshot = await apiRequest('/v1/spatial-cells'); if (!stopped) setCells(snapshot.cells || []); response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/v1/stream/h3`, { headers: { Authorization: `Bearer ${sessionStorage.getItem('metabolic-city-token')}` }, credentials: 'include' }); if (!response.ok) throw new Error('stream unavailable'); setConnection('live'); const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; while (!stopped) { const chunk = await reader.read(); if (chunk.done) break; buffer += decoder.decode(chunk.value); const messages = buffer.split('\n\n'); buffer = messages.pop() || ''; messages.forEach((message) => { const line = message.split('\n').find((item) => item.startsWith('data: ')); if (!line) return; const data = JSON.parse(line.slice(6)); if (data.cells) setCells((previous) => { const next = new Map(previous.map((cell) => [cell.h3Index, cell])); data.cells.forEach((cell) => next.set(cell.h3Index, cell)); return [...next.values()].sort((a, b) => b.compositeRisk - a.compositeRisk); }); }); } } catch { if (!stopped) setConnection('degraded'); } })(); return () => { stopped = true; response?.body?.cancel(); }; }, []); return { cells, connection };
+}
+
+function OperatorConsole() {
+  const { cells, connection } = useLiveCells(); const [selected, setSelected] = useState(null); const [action, setAction] = useState(null); const [error, setError] = useState('');
+  const select = async (cell) => { if (cell.compositeRisk < 7) return; setSelected(cell); try { setAction(await apiRequest(`/v1/incidents/${cell.h3Index}/action`)); } catch (e) { setError(e.message); } };
+  const lock = async () => { try { const result = await apiRequest(`/v1/incidents/${selected.h3Index}/lock`, { method: 'POST' }); setAction((previous) => ({ ...previous, lock: result.lock })); } catch (e) { setError(e.message); } };
+  const decide = async (decision) => { try { await apiRequest(`/v1/incidents/${selected.h3Index}/decision`, { method: 'POST', body: { decision } }); setSelected(null); setAction(null); } catch (e) { setError(e.message); } };
+  return <ProductShell title="Operator Command Console"><section className="console-layout"><div className="console-main"><div className="status-strip"><span className={`status-dot ${connection}`} /> Telemetry {connection}<span>{cells.length} active H3 cells</span></div><H3Map cells={cells} onSelect={select} /><LiveCells cells={cells} onSelect={select} /></div><aside className="side-panel"><h2>Action drawer</h2>{!selected && <p>Select a critical red cell to review its response directive.</p>}{selected && action && <><div className="score-hero"><span>Composite Risk</span><strong>{selected.compositeRisk.toFixed(2)}</strong></div><p>{action.action.actionNarrative}</p><p><strong>Resources</strong><br />{action.action.recommendedResources.join(', ')}</p><p><strong>Dispatch</strong><br />{action.action.dispatchText}</p>{error && <div className="alert-banner error">{error}</div>}{!action.lock ? <button className="btn-submit" type="button" onClick={lock}>Claim 60-second lock</button> : <div className="button-stack"><button className="btn-submit" type="button" onClick={() => decide('approve')}>Approve &amp; Dispatch</button><button className="btn-secondary" type="button" onClick={() => decide('override')}>Override Alert</button></div>}</>}</aside></section></ProductShell>;
+}
+
+function FieldConsole() {
+  const [tasks, setTasks] = useState([]); const [message, setMessage] = useState('');
+  useEffect(() => { apiRequest('/v1/field/tasks').then((data) => setTasks(data.incidents || [])).catch((error) => setMessage(error.message)); const flush = () => flushFieldOutbox(apiRequest).catch(() => {}); window.addEventListener('online', flush); return () => window.removeEventListener('online', flush); }, []);
+  const update = async (task, status) => { const data = { incidentId: task._id, status }; try { if (!navigator.onLine) throw new Error('offline'); await apiRequest('/v1/field/sync', { method: 'POST', body: { updates: [data] } }); setMessage('Status synchronized.'); } catch { await enqueueFieldUpdate(data); setMessage('Offline: status queued.'); } setTasks((previous) => previous.map((item) => item._id === task._id ? { ...item, status } : item)); };
+  return <ProductShell title="Field Crew PWA"><section className="field-layout"><div className="field-banner"><span>Low-bandwidth mode</span><strong>{navigator.onLine ? 'Online' : 'Offline'}</strong></div>{message && <p className="inline-message">{message}</p>}{tasks.length === 0 ? <div className="empty-state">No assigned tasks.</div> : tasks.map((task) => <article className="task-card large" key={task._id}><span className="eyebrow">{task.status}</span><h2>H3 {task.h3Index}</h2><p>Risk {task.riskScore} · {task.action?.recommendedResources?.join(', ')}</p><p>{task.action?.dispatchText}</p><div className="button-row"><button type="button" onClick={() => update(task, 'ACKNOWLEDGED')}>Acknowledge</button><button type="button" onClick={() => update(task, 'ARRIVED')}>Arrived</button><button type="button" onClick={() => update(task, 'RESOLVED')}>Resolved</button></div></article>)}</section></ProductShell>;
+}
+
+function AdminConsole() {
+  const [weights, setWeights] = useState({ Wm: 0.4, Wc: 0.4, Wv: 0.2 }); const [users, setUsers] = useState([]); const [message, setMessage] = useState('');
+  useEffect(() => { Promise.all([apiRequest('/v1/admin/weights'), apiRequest('/v1/admin/users')]).then(([weightData, userData]) => { setWeights(weightData.weights); setUsers(userData.users || []); }).catch((error) => setMessage(error.message)); }, []);
+  const save = async (dryRun) => { if (Math.abs(weights.Wm + weights.Wc + weights.Wv - 1) > 0.0001) return setMessage('Weights must sum to 1.00.'); try { const result = await apiRequest(`/v1/admin/weights${dryRun ? '/dry-run' : ''}`, { method: dryRun ? 'POST' : 'PUT', body: weights }); setMessage(dryRun ? `${result.preview.length} cells simulated.` : 'Active weights saved.'); } catch (error) { setMessage(error.message); } };
+  return <ProductShell title="Administration"><section className="admin-grid"><article className="panel"><h2>Risk engine controls</h2>{['Wm', 'Wc', 'Wv'].map((key) => <label className="weight-row" key={key}>{key}<input type="number" step="0.05" min="0" max="1" value={weights[key]} onChange={(event) => setWeights((previous) => ({ ...previous, [key]: Number(event.target.value) }))} /></label>)}<p>Sum {(weights.Wm + weights.Wc + weights.Wv).toFixed(2)}</p><div className="button-row"><button type="button" onClick={() => save(true)}>Dry run</button><button className="btn-submit" type="button" onClick={() => save(false)}>Save weights</button></div>{message && <p className="inline-message">{message}</p>}</article><article className="panel"><h2>Municipal users</h2>{users.map((user) => <div className="user-row" key={user._id}><span><strong>{user.name}</strong><small>{user.role} · {user.email}</small></span><span>{user.active === false ? 'Disabled' : 'Active'}</span></div>)}</article></section></ProductShell>;
+}
+
+function Analytics() { const [data, setData] = useState({ counts: [], incidents: [], auditLogs: [] }); useEffect(() => { apiRequest('/v1/analytics/summary').then(setData).catch(() => {}); }, []); return <ProductShell title="Incident Analytics"><section className="analytics-grid"><div className="metric-grid">{data.counts.map((item) => <article className="metric" key={item._id}><span>{item._id}</span><strong>{item.count}</strong><small>Avg risk {Number(item.averageRisk || 0).toFixed(2)}</small></article>)}</div><article className="panel"><h2>Incident history</h2><div className="table-list">{data.incidents.map((incident) => <div className="table-row" key={incident._id}><strong>{incident.h3Index}</strong><span>{incident.status}</span><span>{incident.riskScore}</span><time>{new Date(incident.detectedAt).toLocaleString()}</time></div>)}</div></article><article className="panel"><h2>Audit trail</h2><div className="table-list">{data.auditLogs.map((log) => <div className="table-row" key={log._id}><strong>{log.action}</strong><span>{log.entityType}</span><time>{new Date(log.createdAt).toLocaleString()}</time></div>)}</div></article></section></ProductShell>; }
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<AuthForm />} />
-      <Route
-        path="/dashboard"
-        element={
-          <RequireAuth>
-            <Dashboard />
-          </RequireAuth>
-        }
-      />
-      <Route path="/operator/*" element={<RequireAuth roles={['operator']}><Dashboard /></RequireAuth>} />
-      <Route path="/field/*" element={<RequireAuth roles={['field']}><Dashboard /></RequireAuth>} />
-      <Route path="/admin/*" element={<RequireAuth roles={['admin']}><Dashboard /></RequireAuth>} />
+      <Route path="/operator" element={<RequireAuth roles={['operator']}><OperatorConsole /></RequireAuth>} />
+      <Route path="/field" element={<RequireAuth roles={['field']}><FieldConsole /></RequireAuth>} />
+      <Route path="/admin" element={<RequireAuth roles={['admin']}><AdminConsole /></RequireAuth>} />
+      <Route path="/analytics" element={<RequireAuth roles={['operator', 'admin']}><Analytics /></RequireAuth>} />
+      <Route path="/dashboard" element={<Navigate to="/operator" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

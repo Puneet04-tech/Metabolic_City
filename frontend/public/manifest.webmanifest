@@ -1,0 +1,9 @@
+{
+  "name": "Metabolic City Field Console",
+  "short_name": "Metabolic City",
+  "start_url": "/field",
+  "display": "standalone",
+  "background_color": "#eef2f0",
+  "theme_color": "#1b2a4a",
+  "description": "Low-bandwidth municipal field response console"
+}
