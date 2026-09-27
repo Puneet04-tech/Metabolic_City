@@ -1,12 +1,18 @@
 import { cellToLatLng, latLngToCell } from 'h3-js';
 import { SpatialCell } from '../models/SpatialCell.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
+import { ConfigWeights } from '../models/ConfigWeights.js';
 import { broadcastCells } from './stream.js';
 
 export const H3_RESOLUTION = 8;
 const WINDOW_MS = 15 * 60 * 1000;
 
 const clamp = (value) => Math.max(0, Math.min(10, Number(value) || 0));
+
+export async function getActiveWeights() {
+  const configured = await ConfigWeights.findOne({ key: 'active' }).lean();
+  return configured ? { Wm: configured.Wm, Wc: configured.Wc, Wv: configured.Wv } : { Wm: 0.4, Wc: 0.4, Wv: 0.2 };
+}
 
 export function normalizeCoordinates(latitude, longitude) {
   const lat = Number(latitude);
@@ -51,8 +57,9 @@ function scoreEvents(events, previousCell) {
 export async function recalculateCell(h3Index) {
   const previousCell = await SpatialCell.findOne({ h3Index }).lean();
   const events = await TelemetryEvent.find({ h3Index, observedAt: { $gte: new Date(Date.now() - WINDOW_MS) } }).lean();
+  const activeWeights = await getActiveWeights();
   const [latitude, longitude] = cellToLatLng(h3Index);
-  const result = scoreEvents(events, previousCell);
+  const result = scoreEvents(events, { ...previousCell, weights: activeWeights });
   const cell = await SpatialCell.findOneAndUpdate(
     { h3Index },
     { $set: { h3Index, latitude, longitude, ...result, lastUpdated: new Date() } },

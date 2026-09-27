@@ -237,6 +237,40 @@ Authenticated Server-Sent Events stream. Sends an initial snapshot and cell upda
 
 Invalid telemetry is written to the MongoDB `deadlettermessages` collection with a 30-day TTL. Raw telemetry is retained for seven days. Risk scoring uses `$R_c = 0.4S_m + 0.4S_c + 0.2S_v$` by default and marks missing inputs as `DEGRADED_DATA`.
 
+### Phase 3 Critical Response
+
+Critical cells (`R_c >= 7`) expose action synthesis and operator decision APIs:
+
+```text
+GET  /api/v1/incidents/:h3Index/action
+POST /api/v1/incidents/:h3Index/lock
+POST /api/v1/incidents/:h3Index/decision
+GET  /api/v1/incidents
+```
+
+Locks are stored in MongoDB with a 60-second TTL and prevent duplicate operator decisions. When `GEMINI_API_KEY` is configured, Gemini 2.5 Flash produces the action narrative, priority, recommended resources, and dispatch text. Without the key, the same JSON contract is generated deterministically from the three risk scores. Operators must claim the cell lock before approving or overriding an alert; every decision is persisted as an incident audit record.
+
+### Phase 4 Field and Administration
+
+Field crew endpoints:
+
+```text
+GET  /api/v1/field/tasks
+POST /api/v1/field/sync
+```
+
+The browser field console stores failed or offline status updates in IndexedDB (`field_outbox`) and flushes them when the browser becomes online. Supported statuses are `ACKNOWLEDGED`, `ARRIVED`, and `RESOLVED`; resolution updates may include a note, photo URL, and GPS coordinates.
+
+Administrator weight endpoints:
+
+```text
+GET  /api/v1/admin/weights
+POST /api/v1/admin/weights/dry-run
+PUT  /api/v1/admin/weights
+```
+
+Weights must be between `0` and `1` and sum exactly to `1.0`. Dry-run returns projected risk scores for existing cells before committing. A background monitor checks unacknowledged critical incidents every 60 seconds and escalates incidents older than 15 minutes. Configure Twilio variables to send SMS; without them, the incident remains persisted and the missing SMS configuration is logged explicitly.
+
 ### Authentication
 
 #### POST `/api/auth/signup`

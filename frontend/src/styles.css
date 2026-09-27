@@ -294,3 +294,40 @@ button, input {
 .risk-cell small { grid-column: 1 / -1; font-family: var(--font-mono); }
 .risk-warning { border-left-color: #D99A00; }
 .risk-critical { border-left-color: var(--error); }
+.risk-critical[role="button"] { cursor: pointer; }
+.risk-critical[role="button"]:hover { background: #FFF3F0; }
+
+.action-drawer {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--error);
+  background: #FFF8F6;
+}
+
+.drawer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.drawer-heading button,
+.btn-secondary {
+  border: 1px solid var(--border);
+  background: #FFF;
+  color: var(--primary);
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.drawer-actions { display: grid; gap: 8px; }
+.phase-panel { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.task-card { display: grid; gap: 6px; padding: 12px; margin-top: 8px; background: var(--bg-alt); border: 1px solid var(--border); }
+.task-card span, .task-card small { color: var(--muted); }
+.task-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.task-actions button { border: 1px solid var(--border); background: #fff; color: var(--primary); padding: 7px 9px; border-radius: 4px; cursor: pointer; }
+.weight-row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; color: var(--muted); }
+.weight-row input { width: 90px; padding: 7px; border: 1px solid var(--border); border-radius: 4px; }

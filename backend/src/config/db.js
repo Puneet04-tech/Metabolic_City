@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { ensureUserIndexes } from '../models/User.js';
 
 const DEFAULT_MAX_RETRIES = 5;
 const RETRY_BASE_DELAY_MS = 1000;
@@ -66,6 +67,7 @@ export async function connectDB({ retries = DEFAULT_MAX_RETRIES } = {}) {
 
   try {
     await mongoose.connect(mongoUri, options);
+    await ensureUserIndexes();
     return mongoose.connection;
   } catch (error) {
     if (retries > 0) {

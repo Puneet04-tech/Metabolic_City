@@ -17,11 +17,24 @@ const userSchema = new mongoose.Schema(
 );
 
 // Ensure unique indexes for role-specific fields
-userSchema.index({ cityCode: 1, role: 1, staffId: 1 }, { sparse: true, unique: true });
-userSchema.index({ cityCode: 1, role: 1, phone: 1 }, { sparse: true, unique: true });
-userSchema.index({ cityCode: 1, role: 1, adminId: 1 }, { sparse: true, unique: true });
+userSchema.index(
+  { cityCode: 1, role: 1, staffId: 1 },
+  { name: 'operator_staff_unique', unique: true, partialFilterExpression: { role: 'operator', staffId: { $type: 'string' } } }
+);
+userSchema.index(
+  { cityCode: 1, role: 1, phone: 1 },
+  { name: 'field_phone_unique', unique: true, partialFilterExpression: { role: 'field_crew', phone: { $type: 'string' } } }
+);
+userSchema.index(
+  { cityCode: 1, role: 1, adminId: 1 },
+  { name: 'administrator_id_unique', unique: true, partialFilterExpression: { role: 'administrator', adminId: { $type: 'string' } } }
+);
 
 const UserModel = mongoose.model('User', userSchema);
+
+export async function ensureUserIndexes() {
+  await UserModel.syncIndexes();
+}
 
 export const User = {
   async findOne(query = {}) {
@@ -54,6 +67,16 @@ export const User = {
     } catch (error) {
       console.error('User.findById error:', error);
       return null;
+    }
+  },
+
+  async find(query = {}) {
+    try {
+      const users = await UserModel.find(query).lean();
+      return users;
+    } catch (error) {
+      console.error('User.find error:', error);
+      return [];
     }
   },
 

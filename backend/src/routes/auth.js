@@ -160,18 +160,20 @@ router.post('/signup', authLimiter, signupValidators, async (req, res) => {
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
-    const user = await User.create({
+    const userData = {
       name: req.body.name,
       email: req.body.email,
       password: hashedPassword,
       cityCode: req.body.cityCode,
       jurisdiction: req.body.jurisdiction || req.body.cityCode,
       role,
-      staffId: role === 'operator' ? req.body.staffId : undefined,
-      phone: role === 'field_crew' ? req.body.phone : undefined,
-      adminId: role === 'administrator' ? req.body.adminId : undefined,
       organization: req.body.organization || 'Metabolic City',
-    });
+    };
+    if (role === 'operator') userData.staffId = req.body.staffId;
+    if (role === 'field_crew') userData.phone = req.body.phone;
+    if (role === 'administrator') userData.adminId = req.body.adminId;
+
+    const user = await User.create(userData);
 
     const token = await issueSession(res, user);
     return res.status(201).json({ token, user: sanitizeUser(user) });

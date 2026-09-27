@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { apiRequest, setSession, clearSession, getStoredUser } from './api.js';
 import RequireAuth from './RequireAuth.jsx';
+import { enqueueFieldUpdate, flushFieldOutbox } from './fieldOutbox.js';
 
 const roleLabels = {
   OPERATOR: 'Dispatch Operator',
@@ -228,6 +229,15 @@ function Dashboard() {
   const navigate = useNavigate();
   const [cells, setCells] = useState([]);
   const [connection, setConnection] = useState('connecting');
+  const [selectedCell, setSelectedCell] = useState(null);
+  const [actionState, setActionState] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const [decisionLoading, setDecisionLoading] = useState(false);
+  const [fieldTasks, setFieldTasks] = useState([]);
+  const [weights, setWeights] = useState({ Wm: 0.4, Wc: 0.4, Wv: 0.2 });
+  const [weightMessage, setWeightMessage] = useState('');
+  const isFieldCrew = user.role === 'field_crew';
+  const isAdmin = user.role === 'administrator';
 
   useEffect(() => {
     let cancelled = false;
@@ -279,6 +289,91 @@ function Dashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    const loadRoleData = async () => {
+      try {
+        if (isFieldCrew) {
+          const response = await apiRequest('/v1/field/tasks');
+          setFieldTasks(response.incidents || []);
+          await flushFieldOutbox(apiRequest);
+        }
+        if (isAdmin) {
+          const response = await apiRequest('/v1/admin/weights');
+          setWeights(response.weights);
+        }
+      } catch (error) {
+        setWeightMessage(error.message);
+      }
+    };
+    loadRoleData();
+    const flush = () => flushFieldOutbox(apiRequest).catch(() => {});
+    window.addEventListener('online', flush);
+    return () => window.removeEventListener('online', flush);
+  }, [isFieldCrew, isAdmin]);
+
+  const openActionDrawer = async (cell) => {
+    if (cell.compositeRisk < 7 || !['operator', 'administrator'].includes(user.role)) return;
+    setSelectedCell(cell);
+    setActionError('');
+    try {
+      setActionState(await apiRequest(`/v1/incidents/${cell.h3Index}/action`));
+    } catch (error) {
+      setActionError(error.message);
+    }
+  };
+
+  const acquireLock = async () => {
+    try {
+      const result = await apiRequest(`/v1/incidents/${selectedCell.h3Index}/lock`, { method: 'POST' });
+      setActionState((previous) => ({ ...previous, lock: result.lock }));
+      setActionError('');
+    } catch (error) {
+      setActionError(error.message);
+    }
+  };
+
+  const decideIncident = async (decision) => {
+    setDecisionLoading(true);
+    try {
+      await apiRequest(`/v1/incidents/${selectedCell.h3Index}/decision`, {
+        method: 'POST',
+        body: { decision, overrideReason: decision === 'override' ? 'Operator reviewed current evidence and declined dispatch.' : undefined },
+      });
+      setSelectedCell(null);
+      setActionState(null);
+    } catch (error) {
+      setActionError(error.message);
+    } finally {
+      setDecisionLoading(false);
+    }
+  };
+
+  const updateFieldTask = async (incidentId, status) => {
+    const update = { incidentId, status };
+    try {
+      if (!navigator.onLine) throw new Error('offline');
+      await apiRequest('/v1/field/sync', { method: 'POST', body: { updates: [update] } });
+    } catch {
+      await enqueueFieldUpdate(update);
+    }
+    setFieldTasks((previous) => previous.map((task) => task._id === incidentId ? { ...task, status } : task));
+  };
+
+  const saveWeights = async (dryRun = false) => {
+    const total = Number(weights.Wm) + Number(weights.Wc) + Number(weights.Wv);
+    if (Math.abs(total - 1) > 0.0001) {
+      setWeightMessage('Weights must sum exactly to 1.');
+      return;
+    }
+    try {
+      const endpoint = dryRun ? '/v1/admin/weights/dry-run' : '/v1/admin/weights';
+      const response = await apiRequest(endpoint, { method: dryRun ? 'POST' : 'PUT', body: weights });
+      setWeightMessage(dryRun ? `Dry run generated ${response.preview.length} projected cells.` : 'Weights saved. New telemetry will use them.');
+    } catch (error) {
+      setWeightMessage(error.message);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
@@ -297,11 +392,34 @@ function Dashboard() {
         <p>Role: {user.role || 'operator'}</p>
         <p>City: {user.cityCode || 'N/A'}</p>
         <p>Telemetry stream: <strong>{connection}</strong></p>
+        {isFieldCrew && <section className="phase-panel">
+          <h3>Field Crew Tasks</h3>
+          {fieldTasks.length === 0 ? <p>No assigned field tasks.</p> : fieldTasks.map((task) => (
+            <article className="task-card" key={task._id}>
+              <strong>{task.h3Index}</strong><span>Risk {task.riskScore}</span>
+              <small>{task.action?.dispatchText}</small>
+              <div className="task-actions">
+                <button type="button" onClick={() => updateFieldTask(task._id, 'ACKNOWLEDGED')}>Acknowledge</button>
+                <button type="button" onClick={() => updateFieldTask(task._id, 'ARRIVED')}>Arrived</button>
+                <button type="button" onClick={() => updateFieldTask(task._id, 'RESOLVED')}>Resolved</button>
+              </div>
+            </article>
+          ))}
+        </section>}
+        {isAdmin && <section className="phase-panel">
+          <h3>Risk Weight Tuning</h3>
+          {['Wm', 'Wc', 'Wv'].map((key) => <label className="weight-row" key={key}>{key}
+            <input type="number" min="0" max="1" step="0.05" value={weights[key]} onChange={(event) => setWeights((previous) => ({ ...previous, [key]: Number(event.target.value) }))} />
+          </label>)}
+          <p>Sum: {(Number(weights.Wm) + Number(weights.Wc) + Number(weights.Wv)).toFixed(2)}</p>
+          {weightMessage && <p>{weightMessage}</p>}
+          <div className="task-actions"><button type="button" onClick={() => saveWeights(true)}>Dry Run</button><button type="button" onClick={() => saveWeights(false)}>Save Weights</button></div>
+        </section>}
         <h3>Live H3 Risk Cells</h3>
         {cells.length === 0 ? <p>No telemetry has been received for this jurisdiction.</p> : (
           <div className="cell-list">
             {cells.map((cell) => (
-              <article className={`risk-cell risk-${cell.compositeRisk >= 7 ? 'critical' : cell.compositeRisk >= 4 ? 'warning' : 'normal'}`} key={cell.h3Index}>
+                <article role={cell.compositeRisk >= 7 ? 'button' : undefined} tabIndex={cell.compositeRisk >= 7 ? 0 : undefined} onClick={() => openActionDrawer(cell)} className={`risk-cell risk-${cell.compositeRisk >= 7 ? 'critical' : cell.compositeRisk >= 4 ? 'warning' : 'normal'}`} key={cell.h3Index}>
                 <strong>{cell.h3Index}</strong>
                 <span>Risk {cell.compositeRisk.toFixed(2)}</span>
                 <small>M {cell.scores.mobility.toFixed(1)} / C {cell.scores.climate.toFixed(1)} / V {cell.scores.vulnerability.toFixed(1)}</small>
@@ -310,6 +428,28 @@ function Dashboard() {
             ))}
           </div>
         )}
+        {selectedCell && actionState && (
+          <aside className="action-drawer">
+            <div className="drawer-heading">
+              <h3>Critical Cell Action</h3>
+              <button type="button" onClick={() => setSelectedCell(null)} aria-label="Close action drawer">Close</button>
+            </div>
+            <p><strong>{selectedCell.h3Index}</strong> · Risk {selectedCell.compositeRisk.toFixed(2)}</p>
+            <p>{actionState.action.actionNarrative}</p>
+            <p><strong>Resources:</strong> {actionState.action.recommendedResources.join(', ')}</p>
+            <p><strong>Dispatch:</strong> {actionState.action.dispatchText}</p>
+            {actionError && <div className="alert-banner error">{actionError}</div>}
+            {!actionState.lock ? (
+              <button type="button" className="btn-submit" onClick={acquireLock}>Claim 60-second operator lock</button>
+            ) : (
+              <div className="drawer-actions">
+                <button type="button" className="btn-submit" disabled={decisionLoading} onClick={() => decideIncident('approve')}>Approve &amp; Dispatch</button>
+                <button type="button" className="btn-secondary" disabled={decisionLoading} onClick={() => decideIncident('override')}>Override Alert</button>
+              </div>
+            )}
+          </aside>
+        )}
+        {actionError && !selectedCell && <div className="alert-banner error">{actionError}</div>}
         <button type="button" className="btn-submit" onClick={handleLogout}>Logout</button>
       </div>
     </div>

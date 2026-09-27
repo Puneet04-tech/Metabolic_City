@@ -10,6 +10,10 @@ import telemetryRoutes from './routes/telemetry.js';
 import streamRoutes from './routes/stream.js';
 import spatialCellRoutes from './routes/spatialCells.js';
 import { startTelemetryPollers } from './services/pollers.js';
+import incidentRoutes from './routes/incidents.js';
+import fieldRoutes from './routes/field.js';
+import adminRoutes from './routes/admin.js';
+import { startEscalationMonitor } from './services/escalation.js';
 import { connectDB } from './config/db.js';
 
 dotenv.config();
@@ -26,6 +30,7 @@ app.use(
   helmet({
     contentSecurityPolicy: isProd ? undefined : false,
     crossOriginEmbedderPolicy: false,
+    strictTransportSecurity: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   })
 );
 
@@ -85,6 +90,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/v1/telemetry', telemetryRoutes);
 app.use('/api/v1/stream', streamRoutes);
 app.use('/api/v1/spatial-cells', spatialCellRoutes);
+app.use('/api/v1/incidents', incidentRoutes);
+app.use('/api/v1/field', fieldRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // 404 for unknown API routes.
 app.use('/api', (req, res) => {
@@ -107,12 +115,27 @@ app.use((err, req, res, next) => {
   return res.status(500).json({ message: 'Internal server error' });
 });
 
+let server;
+
+const shutdown = async (signal) => {
+  console.log(`[server] ${signal} received; shutting down.`);
+  if (server) await new Promise((resolve) => server.close(resolve));
+  await mongoose.connection.close(false);
+  process.exit(0);
+};
+
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
+
 connectDB()
   .then(() => {
     startTelemetryPollers();
-    app.listen(port, () => {
+    startEscalationMonitor();
+    server = app.listen(port, () => {
       console.log(`Server running on http://localhost:${port} (${process.env.NODE_ENV || 'development'})`);
     });
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
   })
   .catch((error) => {
     console.error('Failed to connect to database:', error.message);
