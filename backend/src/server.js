@@ -13,14 +13,14 @@ import { startTelemetryPollers } from './services/pollers.js';
 import incidentRoutes from './routes/incidents.js';
 import fieldRoutes from './routes/field.js';
 import adminRoutes from './routes/admin.js';
-import { startEscalationMonitor } from './services/escalation.js';
+import { startEscalationMonitor, stopEscalationMonitor } from './services/escalation.js';
 import analyticsRoutes from './routes/analytics.js';
 import { connectDB } from './config/db.js';
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT) || 5000;
 const isProd = process.env.NODE_ENV === 'production';
 
 // Trust the first proxy hop (needed for correct client IP behind reverse proxy).
@@ -32,6 +32,8 @@ app.use(
     contentSecurityPolicy: isProd ? undefined : false,
     crossOriginEmbedderPolicy: false,
     strictTransportSecurity: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
+    referrerPolicy: { policy: 'no-referrer' },
+    hsts: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   })
 );
 
@@ -71,13 +73,14 @@ app.use(
 );
 
 const healthHandler = (req, res) => {
-  const databaseReady = mongoose.connection.readyState === 1;
-  res.status(databaseReady ? 200 : 503).json({
-    status: databaseReady ? 'healthy' : 'degraded',
+  const dbReady = mongoose.connection.readyState === 1;
+  const status = dbReady ? 'healthy' : 'degraded';
+  res.status(dbReady ? 200 : 503).json({
+    status,
     timestamp: new Date().toISOString(),
     version: '5.0',
     services: {
-      mongodb: databaseReady ? 'ready' : 'unavailable',
+      mongodb: dbReady ? 'ready' : 'unavailable',
       authentication: 'ready',
       h3: 'ready',
     },
@@ -118,11 +121,17 @@ app.use((err, req, res, next) => {
 });
 
 let server;
+let pollersStarted = false;
+let escalationStarted = false;
 
 const shutdown = async (signal) => {
-  console.log(`[server] ${signal} received; shutting down.`);
-  if (server) await new Promise((resolve) => server.close(resolve));
+  console.log(`[server] ${signal} received; initiating graceful shutdown.`);
+  stopEscalationMonitor();
+  if (server) {
+    await new Promise((resolve) => server.close((err) => (err ? resolve() : resolve())));
+  }
   await mongoose.connection.close(false);
+  console.log('[server] Graceful shutdown complete.');
   process.exit(0);
 };
 
@@ -132,7 +141,9 @@ process.once('SIGINT', () => shutdown('SIGINT'));
 connectDB()
   .then(() => {
     startTelemetryPollers();
+    pollersStarted = true;
     startEscalationMonitor();
+    escalationStarted = true;
     server = app.listen(port, () => {
       console.log(`Server running on http://localhost:${port} (${process.env.NODE_ENV || 'development'})`);
     });

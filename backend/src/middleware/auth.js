@@ -16,12 +16,39 @@ export function getJwtSecret() {
   return secret;
 }
 
-// Server-side token revocation store (in-memory). Replace with Redis for multi-instance.
+// Server-side token revocation store (in-memory). Replace with Redis for multi-instance deployments.
 const revokedTokens = new Set();
 
 export function revokeToken(token) {
   if (token) revokedTokens.add(token);
 }
+
+export function isTokenRevoked(token) {
+  return revokedTokens.has(token);
+}
+
+// Restrict a route to a set of roles.
+export const authorize = (...roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+
+  const userRole = req.user.role;
+  // Accept both canonical role names and friendly aliases
+  const allowed = roles.some(
+    (role) =>
+      role === userRole ||
+      (role === 'field' && userRole === 'field_crew') ||
+      (role === 'admin' && userRole === 'administrator') ||
+      (role === 'field_crew' && userRole === 'field') ||
+      (role === 'administrator' && userRole === 'admin')
+  );
+
+  if (!allowed) {
+    return res.status(403).json({ message: 'Forbidden: your role does not have permission to access this resource.' });
+  }
+  next();
+};
 
 export const protect = async (req, res, next) => {
   try {
@@ -36,20 +63,22 @@ export const protect = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, getJwtSecret());
-    } catch {
+    } catch (err) {
       return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
     }
 
-    if (revokedTokens.has(token) || !decoded.jti || decoded.type !== 'access') {
+    if (isTokenRevoked(token) || !decoded.jti || decoded.type !== 'access') {
       return res.status(401).json({ message: 'Unauthorized: Token has been revoked.' });
     }
 
     const session = await TokenSession.findOne({ jti: decoded.jti, revokedAt: null });
-    if (!session) return res.status(401).json({ message: 'Unauthorized: Token has been revoked.' });
+    if (!session) {
+      return res.status(401).json({ message: 'Unauthorized: Token has been revoked or session expired.' });
+    }
 
     const user = await User.findById(decoded.id);
     if (!user || user.active === false) {
-      return res.status(401).json({ message: 'Unauthorized: User not found.' });
+      return res.status(401).json({ message: 'Unauthorized: User account not found or deactivated.' });
     }
 
     delete user.password;
@@ -60,14 +89,4 @@ export const protect = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({ message: 'Unauthorized: Invalid or expired token.' });
   }
-};
-
-// Restrict a route to a set of roles.
-export const authorize = (...roles) => (req, res, next) => {
-  if (!req.user) return res.status(401).json({ message: 'Unauthorized.' });
-  const role = req.user.role === 'field_crew' ? 'field' : req.user.role === 'administrator' ? 'admin' : req.user.role;
-  if (!roles.includes(req.user.role) && !roles.includes(role)) {
-    return res.status(403).json({ message: 'Forbidden: insufficient permissions.' });
-  }
-  next();
 };

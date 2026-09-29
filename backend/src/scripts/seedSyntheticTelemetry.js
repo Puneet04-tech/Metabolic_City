@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { connectDB } from '../config/db.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { normalizeCoordinates, recalculateCell } from '../engine/risk.js';
@@ -27,6 +28,7 @@ function average(rows, key) {
 
 async function seed() {
   await connectDB();
+
   const publicRows = rowsFromWorkbook('MetabolicCity_AI_Public_and_Corridor_Survey_FILLED.xlsx', 'Public Survey');
   const municipalRows = rowsFromWorkbook('MetabolicCity_AI_Municipal_Survey_FILLED.xlsx', 'Municipal Survey');
   const cells = new Set();
@@ -44,6 +46,7 @@ async function seed() {
       {
         sourceType: 'GTFS_TRANSIT',
         ...normalized,
+        cityCode: 'CITY-IND-BPL8',
         observedAt,
         delayMins,
         rawPayload: { synthetic: true, source: 'Public Survey', location, responseCount: publicLocationRows.length },
@@ -51,6 +54,7 @@ async function seed() {
       {
         sourceType: 'WEATHER_API',
         ...normalized,
+        cityCode: 'CITY-IND-BPL8',
         observedAt,
         rainMmHr: rainExtraMins * 2,
         rawPayload: { synthetic: true, source: 'Public Survey', location, responseCount: publicLocationRows.length },
@@ -58,6 +62,7 @@ async function seed() {
       {
         sourceType: 'GIS_STATIC',
         ...normalized,
+        cityCode: 'CITY-IND-BPL8',
         observedAt,
         vulnerabilityScore,
         rawPayload: { synthetic: true, source: 'Municipal Survey', location, responseCount: municipalLocationRows.length },
@@ -68,7 +73,7 @@ async function seed() {
 
   for (const h3Index of cells) await recalculateCell(h3Index);
   console.log(`Seeded synthetic calibration telemetry for ${cells.size} H3 cells.`);
-  await import('mongoose').then(({ default: mongoose }) => mongoose.disconnect());
+  await mongoose.disconnect();
 }
 
 seed().catch(async (error) => {
