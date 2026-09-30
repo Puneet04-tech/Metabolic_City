@@ -13,6 +13,151 @@ const roleLabels = {
   ADMINISTRATOR: 'Administrator',
 };
 
+function HomePage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="homepage">
+      <header className="homepage-header">
+        <div className="homepage-nav">
+          <div className="logo-section">
+            <div className="logo-icon">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="8" fill="url(#logo-gradient)" />
+                <path d="M20 10L20 15M20 25L20 30" stroke="rgba(255,255,255,0.8)" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="20" cy="20" r="3" fill="rgba(255,255,255,0.8)"/>
+                <defs>
+                  <linearGradient id="logo-gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#8B5CF6"/>
+                    <stop offset="1" stop-color="#DC2626"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <div className="logo-text">
+              <h1>Metabolic City</h1>
+              <p>Urban Intelligence Platform</p>
+            </div>
+          </div>
+          <div className="auth-buttons">
+            <button onClick={() => navigate('/login')} className="home-btn primary-btn">Login</button>
+            <button onClick={() => navigate('/signup')} className="home-btn secondary-btn">Sign Up</button>
+          </div>
+        </div>
+      </header>
+
+      <main className="homepage-main">
+        <section className="hero-section">
+          <div className="hero-content">
+            <div className="hero-badge">
+              <span className="badge-dot"></span>
+              AI-Powered Urban Risk Management
+            </div>
+            <h2 className="hero-title">
+              Real-time City Intelligence for <span className="gradient-text">Critical Incident Response</span>
+            </h2>
+            <p className="hero-description">
+              Metabolic City uses advanced spatial analytics and machine learning to detect, assess, and respond to urban emergencies in real-time. 
+              Our H3-based spatial indexing system provides granular risk assessment across the entire city.
+            </p>
+            <div className="hero-features">
+              <div className="feature-item">
+                <div className="feature-icon">🎯</div>
+                <div className="feature-text">
+                  <h3>Real-time Detection</h3>
+                  <p>AI-powered incident detection using telemetry data from multiple sources</p>
+                </div>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">🗺️</div>
+                <div className="feature-text">
+                  <h3>Spatial Analytics</h3>
+                  <p>H3 hexagonal grid system for precise location-based risk assessment</p>
+                </div>
+              </div>
+              <div className="feature-item">
+                <div className="feature-icon">⚡</div>
+                <div className="feature-text">
+                  <h3>Automated Response</h3>
+                  <p>Intelligent dispatch and resource allocation for emergency situations</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="info-section">
+          <div className="info-grid">
+            <div className="info-card">
+              <div className="info-icon">🏙️</div>
+              <h3>For Municipalities</h3>
+              <p>Monitor city-wide risk patterns, allocate emergency resources efficiently, and respond to incidents faster with data-driven decision making.</p>
+            </div>
+            <div className="info-card">
+              <div className="info-icon">👷</div>
+              <h3>For Operators</h3>
+              <p>Real-time incident monitoring, AI-assisted response planning, and automated dispatch coordination for rapid emergency response.</p>
+            </div>
+            <div className="info-card">
+              <div className="info-icon">🚑</div>
+              <h3>For Field Crew</h3>
+              <p>Mobile task management, geotagged incident resolution, and seamless communication with dispatch operators in the field.</p>
+            </div>
+            <div className="info-card">
+              <div className="info-icon">📊</div>
+              <h3>For Administrators</h3>
+              <p>Comprehensive analytics, risk threshold configuration, and system performance monitoring for informed governance.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="stats-section">
+          <div className="stats-grid">
+            <div className="stat-item">
+              <div className="stat-number">37</div>
+              <div className="stat-label">Active H3 Cells</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">24/7</div>
+              <div className="stat-label">Real-time Monitoring</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">&lt;1s</div>
+              <div className="stat-label">Detection Time</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">AI</div>
+              <div className="stat-label">Risk Assessment</div>
+            </div>
+          </div>
+        </section>
+
+        <section className="cta-section">
+          <div className="cta-content">
+            <h2>Ready to Transform Your City's Emergency Response?</h2>
+            <p>Join municipalities using Metabolic City to save lives and resources through intelligent urban risk management.</p>
+            <div className="cta-buttons">
+              <button onClick={() => navigate('/signup')} className="cta-btn primary-cta">Get Started</button>
+              <button onClick={() => navigate('/login')} className="cta-btn secondary-cta">Existing User</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="homepage-footer">
+        <div className="footer-content">
+          <p>&copy; 2024 Metabolic City. Urban Intelligence Platform.</p>
+          <div className="footer-links">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+            <a href="#">Contact</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 const initialForm = {
   name: '',
   email: '',
@@ -39,14 +184,24 @@ const cellScore = (cell, mode) =>
 
 const cellBand = (value, threshold) => (value >= threshold ? 'critical' : value >= 4 ? 'warning' : 'normal');
 
-function AuthForm() {
-  const [mode, setMode] = useState('login');
+function AuthForm({ mode: initialMode = 'login' }) {
+  const [mode, setMode] = useState(initialMode);
   const [currentRole, setCurrentRole] = useState('OPERATOR');
   const [form, setForm] = useState(initialForm);
   const [alert, setAlert] = useState({ message: '', type: '' });
   const [loading, setLoading] = useState(false);
+  
   const navigate = useNavigate();
+  
+  // Get mode from URL if specified
   const [searchParams] = useSearchParams();
+  const urlMode = searchParams.get('mode');
+  
+  useEffect(() => {
+    if (urlMode === 'signup') {
+      setMode('signup');
+    }
+  }, [urlMode]);
 
   const errorParam = searchParams.get('error');
   useEffect(() => {
@@ -164,7 +319,6 @@ function AuthForm() {
     <div className="page-shell">
       <div className="login-card">
         <div className="card-header">
-          <div className="doc-badge">METABOLICCITY AI - V1 GATEWAY</div>
           <h1>Municipal Access Portal</h1>
           <p>Software-First Urban Intelligence Command System</p>
         </div>
@@ -293,7 +447,7 @@ function H3Map({ cells, mode, threshold, onSelect }) {
   const [node, setNode] = useState(null);
   useEffect(() => {
     if (!node) return undefined;
-    const map = L.map(node).setView([23.2, 77.2], 9);
+    const map = L.map(node).setView([19.07, 72.87], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
     const layers = cells.map((cell) => {
       const value = cellScore(cell, mode);
@@ -400,17 +554,27 @@ function OperatorConsole() {
   const threshold = 7;
 
   const select = async (cell) => {
+    console.log('Selecting cell:', cell.h3Index, 'Risk:', cell.compositeRisk, 'Scores:', cell.scores);
     setError('');
+    setSelected(cell);
+    setAction(null); // Reset action first
+    
     if (cellScore(cell, 'composite') < threshold) {
       setNotice('This cell is below the critical threshold. No response directive is required.');
-      return;
-    }
-    setSelected(cell);
-    setNotice('');
-    try {
-      setAction(await apiRequest(`/v1/incidents/${cell.h3Index}/action`));
-    } catch (e) {
-      setError(e.message);
+    } else {
+      setNotice('');
+      try {
+        const actionData = await apiRequest(`/v1/incidents/${cell.h3Index}/action`);
+        console.log('Action data received:', actionData);
+        setAction(actionData);
+      } catch (e) {
+        console.error('Error fetching action:', e);
+        if (e.status === 404) {
+          setNotice('No incident data available for this cell yet.');
+        } else {
+          setError(e.message);
+        }
+      }
     }
   };
 
@@ -488,35 +652,51 @@ function OperatorConsole() {
 
         <aside className="side-panel">
           <h2>Action drawer</h2>
-          {!selected && <p>Select a critical red cell to review its response directive, lens breakdown and lock status.</p>}
-          {selected && action && (
-            <>
+          {!selected && <p>Select a cell to review its risk breakdown and response directive.</p>}
+          {selected && (
+            <div key={selected.h3Index}>
               <div className="panel-head">
                 <span className="panel-title">{selected.h3Index}</span>
-                {action.lock && <LockTimer lock={action.lock} />}
+                {action?.lock && <LockTimer lock={action.lock} />}
               </div>
               <div className="score-hero">
-                <span>Composite Risk</span>
-                <strong>{cellScore(selected, 'composite').toFixed(2)}</strong>
+                <span>{lensLabels[mode]}</span>
+                <strong>{cellScore(selected, mode).toFixed(2)}</strong>
               </div>
-              <LensBars cell={selected} />
-              <div className="action-narrative">{action.action.actionNarrative}</div>
-              <p><strong>Priority</strong><br />{action.action.priority}</p>
-              <p><strong>Resources</strong><br />{action.action.recommendedResources.join(', ')}</p>
-              <p><strong>Dispatch</strong><br />{action.action.dispatchText}</p>
+              <LensBars key={selected.h3Index} cell={selected} />
+              
+              {notice && <div className="alert-banner success">{notice}</div>}
               {error && <div className="alert-banner error">{error}</div>}
-              {!action.lock ? (
-                <button className="btn-submit" type="button" onClick={lock}>Claim 60-second lock</button>
-              ) : (
+              
+              {action ? (
                 <>
-                  <div className="button-stack">
-                    <button className="btn-submit" type="button" onClick={() => decide('approve')}>Approve &amp; Dispatch</button>
-                    <button className="btn-secondary" type="button" onClick={() => decide('override')}>Override Alert</button>
-                  </div>
-                  <button className="link-btn" type="button" onClick={closeDrawer}>Close drawer</button>
+                  <div className="action-narrative">{action.action.actionNarrative}</div>
+                  <p><strong>Priority</strong><br />{action.action.priority}</p>
+                  <p><strong>Resources</strong><br />{action.action.recommendedResources.join(', ')}</p>
+                  <p><strong>Dispatch</strong><br />{action.action.dispatchText}</p>
+                  {!action.lock ? (
+                    <button className="btn-submit" type="button" onClick={lock}>Claim 60-second lock</button>
+                  ) : (
+                    <>
+                      <div className="button-stack">
+                        <button className="btn-submit" type="button" onClick={() => decide('approve')}>Approve &amp; Dispatch</button>
+                        <button className="btn-secondary" type="button" onClick={() => decide('override')}>Override Alert</button>
+                      </div>
+                      <button className="link-btn" type="button" onClick={closeDrawer}>Close drawer</button>
+                    </>
+                  )}
                 </>
+              ) : (
+                <div className="info-message">
+                  <p>This cell does not have an active incident response directive.</p>
+                  <p className="status-badge">Status: {selected.riskLevel}</p>
+                  <p className="trend-badge">Trend: {selected.trend}</p>
+                  <p className="confidence-badge">Confidence: {(selected.confidence * 100).toFixed(0)}%</p>
+                  {selected.isDegraded && <p className="degraded-badge">⚠️ Data Quality: Degraded</p>}
+                  <button className="link-btn" type="button" onClick={closeDrawer}>Close drawer</button>
+                </div>
               )}
-            </>
+            </div>
           )}
         </aside>
       </section>
@@ -826,7 +1006,7 @@ const formatDuration = (ms) => {
 };
 
 function Analytics() {
-  const [data, setData] = useState({ counts: [], incidents: [], auditLogs: [], metrics: {} });
+  const [data, setData] = useState({ statusCounts: [], incidents: [], auditLogs: [], metrics: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -851,10 +1031,10 @@ function Analytics() {
     return true;
   };
 
-  const filteredIncidents = data.incidents.filter(
+  const filteredIncidents = (data.incidents || []).filter(
     (incident) => (!statusFilter || incident.status === statusFilter) && withinRange(incident.detectedAt)
   );
-  const filteredAudits = data.auditLogs.filter((log) => withinRange(log.createdAt));
+  const filteredAudits = (data.auditLogs || []).filter((log) => withinRange(log.createdAt));
 
   const perDay = (() => {
     const counts = new Map();
@@ -902,7 +1082,7 @@ function Analytics() {
               <label>Status
                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                   <option value="">All</option>
-                  {data.counts.map((item) => <option key={item._id} value={item._id}>{item._id}</option>)}
+                  {(data.statusCounts || []).map((item) => <option key={item._id} value={item._id}>{item._id}</option>)}
                 </select>
               </label>
               <label>From
@@ -917,13 +1097,13 @@ function Analytics() {
             </div>
 
             <div className="metric-grid">
-              <article className="metric"><span>Incidents (filtered)</span><strong>{totalIncidents}</strong><small>across {data.counts.length} statuses</small></article>
+              <article className="metric"><span>Incidents (filtered)</span><strong>{totalIncidents}</strong><small>across {data.statusCounts.length} statuses</small></article>
               <article className="metric"><span>Average risk</span><strong>{avgRisk}</strong><small>composite Rc</small></article>
               <article className="metric"><span>Resolution rate</span><strong>{data.metrics.resolutionRate ?? 0}%</strong><small>{data.metrics.resolved ?? 0} of {data.metrics.totalIncidents ?? 0} closed</small></article>
               <article className="metric"><span>Detection &#8594; approval</span><strong className="metric-duration">{formatDuration(data.metrics.avgDetectionToApprovalMs)}</strong><small>average response time</small></article>
               <article className="metric"><span>Approval &#8594; resolved</span><strong className="metric-duration">{formatDuration(data.metrics.avgApprovalToResolutionMs)}</strong><small>average resolution time</small></article>
-              <article className="metric"><span>Dispatch &#8594; resolved</span><strong className="metric-duration">{formatDuration(data.metrics.avgDispatchToResolutionMs)}</strong><small>average field time</small></article>
-              {data.counts.map((item) => (
+              <article className="metric"><span>Dispatch &#8594; resolved</span><strong className="metric-duration">{formatDuration(data.metrics.avgArrivalToResolutionMs)}</strong><small>average field time</small></article>
+              {(data.statusCounts || []).map((item) => (
                 <article className="metric" key={item._id}>
                   <span>{item._id}</span>
                   <strong>{item.count}</strong>
@@ -1011,9 +1191,19 @@ function RoleHome() {
 }
 
 export default function App() {
+  // Add ambient glow effect
+  useEffect(() => {
+    const ambientGlow = document.createElement('div');
+    ambientGlow.className = 'ambient-glow';
+    document.body.appendChild(ambientGlow);
+    return () => ambientGlow.remove();
+  }, []);
+
   return (
     <Routes>
-      <Route path="/" element={<AuthForm />} />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<AuthForm />} />
+      <Route path="/signup" element={<AuthForm mode="signup" />} />
       <Route path="/operator" element={<RequireAuth roles={['operator']}><OperatorConsole /></RequireAuth>} />
       <Route path="/field" element={<RequireAuth roles={['field']}><FieldConsole /></RequireAuth>} />
       <Route path="/admin" element={<RequireAuth roles={['admin']}><AdminConsole /></RequireAuth>} />

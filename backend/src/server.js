@@ -33,7 +33,6 @@ app.use(
     crossOriginEmbedderPolicy: false,
     strictTransportSecurity: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
     referrerPolicy: { policy: 'no-referrer' },
-    hsts: isProd ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   })
 );
 

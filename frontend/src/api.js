@@ -132,7 +132,11 @@ export async function fetchStream(path, { onMessage, signal } = {}) {
   const readChunk = async () => {
     while (true) {
       if (signal?.aborted) {
-        response.body.cancel();
+        try {
+          reader.cancel();
+        } catch (e) {
+          // Ignore cancel errors
+        }
         return;
       }
       const { value, done } = await reader.read();
@@ -152,6 +156,10 @@ export async function fetchStream(path, { onMessage, signal } = {}) {
   } catch (error) {
     if (!signal?.aborted) throw error;
   } finally {
-    response.body.cancel();
+    try {
+      reader.cancel();
+    } catch (e) {
+      // Ignore cancel errors
+    }
   }
 }
