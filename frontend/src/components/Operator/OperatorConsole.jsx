@@ -28,47 +28,20 @@ function useLiveCells(threshold = 7) {
     (async () => {
       try {
         console.log('Starting SSE connection to /v1/stream/h3');
-        const reader = await fetchStream('/v1/stream/h3', controller.signal);
-        let buffer = '';
-        const decoder = new TextDecoder();
-
-        try {
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            console.log('SSE lines received:', lines.length, 'lines');
-            
-            for (const line of lines) {
-              console.log('SSE line:', line);
-              if (line.startsWith('data: ')) {
-                try {
-                  const payload = JSON.parse(line.slice(6));
-                  console.log('SSE payload received:', payload);
-                  if (payload.cells) {
-                    console.log('Setting cells:', payload.cells.length, 'cells');
-                    console.log('Cell data sample:', payload.cells[0]);
-                    setCells(payload.cells);
-                    setConnection('live');
-                  } else {
-                    console.log('No cells in payload');
-                  }
-                } catch (e) {
-                  console.error('Failed to parse SSE payload:', e, 'Line:', line);
-                }
-              }
+        await fetchStream('/v1/stream/h3', {
+          signal: controller.signal,
+          onMessage: (data) => {
+            console.log('SSE message received:', data);
+            if (data.cells) {
+              console.log('Setting cells:', data.cells.length, 'cells');
+              console.log('Cell data sample:', data.cells[0]);
+              setCells(data.cells);
+              setConnection('live');
+            } else {
+              console.log('No cells in payload');
             }
-          }
-        } catch (readError) {
-          console.error('SSE read error:', readError);
-          if (readError.name === 'AbortError') {
-            return;
-          }
-          if (!controller.signal.aborted) setConnection('degraded');
-        }
+          },
+        });
       } catch (e) {
         console.error('SSE connection error:', e);
         if (!controller.signal.aborted) setConnection('degraded');
