@@ -55,12 +55,12 @@ async function generateSampleTelemetry() {
           latitude: location.latitude,
           longitude: location.longitude,
           observedAt: new Date(now - timeOffset).toISOString(),
-          rainMmHr: Math.random() * 50, // Random rain up to 50mm/hr for higher risk
-          visibilityM: 1000 + Math.random() * 9000, // Visibility 1-10km
-          windGustMps: Math.random() * 20, // Wind gusts up to 20 m/s
-          temperatureC: 25 + Math.random() * 10,
-          humidityPct: 60 + Math.random() * 30,
-          weatherCondition: ['Rain', 'Cloudy', 'Clear', 'Thunderstorm'][Math.floor(Math.random() * 4)],
+          rainMmHr: 30 + Math.random() * 70, // High rain 30-100mm/hr for critical risk
+          visibilityM: 500 + Math.random() * 3000, // Low visibility 0.5-3.5km
+          windGustMps: 15 + Math.random() * 25, // High wind gusts 15-40 m/s
+          temperatureC: 25 + Math.random() * 15,
+          humidityPct: 70 + Math.random() * 30,
+          weatherCondition: ['Heavy Rain', 'Thunderstorm', 'Severe Storm'][Math.floor(Math.random() * 3)],
         });
       }
     }
@@ -72,12 +72,12 @@ async function generateSampleTelemetry() {
       const lon = location.longitude + (Math.random() - 0.5) * 0.01;
       const coords = normalizeCoordinates(lat, lon);
       const timeOffset = i * 2 * 60 * 1000; // Every 2 minutes
-      const speedMps = 5 + Math.random() * 15; // 5-20 m/s
+      const speedMps = 2 + Math.random() * 8; // Low speed 2-10 m/s for higher risk
       const normalSpeedMps = 11.1;
       const baseSpeedReduction = speedMps < normalSpeedMps 
         ? Math.round(((normalSpeedMps - Math.max(0, speedMps)) / normalSpeedMps) * 100) 
         : 0;
-      const speedReductionPct = Math.min(100, baseSpeedReduction + Math.floor(Math.random() * 30)); // Add extra delay for higher risk
+      const speedReductionPct = Math.min(100, baseSpeedReduction + Math.floor(Math.random() * 50)); // High delay for critical risk
 
       events.push({
         h3Index: coords.h3Index,
@@ -87,7 +87,7 @@ async function generateSampleTelemetry() {
         observedAt: new Date(now - timeOffset).toISOString(),
         vehicleId: `V${Math.floor(Math.random() * 100)}`,
         routeId: `R${Math.floor(Math.random() * 10)}`,
-        delayMins: Math.random() * 15,
+        delayMins: 10 + Math.random() * 40, // High delay 10-50 minutes
         speedReductionPct,
       });
     }
