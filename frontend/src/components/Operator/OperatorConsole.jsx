@@ -43,7 +43,9 @@ function useLiveCells(threshold = 7) {
               if (line.startsWith('data: ')) {
                 try {
                   const payload = JSON.parse(line.slice(6));
+                  console.log('SSE payload received:', payload);
                   if (payload.cells) {
+                    console.log('Setting cells:', payload.cells.length, 'cells');
                     setCells(payload.cells);
                     setConnection('live');
                   }
