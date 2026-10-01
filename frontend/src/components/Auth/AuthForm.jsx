@@ -28,7 +28,7 @@ function AuthForm({ mode: initialMode = 'login' }) {
   const [searchParams] = useSearchParams();
 
   const errorParam = searchParams.get('error');
-  if (errorParam && !alert.message) {
+  if (errorParam && !alert) {
     setAlert({ type: 'error', message: decodeURIComponent(errorParam) });
   }
 
@@ -95,7 +95,7 @@ function AuthForm({ mode: initialMode = 'login' }) {
           <button type="button" className={mode === 'signup' ? 'mode-btn active' : 'mode-btn'} onClick={() => setMode('signup')}>Sign Up</button>
         </div>
 
-        {alert.message && <div className={`alert-banner ${alert.type || 'error'}`}>{alert.message}</div>}
+        {alert && alert.message && <div className={`alert-banner ${alert.type || 'error'}`}>{alert.message}</div>}
 
         <div className="notice-box">
           <strong>Public Notice:</strong> Citizens do not log in here. Incident reports are ingested automatically via municipal hotlines and soft-sensing feeds.
