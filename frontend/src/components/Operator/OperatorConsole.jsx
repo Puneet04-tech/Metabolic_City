@@ -96,7 +96,6 @@ function OperatorConsole() {
   const threshold = 7;
 
   const select = async (cell) => {
-    console.log('Selecting cell:', cell.h3Index, 'Risk:', cell.compositeRisk, 'Scores:', cell.scores);
     setError('');
     setSelected(cell);
     setAction(null); // Reset action first
@@ -111,10 +110,8 @@ function OperatorConsole() {
     
     try {
       const actionData = await apiRequest(`/v1/incidents/${cell.h3Index}/action`);
-      console.log('Action data received:', actionData);
       setAction(actionData);
     } catch (e) {
-      console.error('Error fetching action:', e);
       if (e.status === 404) {
         setNotice('No incident data available for this cell yet. You can dispatch this cell to field crew.');
       } else {
@@ -134,7 +131,7 @@ function OperatorConsole() {
 
   const decide = async (decision) => {
     try {
-      await apiRequest(`/v1/incidents/${selected.h3Index}/action`, {
+      await apiRequest(`/v1/incidents/${selected.h3Index}/decision`, {
         method: 'POST',
         body: { decision, crewId: decision === 'approve' ? null : undefined },
       });
