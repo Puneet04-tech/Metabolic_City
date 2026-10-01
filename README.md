@@ -429,3 +429,4 @@ For technical support or questions:
 **Metabolic City AI v1.0.4**  
 System Engine - MongoDB Atlas Session Cluster  
 Deterministic Safety Logic & Audit Log Enabled
+Admin@123

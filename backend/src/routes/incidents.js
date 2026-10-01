@@ -20,11 +20,8 @@ const criticalOnly = async (h3Index) => {
     error.status = 404;
     throw error;
   }
-  if (cell.compositeRisk < threshold) {
-    const error = new Error(`Action synthesis is available only for cells with composite risk >= ${threshold} (current: ${cell.compositeRisk}).`);
-    error.status = 422;
-    throw error;
-  }
+  // Removed threshold restriction - operators can dispatch any cell
+  // Warning is shown in the UI instead
   return cell;
 };
 

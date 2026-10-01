@@ -29,7 +29,7 @@ function HomePage() {
                 <defs>
                   <linearGradient id="logo-gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#8B5CF6"/>
-                    <stop offset="1" stop-color="#DC2626"/>
+                    <stop offset="1" stopColor="#DC2626"/>
                   </linearGradient>
                 </defs>
               </svg>
@@ -359,7 +359,7 @@ function AuthForm({ mode: initialMode = 'login' }) {
                 </div>
                 <div className="form-group">
                   <label htmlFor="opPassword">Security Clearance Password</label>
-                  <input id="opPassword" name="opPassword" type="password" value={form.opPassword} onChange={handleFieldChange} placeholder="8+ chars, letter + number" />
+                  <input id="opPassword" name="opPassword" type="password" value={form.opPassword} onChange={handleFieldChange} placeholder="8+ chars, letter + number" autoComplete="current-password" />
                 </div>
               </>
             )}
@@ -372,7 +372,7 @@ function AuthForm({ mode: initialMode = 'login' }) {
                 </div>
                 <div className="form-group">
                   <label htmlFor="crewPasscode">Password / Passcode</label>
-                  <input id="crewPasscode" name="crewPasscode" type="password" value={form.crewPasscode} onChange={handleFieldChange} placeholder="8+ chars, letter + number" />
+                  <input id="crewPasscode" name="crewPasscode" type="password" value={form.crewPasscode} onChange={handleFieldChange} placeholder="8+ chars, letter + number" autoComplete="current-password" />
                 </div>
               </>
             )}
@@ -385,7 +385,7 @@ function AuthForm({ mode: initialMode = 'login' }) {
                 </div>
                 <div className="form-group">
                   <label htmlFor="adminToken">Hardware Token / Password</label>
-                  <input id="adminToken" name="adminToken" type="password" value={form.adminToken} onChange={handleFieldChange} placeholder="8+ chars, letter + number" />
+                  <input id="adminToken" name="adminToken" type="password" value={form.adminToken} onChange={handleFieldChange} placeholder="8+ chars, letter + number" autoComplete="current-password" />
                 </div>
               </>
             )}
@@ -448,7 +448,14 @@ function H3Map({ cells, mode, threshold, onSelect }) {
   useEffect(() => {
     if (!node) return undefined;
     const map = L.map(node).setView([19.07, 72.87], 10);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+    
+    // Use dark-themed map tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+    
     const layers = cells.map((cell) => {
       const value = cellScore(cell, mode);
       const band = cellBand(value, threshold);
@@ -559,21 +566,24 @@ function OperatorConsole() {
     setSelected(cell);
     setAction(null); // Reset action first
     
-    if (cellScore(cell, 'composite') < threshold) {
-      setNotice('This cell is below the critical threshold. No response directive is required.');
+    // Show warning if below threshold but still allow dispatch
+    const riskValue = cellScore(cell, 'composite');
+    if (riskValue < threshold) {
+      setNotice(`Note: This cell has risk ${riskValue.toFixed(2)} which is below the critical threshold (${threshold}). Dispatch is still available.`);
     } else {
       setNotice('');
-      try {
-        const actionData = await apiRequest(`/v1/incidents/${cell.h3Index}/action`);
-        console.log('Action data received:', actionData);
-        setAction(actionData);
-      } catch (e) {
-        console.error('Error fetching action:', e);
-        if (e.status === 404) {
-          setNotice('No incident data available for this cell yet.');
-        } else {
-          setError(e.message);
-        }
+    }
+    
+    try {
+      const actionData = await apiRequest(`/v1/incidents/${cell.h3Index}/action`);
+      console.log('Action data received:', actionData);
+      setAction(actionData);
+    } catch (e) {
+      console.error('Error fetching action:', e);
+      if (e.status === 404) {
+        setNotice('No incident data available for this cell yet. You can dispatch this cell to field crew.');
+      } else {
+        setError(e.message);
       }
     }
   };
@@ -688,7 +698,7 @@ function OperatorConsole() {
                 </>
               ) : (
                 <div className="info-message">
-                  <p>This cell does not have an active incident response directive.</p>
+                  <p className="info-text">This cell does not have an active incident response directive.</p>
                   <p className="status-badge">Status: {selected.riskLevel}</p>
                   <p className="trend-badge">Trend: {selected.trend}</p>
                   <p className="confidence-badge">Confidence: {(selected.confidence * 100).toFixed(0)}%</p>
@@ -730,11 +740,15 @@ function FieldConsole() {
   const [tasks, setTasks] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const load = () => {
     setLoading(true);
     apiRequest('/v1/field/tasks')
-      .then((data) => setTasks(data.incidents || []))
+      .then((data) => {
+        setTasks(data.incidents || []);
+        setLastUpdated(new Date());
+      })
       .catch((error) => setMessage(error.message))
       .finally(() => setLoading(false));
   };
@@ -743,7 +757,9 @@ function FieldConsole() {
     load();
     const flush = () => flushFieldOutbox(apiRequest).then(load).catch(() => {});
     window.addEventListener('online', flush);
-    return () => window.removeEventListener('online', flush);
+    return () => {
+      window.removeEventListener('online', flush);
+    };
   }, []);
 
   const update = async (task, status, extras = {}) => {
@@ -775,9 +791,17 @@ function FieldConsole() {
   return (
     <ProductShell title="Field Crew PWA">
       <section className="field-layout">
-        <div className="field-banner">
-          <span>Low-bandwidth mode</span>
-          <strong className={navigator.onLine ? 'online' : 'offline'}>{navigator.onLine ? 'Online' : 'Offline'}</strong>
+        <div className="field-header">
+          <div className="field-banner">
+            <span>Low-bandwidth mode</span>
+            <strong className={navigator.onLine ? 'online' : 'offline'}>{navigator.onLine ? 'Online' : 'Offline'}</strong>
+          </div>
+          <div className="field-controls">
+            <span className="last-updated">Last updated: {lastUpdated.toLocaleTimeString()}</span>
+            <button className="refresh-btn" onClick={load} disabled={loading}>
+              {loading ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
         </div>
         {message && <p className="inline-message">{message}</p>}
         {loading ? (
@@ -1012,17 +1036,23 @@ function Analytics() {
   const [statusFilter, setStatusFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const load = () => {
     setLoading(true);
     setError('');
     apiRequest('/v1/analytics/summary')
-      .then(setData)
+      .then((responseData) => {
+        setData(responseData);
+        setLastUpdated(new Date());
+      })
       .catch((reason) => setError(reason.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const withinRange = (iso) => {
     const time = new Date(iso).getTime();
@@ -1073,6 +1103,12 @@ function Analytics() {
   return (
     <ProductShell title="Incident Analytics">
       <section className="analytics-grid">
+        <div className="analytics-header">
+          <span className="last-updated">Last updated: {lastUpdated.toLocaleTimeString()}</span>
+          <button className="refresh-btn" onClick={load} disabled={loading}>
+            {loading ? 'Refreshing...' : 'Refresh Now'}
+          </button>
+        </div>
         {loading && <div className="empty-state">Loading analytics...</div>}
         {error && <div className="alert-banner error">{error} <button className="link-btn" type="button" onClick={load}>Retry</button></div>}
 
