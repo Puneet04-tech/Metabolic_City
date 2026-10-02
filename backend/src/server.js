@@ -16,6 +16,7 @@ import adminRoutes from './routes/admin.js';
 import { startEscalationMonitor, stopEscalationMonitor } from './services/escalation.js';
 import analyticsRoutes from './routes/analytics.js';
 import { connectDB } from './config/db.js';
+import { startScheduledPipeline } from './services/dataPipeline.js';
 
 dotenv.config();
 
@@ -143,6 +144,10 @@ connectDB()
     pollersStarted = true;
     startEscalationMonitor();
     escalationStarted = true;
+    
+    // Start the scheduled data pipeline (Open-Meteo + Simulated Transit)
+    startScheduledPipeline();
+    
     server = app.listen(port, () => {
       console.log(`Server running on http://localhost:${port} (${process.env.NODE_ENV || 'development'})`);
     });
