@@ -5,9 +5,9 @@ dotenv.config();
 const OPENMETEO_BASE_URL = process.env.OPENMETEO_BASE_URL || 'https://api.open-meteo.com/v1';
 
 const cities = {
-  bhopal: { lat: 23.2599, lon: 77.4126 },
-  indore: { lat: 22.7196, lon: 75.8577 },
-  sehore: { lat: 23.2080, lon: 77.0816 },
+  bhopal: { lat: 23.2599, lon: 77.4126, code: 'CITY-MP-BPL' },
+  indore: { lat: 22.7196, lon: 75.8577, code: 'CITY-MP-IDR' },
+  sehore: { lat: 23.2080, lon: 77.0816, code: 'CITY-MP-SHR' },
 };
 
 /**
@@ -55,12 +55,14 @@ export async function fetchWeatherForAllCities() {
  * Convert Open-Meteo weather data to telemetry event format
  */
 export function weatherToTelemetry(cityName, weatherData) {
+  const city = cities[cityName.toLowerCase()];
   const current = weatherData.current_weather;
   const hourly = weatherData.hourly;
 
   return {
     h3Index: null, // Will be set by spatial indexing
     sourceType: 'WEATHER_API',
+    cityCode: city.code,
     observedAt: new Date().toISOString(),
     rainMmHr: current.precipitation || 0,
     visibilityM: current.visibility || 10000,

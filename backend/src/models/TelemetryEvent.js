@@ -11,7 +11,7 @@ const telemetryEventSchema = new mongoose.Schema(
     h3Index: { type: String, required: true, index: true },
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
-    cityCode: { type: String, default: 'CITY-IND-BPL8', index: true },
+    cityCode: { type: String, default: 'CITY-MP-BPL', index: true },
     observedAt: { type: Date, required: true },
     // Mobility attributes
     routeId: String,

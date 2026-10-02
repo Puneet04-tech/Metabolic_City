@@ -19,7 +19,8 @@ function H3Map({ cells, mode, threshold, onSelect }) {
   const [node, setNode] = useState(null);
   useEffect(() => {
     if (!node) return undefined;
-    const map = L.map(node).setView([19.07, 72.87], 10);
+    // Center map on Bhopal-Indore-Sehore region (Madhya Pradesh)
+    const map = L.map(node).setView([23.06, 76.78], 9);
     
     // Use OpenStreetMap standard tiles (no API key required)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

@@ -4,9 +4,9 @@
  */
 
 const cities = {
-  bhopal: { lat: 23.2599, lon: 77.4126 },
-  indore: { lat: 22.7196, lon: 75.8577 },
-  sehore: { lat: 23.2080, lon: 77.0816 },
+  bhopal: { lat: 23.2599, lon: 77.4126, code: 'CITY-MP-BPL' },
+  indore: { lat: 22.7196, lon: 75.8577, code: 'CITY-MP-IDR' },
+  sehore: { lat: 23.2080, lon: 77.0816, code: 'CITY-MP-SHR' },
 };
 
 /**
@@ -82,6 +82,7 @@ export function generateTransitTelemetry(cityName, weatherData) {
  * Generate simulated transit events for telemetry ingestion
  */
 export function generateTransitTelemetryEvents(cityName, weatherData, count = 20) {
+  const city = cities[cityName.toLowerCase()];
   const transitData = generateTransitTelemetry(cityName, weatherData);
   const events = [];
 
@@ -93,6 +94,7 @@ export function generateTransitTelemetryEvents(cityName, weatherData, count = 20
     events.push({
       h3Index: null, // Will be set by spatial indexing
       sourceType: 'SIMULATED_TRANSIT',
+      cityCode: city.code,
       latitude: vehicle.latitude + offset,
       longitude: vehicle.longitude + offset,
       observedAt: new Date(Date.now() - timeOffset).toISOString(),

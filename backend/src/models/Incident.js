@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const incidentSchema = new mongoose.Schema(
   {
     h3Index: { type: String, required: true, index: true },
-    cityCode: { type: String, default: 'CITY-IND-BPL8', index: true },
+    cityCode: { type: String, default: 'CITY-MP-BPL', index: true },
     riskScore: { type: Number, required: true },
     scores: {
       mobility: { type: Number, default: 0 },
