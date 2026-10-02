@@ -1,7 +1,10 @@
 /**
  * Transit Service for Simulated Transit Data
  * Generates realistic transit delays based on weather conditions
+ * Uses static GTFS-like data for routes and stops
  */
+
+import { getCityGTFSData, getRouteStops } from './staticGTFSData.js';
 
 const cities = {
   bhopal: { lat: 23.2599, lon: 77.4126, code: 'CITY-MP-BPL' },
@@ -11,10 +14,16 @@ const cities = {
 
 /**
  * Generate simulated transit data based on weather conditions
+ * Uses static GTFS data for routes and stops
  */
 export function generateTransitTelemetry(cityName, weatherData) {
   const current = weatherData.current_weather;
   const { precipitation, temperature, windspeed } = current;
+
+  // Get GTFS data for the city
+  const cityData = getCityGTFSData(cityName);
+  const routes = cityData.routes;
+  const stops = cityData.stops;
 
   // Calculate delay based on weather conditions
   let delayMinutes = 0;
@@ -51,16 +60,28 @@ export function generateTransitTelemetry(cityName, weatherData) {
   const baselineDelay = Math.floor(Math.random() * 5);
   delayMinutes += baselineDelay;
 
-  // Generate vehicle locations (simulated)
-  const city = cities[cityName.toLowerCase()];
+  // Generate vehicle locations using real route and stop data
   const vehicles = [];
-  for (let i = 0; i < 50; i++) {
-    const offset = (Math.random() - 0.5) * 0.1; // ±0.05 degrees
+  for (let i = 0; i < Math.min(routes.length * 5, 50); i++) {
+    const route = routes[i % routes.length];
+    const routeStops = getRouteStops(cityName, route.routeId);
+    
+    if (routeStops.length === 0) continue;
+
+    // Select a random stop on the route
+    const stop = routeStops[Math.floor(Math.random() * routeStops.length)];
+    
+    // Add small offset to simulate vehicle between stops
+    const offset = (Math.random() - 0.5) * 0.01; // ±0.005 degrees
+    
     vehicles.push({
       vehicleId: `V${cityName.toUpperCase()}${i}`,
-      routeId: `R${Math.floor(Math.random() * 20) + 1}`,
-      latitude: city.lat + offset,
-      longitude: city.lon + offset,
+      routeId: route.routeId,
+      routeName: route.routeLongName,
+      stopId: stop.stopId,
+      stopName: stop.stopName,
+      latitude: stop.stopLat + offset,
+      longitude: stop.stopLon + offset,
       speedMps: 11.1 * (1 - speedReductionPct / 100), // Normal speed 11.1 m/s (40 km/h)
       delayMins: delayMinutes,
       speedReductionPct,
@@ -72,6 +93,8 @@ export function generateTransitTelemetry(cityName, weatherData) {
     cityName,
     observedAt: new Date().toISOString(),
     totalVehicles: vehicles.length,
+    totalRoutes: routes.length,
+    totalStops: stops.length,
     averageDelay: delayMinutes,
     averageSpeedReduction: speedReductionPct,
     vehicles,
@@ -100,6 +123,9 @@ export function generateTransitTelemetryEvents(cityName, weatherData, count = 20
       observedAt: new Date(Date.now() - timeOffset).toISOString(),
       vehicleId: vehicle.vehicleId,
       routeId: vehicle.routeId,
+      routeName: vehicle.routeName,
+      stopId: vehicle.stopId,
+      stopName: vehicle.stopName,
       delayMins: vehicle.delayMins,
       speedReductionPct: vehicle.speedReductionPct,
     });
