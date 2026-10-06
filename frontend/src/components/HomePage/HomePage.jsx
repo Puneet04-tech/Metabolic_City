@@ -15,8 +15,8 @@ function HomePage() {
                 <circle cx="20" cy="20" r="3" fill="rgba(255,255,255,0.8)"/>
                 <defs>
                   <linearGradient id="logo-gradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#8B5CF6"/>
-                    <stop offset="1" stopColor="#DC2626"/>
+                    <stop stopColor="#2563EB"/>
+                    <stop offset="1" stopColor="#EF4444"/>
                   </linearGradient>
                 </defs>
               </svg>
