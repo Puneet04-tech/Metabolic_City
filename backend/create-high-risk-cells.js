@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { SpatialCell } from './src/models/SpatialCell.js';
+import h3 from 'h3-js';
 
 dotenv.config();
 
@@ -12,15 +13,19 @@ async function createHighRiskCells() {
     await SpatialCell.deleteMany({});
     console.log('Cleared existing cells');
 
+    // Generate H3 indices for India coordinates
     const highRiskCells = [
-      { h3Index: '88608b0b13fffff', compositeRisk: 8.5, scores: { mobility: 9.0, climate: 8.5, vulnerability: 7.5 }, riskLevel: 'CRITICAL', latitude: 19.07, longitude: 72.87 },
-      { h3Index: '88608b0b61fffff', compositeRisk: 7.8, scores: { mobility: 8.2, climate: 7.5, vulnerability: 7.0 }, riskLevel: 'CRITICAL', latitude: 19.08, longitude: 72.88 },
-      { h3Index: '88608b0b23fffff', compositeRisk: 7.2, scores: { mobility: 7.5, climate: 7.0, vulnerability: 6.5 }, riskLevel: 'CRITICAL', latitude: 19.05, longitude: 72.85 },
-      { h3Index: '88608b0b31fffff', compositeRisk: 6.5, scores: { mobility: 7.0, climate: 6.5, vulnerability: 5.5 }, riskLevel: 'HIGH', latitude: 19.10, longitude: 72.90 },
-      { h3Index: '88608b0b41fffff', compositeRisk: 5.8, scores: { mobility: 6.5, climate: 6.0, vulnerability: 4.5 }, riskLevel: 'HIGH', latitude: 19.12, longitude: 72.86 },
-      { h3Index: '88608b0b51fffff', compositeRisk: 4.5, scores: { mobility: 5.0, climate: 5.0, vulnerability: 3.5 }, riskLevel: 'MODERATE', latitude: 19.03, longitude: 72.83 },
-      { h3Index: '88608b0b71fffff', compositeRisk: 3.2, scores: { mobility: 3.5, climate: 3.0, vulnerability: 2.5 }, riskLevel: 'MODERATE', latitude: 19.15, longitude: 72.92 },
-      { h3Index: '88608b0b81fffff', compositeRisk: 2.1, scores: { mobility: 2.5, climate: 2.0, vulnerability: 1.5 }, riskLevel: 'LOW', latitude: 19.00, longitude: 72.80 },
+      // Bhopal cells
+      { h3Index: h3.latLngToCell(23.2599, 77.4126, 8), compositeRisk: 8.5, scores: { mobility: 9.0, climate: 8.5, vulnerability: 7.5 }, riskLevel: 'CRITICAL', latitude: 23.2599, longitude: 77.4126 },
+      { h3Index: h3.latLngToCell(23.2500, 77.4200, 8), compositeRisk: 7.8, scores: { mobility: 8.2, climate: 7.5, vulnerability: 7.0 }, riskLevel: 'CRITICAL', latitude: 23.2500, longitude: 77.4200 },
+      { h3Index: h3.latLngToCell(23.2700, 77.4000, 8), compositeRisk: 7.2, scores: { mobility: 7.5, climate: 7.0, vulnerability: 6.5 }, riskLevel: 'CRITICAL', latitude: 23.2700, longitude: 77.4000 },
+      // Indore cells
+      { h3Index: h3.latLngToCell(22.7196, 75.8577, 8), compositeRisk: 6.5, scores: { mobility: 7.0, climate: 6.5, vulnerability: 5.5 }, riskLevel: 'HIGH', latitude: 22.7196, longitude: 75.8577 },
+      { h3Index: h3.latLngToCell(22.7300, 75.8700, 8), compositeRisk: 5.8, scores: { mobility: 6.5, climate: 6.0, vulnerability: 4.5 }, riskLevel: 'HIGH', latitude: 22.7300, longitude: 75.8700 },
+      { h3Index: h3.latLngToCell(22.7100, 75.8400, 8), compositeRisk: 4.5, scores: { mobility: 5.0, climate: 5.0, vulnerability: 3.5 }, riskLevel: 'MODERATE', latitude: 22.7100, longitude: 75.8400 },
+      // Sehore cells
+      { h3Index: h3.latLngToCell(23.2080, 77.0816, 8), compositeRisk: 3.2, scores: { mobility: 3.5, climate: 3.0, vulnerability: 2.5 }, riskLevel: 'MODERATE', latitude: 23.2080, longitude: 77.0816 },
+      { h3Index: h3.latLngToCell(23.2200, 77.0900, 8), compositeRisk: 2.1, scores: { mobility: 2.5, climate: 2.0, vulnerability: 1.5 }, riskLevel: 'LOW', latitude: 23.2200, longitude: 77.0900 },
     ];
 
     for (const cellData of highRiskCells) {
@@ -39,10 +44,10 @@ async function createHighRiskCells() {
       });
     }
 
-    console.log(`Created ${highRiskCells.length} high-risk cells`);
+    console.log(`Created ${highRiskCells.length} high-risk cells in India (Bhopal, Indore, Sehore)`);
     console.log('\nCells created:');
     highRiskCells.forEach(cell => {
-      console.log(`- ${cell.h3Index}: Risk ${cell.compositeRisk} (${cell.riskLevel})`);
+      console.log(`- ${cell.h3Index}: Risk ${cell.compositeRisk} (${cell.riskLevel}) at [${cell.latitude}, ${cell.longitude}]`);
     });
 
     await mongoose.connection.close();
