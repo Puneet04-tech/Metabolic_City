@@ -1,13 +1,15 @@
-import { fetchWeatherForAllCities, weatherToTelemetry } from './weatherService.js';
+import { fetchWeatherForAllCities, getWeatherSnapshot, weatherToTelemetry } from './weatherService.js';
 import { generateTransitTelemetryEvents } from './transitService.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
-import { processTelemetryToCells } from '../engine/risk.js';
+import { processTelemetryToCells, recalculateAllActiveCells, normalizeCoordinates } from '../engine/risk.js';
+import { getCity, getConfiguredCityNames } from './cityConfig.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const CITIES = ['bhopal', 'indore', 'sehore'];
 const PIPELINE_CYCLE_MINUTES = parseInt(process.env.PIPELINE_CYCLE_MINUTES) || 10;
+let pipelineRunning = false;
+let scheduledPipelineHandle = null;
 
 /**
  * Run the data pipeline:
@@ -17,16 +19,24 @@ const PIPELINE_CYCLE_MINUTES = parseInt(process.env.PIPELINE_CYCLE_MINUTES) || 1
  * 4. Recalculate cell risks
  */
 export async function runDataPipeline() {
+  if (pipelineRunning) {
+    console.warn('[pipeline] Previous data pipeline run is still active; skipping this cycle.');
+    return { success: false, skipped: true, error: 'Pipeline already running.' };
+  }
+
+  pipelineRunning = true;
   console.log(`\n[${new Date().toISOString()}] Starting data pipeline...`);
 
   try {
+    const cities = getConfiguredCityNames();
     // Step 1: Fetch weather for all cities
     console.log('Fetching weather data for all cities...');
     const weatherData = await fetchWeatherForAllCities();
     
     for (const cityName of Object.keys(weatherData)) {
       if (weatherData[cityName]) {
-        console.log(`  ${cityName}: ${weatherData[cityName].current_weather.temperature}°C, ${weatherData[cityName].current_weather.precipitation}mm rain`);
+        const snapshot = getWeatherSnapshot(weatherData[cityName]);
+        console.log(`  ${cityName}: ${snapshot.temperatureC ?? 'unknown'}C, ${snapshot.rainMmHr ?? 0}mm rain`);
       } else {
         console.log(`  ${cityName}: Failed to fetch weather`);
       }
@@ -35,28 +45,45 @@ export async function runDataPipeline() {
     // Step 2: Generate transit telemetry for each city
     console.log('Generating transit telemetry based on weather...');
     const allTelemetryEvents = [];
+    const successfulCityCodes = [];
+    const failedCities = [];
 
-    for (const cityName of CITIES) {
+    for (const cityName of cities) {
       const weather = weatherData[cityName];
       if (!weather) {
         console.log(`  Skipping ${cityName} - no weather data`);
+        failedCities.push(cityName);
         continue;
       }
 
       // Generate weather telemetry
       const weatherEvent = weatherToTelemetry(cityName, weather);
+      const cityCoords = getCity(cityName);
+      const weatherNorm = normalizeCoordinates(cityCoords.lat, cityCoords.lon);
+      Object.assign(weatherEvent, weatherNorm);
       allTelemetryEvents.push(weatherEvent);
+      successfulCityCodes.push(cityCoords.code);
 
       // Generate transit telemetry
       const transitEvents = generateTransitTelemetryEvents(cityName, weather, 30);
-      allTelemetryEvents.push(...transitEvents);
+      for (const event of transitEvents) {
+        const transitNorm = normalizeCoordinates(event.latitude, event.longitude);
+        Object.assign(event, transitNorm);
+        allTelemetryEvents.push(event);
+      }
     }
 
     console.log(`  Generated ${allTelemetryEvents.length} telemetry events`);
+    if (!allTelemetryEvents.length) {
+      throw new Error('No weather-backed telemetry was generated; preserving existing telemetry.');
+    }
 
-    // Step 3: Clear existing telemetry and insert new events
-    console.log('Clearing existing telemetry events...');
-    await TelemetryEvent.deleteMany({});
+    // Step 3: Replace generated telemetry only for cities fetched successfully.
+    console.log('Replacing generated telemetry for successful cities...');
+    await TelemetryEvent.deleteMany({
+      sourceType: { $in: ['WEATHER_API', 'GTFS_TRANSIT'] },
+      cityCode: { $in: successfulCityCodes },
+    });
 
     console.log('Inserting new telemetry events...');
     await TelemetryEvent.insertMany(allTelemetryEvents);
@@ -69,17 +96,19 @@ export async function runDataPipeline() {
 
     // Step 5: Recalculate cell risks
     console.log('Recalculating cell risks...');
-    const { recalculateAllActiveCells } = await import('../engine/risk.js');
     const recalculatedCells = await recalculateAllActiveCells();
 
     console.log(`  Recalculated ${recalculatedCells.length} cells`);
 
-    console.log(`[${new Date().toISOString()}] Pipeline completed successfully`);
-    console.log(`Summary: ${CITIES.length} cities, ${allTelemetryEvents.length} events, ${recalculatedCells.length} cells`);
+    const success = failedCities.length === 0;
+    console.log(`[${new Date().toISOString()}] Pipeline ${success ? 'completed successfully' : 'completed with partial weather failures'}`);
+    console.log(`Summary: ${successfulCityCodes.length}/${cities.length} cities, ${allTelemetryEvents.length} events, ${recalculatedCells.length} cells`);
 
     return {
-      success: true,
-      cities: CITIES,
+      success,
+      partial: !success,
+      cities,
+      failedCities,
       eventsCount: allTelemetryEvents.length,
       cellsCount: recalculatedCells.length,
     };
@@ -90,6 +119,8 @@ export async function runDataPipeline() {
       success: false,
       error: error.message,
     };
+  } finally {
+    pipelineRunning = false;
   }
 }
 
@@ -102,6 +133,11 @@ export function startScheduledPipeline() {
     return;
   }
 
+  if (scheduledPipelineHandle) {
+    console.log('Scheduled pipeline is already running.');
+    return;
+  }
+
   console.log(`Starting scheduled pipeline (cycle: ${PIPELINE_CYCLE_MINUTES} minutes)...`);
 
   // Run immediately
@@ -109,9 +145,16 @@ export function startScheduledPipeline() {
 
   // Schedule runs
   const intervalMs = PIPELINE_CYCLE_MINUTES * 60 * 1000;
-  setInterval(runDataPipeline, intervalMs);
+  scheduledPipelineHandle = setInterval(runDataPipeline, intervalMs);
 
   console.log(`Pipeline will run every ${PIPELINE_CYCLE_MINUTES} minutes`);
+}
+
+export function stopScheduledPipeline() {
+  if (scheduledPipelineHandle) {
+    clearInterval(scheduledPipelineHandle);
+    scheduledPipelineHandle = null;
+  }
 }
 
 // Run pipeline if this file is executed directly

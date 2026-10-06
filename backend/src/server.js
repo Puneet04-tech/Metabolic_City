@@ -16,7 +16,7 @@ import adminRoutes from './routes/admin.js';
 import { startEscalationMonitor, stopEscalationMonitor } from './services/escalation.js';
 import analyticsRoutes from './routes/analytics.js';
 import { connectDB } from './config/db.js';
-import { startScheduledPipeline } from './services/dataPipeline.js';
+import { startScheduledPipeline, stopScheduledPipeline } from './services/dataPipeline.js';
 
 dotenv.config();
 
@@ -127,6 +127,7 @@ let escalationStarted = false;
 const shutdown = async (signal) => {
   console.log(`[server] ${signal} received; initiating graceful shutdown.`);
   stopEscalationMonitor();
+  stopScheduledPipeline();
   if (server) {
     await new Promise((resolve) => server.close((err) => (err ? resolve() : resolve())));
   }

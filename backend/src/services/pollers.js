@@ -36,7 +36,11 @@ async function pollWeather() {
       }
 
       const weather = await response.json();
-      const rainMmHr = weather.rain?.['1h'] ?? weather.rain?.['3h'] ? (weather.rain['3h'] / 3) : 0;
+      const rainMmHr = Number.isFinite(Number(weather.rain?.['1h']))
+        ? Number(weather.rain['1h'])
+        : Number.isFinite(Number(weather.rain?.['3h']))
+        ? Number(weather.rain['3h']) / 3
+        : 0;
 
       await ingest('WEATHER_API', {
         latitude: point.latitude,

@@ -477,6 +477,34 @@ export async function recalculateCell(h3Index) {
 }
 
 /**
+ * Processes all telemetry from the database into spatial cells.
+ * This clears existing cells and recreates them based on current telemetry.
+ */
+export async function processTelemetryToCells() {
+  try {
+    const uniqueH3Indices = await TelemetryEvent.distinct('h3Index');
+
+    // Clear existing spatial cells
+    await SpatialCell.deleteMany({});
+
+    const results = [];
+    for (const h3Index of uniqueH3Indices) {
+      if (!h3Index) continue;
+      try {
+        const updated = await recalculateCell(h3Index);
+        results.push(updated);
+      } catch (err) {
+        console.error(`[risk-engine] Failed to process cell ${h3Index}:`, err.message);
+      }
+    }
+    return results;
+  } catch (error) {
+    console.error('[risk-engine] Error in processTelemetryToCells:', error.message);
+    throw error;
+  }
+}
+
+/**
  * Recalculates all active spatial cells (e.g. after weight update or batch ingest).
  */
 export async function recalculateAllActiveCells() {

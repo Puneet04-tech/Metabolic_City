@@ -1,46 +1,71 @@
 import dotenv from 'dotenv';
+import * as h3 from 'h3-js';
+import { getAvailableCityNames, getCity, getConfiguredCityNames } from './cityConfig.js';
 
 dotenv.config();
 
 const OPENMETEO_BASE_URL = process.env.OPENMETEO_BASE_URL || 'https://api.open-meteo.com/v1';
+const OPENMETEO_RETRIES = Number(process.env.OPENMETEO_RETRIES || 2);
+const OPENMETEO_TIMEOUT_MS = Number(process.env.OPENMETEO_TIMEOUT_MS || 10000);
 
-const cities = {
-  bhopal: { lat: 23.2599, lon: 77.4126, code: 'CITY-MP-BPL' },
-  indore: { lat: 22.7196, lon: 75.8577, code: 'CITY-MP-IDR' },
-  sehore: { lat: 23.2080, lon: 77.0816, code: 'CITY-MP-SHR' },
-};
-
-/**
- * Fetch current weather data for a city using Open-Meteo API
- * No API key required - completely free
- */
-export async function fetchWeatherForCity(cityName) {
-  const city = cities[cityName.toLowerCase()];
-  if (!city) {
-    throw new Error(`City ${cityName} not found. Available cities: ${Object.keys(cities).join(', ')}`);
-  }
-
-  const url = `${OPENMETEO_BASE_URL}/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,visibility`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Open-Meteo API returned ${response.status}`);
+function getH3Index(lat, lon, res = 8) {
+  const h3Fn = h3.latLngToCell || h3.geoToH3;
+  if (typeof h3Fn === 'function') {
+    try {
+      return h3Fn(lat, lon, res);
+    } catch {
+      return null;
     }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error(`Error fetching weather for ${cityName}:`, error.message);
-    throw error;
   }
+  return null;
 }
 
 /**
- * Fetch weather for all configured cities
+ * Fetch current weather data for a city using Open-Meteo API
  */
+export async function fetchWeatherForCity(cityName) {
+  const city = getCity(cityName);
+  if (!city) {
+    throw new Error(`City ${cityName} not found. Available cities: ${getAvailableCityNames().join(', ')}`);
+  }
+
+  const url = new URL(`${OPENMETEO_BASE_URL}/forecast`);
+  url.searchParams.set('latitude', String(city.lat));
+  url.searchParams.set('longitude', String(city.lon));
+  url.searchParams.set(
+    'current',
+    'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m'
+  );
+  url.searchParams.set('hourly', 'visibility');
+  url.searchParams.set('timezone', 'auto');
+
+  let lastError;
+  for (let attempt = 0; attempt <= OPENMETEO_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OPENMETEO_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`Open-Meteo API returned ${response.status}`);
+      }
+      return response.json();
+    } catch (error) {
+      lastError = error;
+      if (attempt < OPENMETEO_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+      }
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  console.error(`Error fetching weather for ${cityName}:`, lastError.message);
+  throw lastError;
+}
+
 export async function fetchWeatherForAllCities() {
   const results = {};
-  for (const cityName of Object.keys(cities)) {
+  for (const cityName of getConfiguredCityNames()) {
     try {
       results[cityName] = await fetchWeatherForCity(cityName);
     } catch (error) {
@@ -51,31 +76,53 @@ export async function fetchWeatherForAllCities() {
   return results;
 }
 
-/**
- * Convert Open-Meteo weather data to telemetry event format
- */
-export function weatherToTelemetry(cityName, weatherData) {
-  const city = cities[cityName.toLowerCase()];
-  const current = weatherData.current_weather;
-  const hourly = weatherData.hourly;
+function firstFinite(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return undefined;
+}
+
+export function getWeatherSnapshot(weatherData) {
+  const current = weatherData?.current || weatherData?.current_weather || {};
+  const hourly = weatherData?.hourly || {};
 
   return {
-    h3Index: null, // Will be set by spatial indexing
-    sourceType: 'WEATHER_API',
-    cityCode: city.code,
-    observedAt: new Date().toISOString(),
-    rainMmHr: current.precipitation || 0,
-    visibilityM: current.visibility || 10000,
-    windGustMps: current.windspeed || 0,
-    temperatureC: current.temperature || 25,
-    humidityPct: hourly?.relative_humidity_2m?.[0] || 50,
-    weatherCondition: getWeatherCondition(current.temperature, current.precipitation, current.windspeed),
+    temperatureC: firstFinite(current.temperature_2m, current.temperature),
+    rainMmHr: firstFinite(current.precipitation, hourly.precipitation?.[0], current.rain),
+    visibilityM: firstFinite(current.visibility, hourly.visibility?.[0]),
+    windSpeedMps: firstFinite(current.wind_speed_10m, current.windspeed),
+    windGustMps: firstFinite(current.wind_gusts_10m, current.wind_speed_10m, current.windspeed),
+    humidityPct: firstFinite(current.relative_humidity_2m, hourly.relative_humidity_2m?.[0]),
+    weatherCode: firstFinite(current.weather_code, current.weathercode),
   };
 }
 
-/**
- * Get weather condition description based on parameters
- */
+export function weatherToTelemetry(cityName, weatherData) {
+  const city = getCity(cityName);
+  if (!city) {
+    throw new Error(`City ${cityName} not found. Available cities: ${getAvailableCityNames().join(', ')}`);
+  }
+  const snapshot = getWeatherSnapshot(weatherData);
+
+  return {
+    h3Index: getH3Index(city.lat, city.lon),
+    latitude: city.lat,
+    longitude: city.lon,
+    sourceType: 'WEATHER_API',
+    cityCode: city.code,
+    observedAt: new Date().toISOString(),
+    rainMmHr: snapshot.rainMmHr ?? 0,
+    visibilityM: snapshot.visibilityM ?? 10000,
+    windGustMps: snapshot.windGustMps ?? 0,
+    temperatureC: snapshot.temperatureC ?? 25,
+    humidityPct: snapshot.humidityPct ?? 50,
+    weatherCondition: getWeatherCondition(snapshot.temperatureC, snapshot.rainMmHr, snapshot.windSpeedMps),
+    rawPayload: weatherData,
+  };
+}
+
 function getWeatherCondition(temp, precipitation, windSpeed) {
   if (precipitation > 10) return 'Heavy Rain';
   if (precipitation > 0) return 'Rain';
@@ -85,13 +132,10 @@ function getWeatherCondition(temp, precipitation, windSpeed) {
   return 'Clear';
 }
 
-/**
- * Fetch historical weather data (last 24 hours)
- */
 export async function fetchHistoricalWeather(cityName, hours = 24) {
-  const city = cities[cityName.toLowerCase()];
+  const city = getCity(cityName);
   if (!city) {
-    throw new Error(`City ${cityName} not found`);
+    throw new Error(`City ${cityName} not found. Available cities: ${getAvailableCityNames().join(', ')}`);
   }
 
   const endDate = new Date();

@@ -100,6 +100,28 @@ const cities = {
       { stopId: 'SHR008', stopName: 'City Center', stopLat: 23.2067, stopLon: 77.0845 },
     ],
   },
+  ashta: {
+    code: 'CITY-MP-AST',
+    lat: 23.0175,
+    lon: 76.7221,
+    routes: [
+      { routeId: 'AST001', routeShortName: '1', routeLongName: 'Ashta Bus Stand to Sehore Road', routeType: '3' },
+      { routeId: 'AST002', routeShortName: '2', routeLongName: 'Ashta Bus Stand to Kannod Road', routeType: '3' },
+      { routeId: 'AST003', routeShortName: '3', routeLongName: 'Ashta Market to Shujalpur Road', routeType: '3' },
+      { routeId: 'AST004', routeShortName: '4', routeLongName: 'Ashta to Bhopal Road', routeType: '3' },
+      { routeId: 'AST005', routeShortName: '5', routeLongName: 'Ashta to Ichhawar Road', routeType: '3' },
+    ],
+    stops: [
+      { stopId: 'AST001', stopName: 'Ashta Bus Stand', stopLat: 23.0175, stopLon: 76.7221 },
+      { stopId: 'AST002', stopName: 'Ashta Market', stopLat: 23.0202, stopLon: 76.7195 },
+      { stopId: 'AST003', stopName: 'Sehore Road', stopLat: 23.0264, stopLon: 76.7342 },
+      { stopId: 'AST004', stopName: 'Kannod Road', stopLat: 23.0106, stopLon: 76.7148 },
+      { stopId: 'AST005', stopName: 'Shujalpur Road', stopLat: 23.0238, stopLon: 76.7069 },
+      { stopId: 'AST006', stopName: 'Bhopal Road Junction', stopLat: 23.0301, stopLon: 76.7288 },
+      { stopId: 'AST007', stopName: 'Ichhawar Road', stopLat: 23.0072, stopLon: 76.7315 },
+      { stopId: 'AST008', stopName: 'Civil Hospital Ashta', stopLat: 23.0156, stopLon: 76.7264 },
+    ],
+  },
 };
 
 /**

@@ -22,7 +22,6 @@ CORS_ORIGINS=https://your-vercel-domain.vercel.app
 Set optional variables only when the corresponding integrations are configured:
 
 ```text
-GEMINI_API_KEY
 OPENWEATHER_API_KEY
 OPENWEATHER_POINTS
 GTFS_RT_URL

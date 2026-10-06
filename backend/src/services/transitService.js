@@ -5,20 +5,30 @@
  */
 
 import { getCityGTFSData, getRouteStops } from './staticGTFSData.js';
+import * as h3 from 'h3-js';
+import { getAvailableCityNames, getCity } from './cityConfig.js';
 
-const cities = {
-  bhopal: { lat: 23.2599, lon: 77.4126, code: 'CITY-MP-BPL' },
-  indore: { lat: 22.7196, lon: 75.8577, code: 'CITY-MP-IDR' },
-  sehore: { lat: 23.2080, lon: 77.0816, code: 'CITY-MP-SHR' },
-};
+function getH3Index(lat, lon, res = 8) {
+  const h3Fn = h3.latLngToCell || h3.geoToH3;
+  if (typeof h3Fn === 'function') {
+    try {
+      return h3Fn(lat, lon, res);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
 
 /**
  * Generate simulated transit data based on weather conditions
  * Uses static GTFS data for routes and stops
  */
 export function generateTransitTelemetry(cityName, weatherData) {
-  const current = weatherData.current_weather;
-  const { precipitation, temperature, windspeed } = current;
+  const current = weatherData.current || weatherData.current_weather || {};
+  const precipitation = Number(current.precipitation ?? weatherData.hourly?.precipitation?.[0] ?? 0);
+  const temperature = Number(current.temperature_2m ?? current.temperature ?? 25);
+  const windspeed = Number(current.wind_speed_10m ?? current.windspeed ?? 0);
 
   // Get GTFS data for the city
   const cityData = getCityGTFSData(cityName);
@@ -105,7 +115,10 @@ export function generateTransitTelemetry(cityName, weatherData) {
  * Generate simulated transit events for telemetry ingestion
  */
 export function generateTransitTelemetryEvents(cityName, weatherData, count = 20) {
-  const city = cities[cityName.toLowerCase()];
+  const city = getCity(cityName);
+  if (!city) {
+    throw new Error(`City ${cityName} not found. Available cities: ${getAvailableCityNames().join(', ')}`);
+  }
   const transitData = generateTransitTelemetry(cityName, weatherData);
   const events = [];
 
@@ -115,8 +128,8 @@ export function generateTransitTelemetryEvents(cityName, weatherData, count = 20
     const timeOffset = i * 2 * 60 * 1000; // Every 2 minutes
 
     events.push({
-      h3Index: null, // Will be set by spatial indexing
-      sourceType: 'SIMULATED_TRANSIT',
+      h3Index: getH3Index(vehicle.latitude + offset, vehicle.longitude + offset) || '8a283084dcb7fff',
+      sourceType: 'GTFS_TRANSIT',
       cityCode: city.code,
       latitude: vehicle.latitude + offset,
       longitude: vehicle.longitude + offset,

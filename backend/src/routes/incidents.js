@@ -113,27 +113,58 @@ router.post('/:h3Index/lock', protect, authorize('operator', 'admin'), async (re
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 60 * 1000); // 60s TTL
 
-    const lock = await CellLock.findOneAndUpdate(
-      {
-        h3Index: req.params.h3Index,
-        $or: [{ expiresAt: { $lte: now } }, { expiresAt: { $exists: false } }, { lockOwnerId: req.user._id }],
-      },
-      {
-        $set: {
-          h3Index: req.params.h3Index,
-          lockOwnerId: req.user._id,
-          expiresAt,
-        },
-      },
-      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
-    ).lean();
+    const activeLock = await CellLock.findOne({
+      h3Index: req.params.h3Index,
+      expiresAt: { $gt: now },
+    }).lean();
 
-    return res.status(201).json({ status: 'LOCK_ACQUIRED', lock });
-  } catch (error) {
-    if (error.code === 11000) {
+    if (activeLock && String(activeLock.lockOwnerId) !== String(req.user._id)) {
       return res.status(409).json({
         status: 'LOCKED_BY_OTHER_OPERATOR',
-        message: 'Another operator is currently evaluating this critical spatial cell.',
+        message: 'Another operator is currently evaluating this spatial cell.',
+        lock: {
+          ownerId: activeLock.lockOwnerId,
+          expiresAt: activeLock.expiresAt,
+        },
+      });
+    }
+
+    if (activeLock) {
+      const lock = await CellLock.findByIdAndUpdate(
+        activeLock._id,
+        { $set: { expiresAt } },
+        { returnDocument: 'after' }
+      ).lean();
+      return res.status(201).json({ status: 'LOCK_ACQUIRED', lock });
+    }
+
+    await CellLock.deleteMany({
+      h3Index: req.params.h3Index,
+      expiresAt: { $lte: now },
+    });
+
+    const lock = await CellLock.create({
+      h3Index: req.params.h3Index,
+      lockOwnerId: req.user._id,
+      expiresAt,
+    });
+
+    return res.status(201).json({ status: 'LOCK_ACQUIRED', lock: lock.toObject() });
+  } catch (error) {
+    if (error.code === 11000) {
+      const activeLock = await CellLock.findOne({
+        h3Index: req.params.h3Index,
+        expiresAt: { $gt: new Date() },
+      }).lean();
+      return res.status(409).json({
+        status: 'LOCKED_BY_OTHER_OPERATOR',
+        message: 'Another operator is currently evaluating this spatial cell.',
+        lock: activeLock
+          ? {
+              ownerId: activeLock.lockOwnerId,
+              expiresAt: activeLock.expiresAt,
+            }
+          : null,
       });
     }
     return next(error);

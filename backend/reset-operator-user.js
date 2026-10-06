@@ -34,9 +34,14 @@ async function resetOperatorUser() {
       staffId: 'OP001'
     });
     
+    const password = process.env.RESET_OPERATOR_PASSWORD;
+    if (!password || password.length < 8) {
+      throw new Error('Set RESET_OPERATOR_PASSWORD to a strong temporary password before running this script.');
+    }
+
     // Create new operator with fresh credentials
     const salt = await bcrypt.genSalt(12);
-    const hashedPassword = await bcrypt.hash('Admin@123', salt);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     const userData = {
       name: 'Admin Operator',
@@ -59,7 +64,7 @@ async function resetOperatorUser() {
     console.log('Role:', userData.role);
     console.log('Staff ID:', userData.staffId);
     console.log('City Code:', userData.cityCode);
-    console.log('Password: Admin@123');
+    console.log('Password: value from RESET_OPERATOR_PASSWORD');
 
     await mongoose.connection.close();
     process.exit(0);

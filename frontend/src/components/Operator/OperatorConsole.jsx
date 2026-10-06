@@ -123,7 +123,7 @@ function OperatorConsole() {
   const lock = async () => {
     try {
       const lockData = await apiRequest(`/v1/incidents/${selected.h3Index}/lock`, { method: 'POST' });
-      setAction({ ...action, lock: lockData });
+      setAction({ ...action, lock: lockData.lock });
     } catch (e) {
       setError(e.message);
     }

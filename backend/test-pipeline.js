@@ -1,5 +1,6 @@
-import { fetchWeatherForAllCities } from './src/services/weatherService.js';
+import { fetchWeatherForAllCities, getWeatherSnapshot } from './src/services/weatherService.js';
 import { generateTransitTelemetryEvents } from './src/services/transitService.js';
+import { getConfiguredCityNames } from './src/services/cityConfig.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,31 +9,32 @@ async function testPipeline() {
   console.log('Testing Open-Meteo + Simulated Transit Pipeline...\n');
 
   try {
-    // Test 1: Fetch weather for all cities
-    console.log('Step 1: Fetching weather for Bhopal, Indore, Sehore...');
+    console.log(`Step 1: Fetching weather for ${getConfiguredCityNames().join(', ')}...`);
     const weatherData = await fetchWeatherForAllCities();
-    
+
     for (const cityName of Object.keys(weatherData)) {
       if (weatherData[cityName]) {
-        const temp = weatherData[cityName].current_weather.temperature;
-        const rain = weatherData[cityName].current_weather.precipitation;
-        console.log(`  ✅ ${cityName}: ${temp}°C, ${rain}mm rain`);
+        const snapshot = getWeatherSnapshot(weatherData[cityName]);
+        console.log(`  OK ${cityName}: ${snapshot.temperatureC ?? 'unknown'}C, ${snapshot.rainMmHr ?? 0}mm rain`);
       } else {
-        console.log(`  ❌ ${cityName}: Failed`);
+        console.log(`  FAILED ${cityName}`);
       }
     }
 
-    // Test 2: Generate transit telemetry
     console.log('\nStep 2: Generating transit telemetry based on weather...');
-    const transitEvents = generateTransitTelemetryEvents('bhopal', weatherData.bhopal, 5);
-    console.log(`  ✅ Generated ${transitEvents.length} transit events`);
+    const cityWithWeather = Object.keys(weatherData).find((cityName) => weatherData[cityName]);
+    if (!cityWithWeather) {
+      throw new Error('No city returned weather data.');
+    }
+
+    const transitEvents = generateTransitTelemetryEvents(cityWithWeather, weatherData[cityWithWeather], 5);
+    console.log(`  OK Generated ${transitEvents.length} transit events`);
     console.log(`  Sample: Vehicle ${transitEvents[0].vehicleId}, Delay: ${transitEvents[0].delayMins}min`);
 
-    console.log('\n✅ Pipeline test successful!');
+    console.log('\nPipeline test successful!');
     console.log('The pipeline is ready to be integrated into the server.');
-
   } catch (error) {
-    console.error('\n❌ Pipeline test failed:', error.message);
+    console.error('\nPipeline test failed:', error.message);
     process.exit(1);
   }
 }

@@ -1,9 +1,9 @@
 :root {
-  --primary: #8B5CF6;
-  --primary-dark: #7C3AED;
-  --accent: #DC2626;
-  --accent-dark: #B91C1C;
-  --accent-glow: #EF4444;
+  --primary: #2563EB;
+  --primary-dark: #1D4ED8;
+  --accent: #EF4444;
+  --accent-dark: #DC2626;
+  --accent-glow: #F87171;
   --text: #F3F4F6;
   --text-muted: #9CA3AF;
   --bg-dark: #07070B;
@@ -33,9 +33,9 @@ button, input, select, textarea {
 
 /* Glassmorphism Utility Classes */
 .glass-card {
-  background: rgba(13, 14, 23, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(13, 14, 23, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
 }
 
@@ -45,17 +45,17 @@ button, input, select, textarea {
 
 .glass-card-hover:hover {
   border-color: var(--border-hover);
-  box-shadow: 0 0 30px -5px rgba(168, 85, 247, 0.3);
-  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
 }
 
 .neon-border-glow {
-  box-shadow: 0 0 25px rgba(168, 85, 247, 0.4), inset 0 0 15px rgba(168, 85, 247, 0.2);
-  border: 1px solid rgba(192, 132, 252, 0.6);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2), inset 0 0 8px rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(192, 132, 252, 0.3);
 }
 
 .neon-text-glow {
-  text-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
+  text-shadow: 0 0 6px rgba(168, 85, 247, 0.3);
 }
 
 /* ============ SCR-01 Authentication ============ */
@@ -85,7 +85,6 @@ button, input, select, textarea {
   color: #FFFFFF;
   padding: 28px 24px;
   border-bottom: 1px solid var(--border);
-}
   text-align: left;
 }
 
@@ -726,8 +725,8 @@ button, input, select, textarea {
   align-items: center;
 }
 .ticker-track { flex: 1 1 auto; overflow: hidden; display: flex; align-items: center; }
-.ticker-items { display: flex; gap: 10px; white-space: nowrap; padding: 8px 12px; animation: ticker-scroll 30s linear infinite; }
-.ticker:hover .ticker-items { animation-play-state: paused; }
+.ticker-items { display: flex; gap: 10px; white-space: nowrap; padding: 8px 12px; /* animation: ticker-scroll 30s linear infinite; */ }
+/* .ticker:hover .ticker-items { animation-play-state: paused; } */
 .ticker-item {
   border: 1px solid rgba(239, 68, 68, 0.3);
   background: rgba(239, 68, 68, 0.1);
@@ -745,10 +744,10 @@ button, input, select, textarea {
   background: rgba(239, 68, 68, 0.2);
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
 }
-@keyframes ticker-scroll {
+/* @keyframes ticker-scroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
-}
+} */
 
 .cell-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
 .cell-card {
@@ -1265,13 +1264,13 @@ button, input, select, textarea {
   height: 8px;
   background: var(--accent);
   border-radius: 50%;
-  animation: pulse 2s infinite;
+  /* animation: pulse 2s infinite; */
 }
 
-@keyframes pulse {
+/* @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
-}
+} */
 
 .hero-title {
   font-size: clamp(32px, 5vw, 48px);
