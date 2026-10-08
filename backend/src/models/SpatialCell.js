@@ -5,6 +5,11 @@ const spatialCellSchema = new mongoose.Schema(
     h3Index: { type: String, required: true, unique: true, index: true },
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
+    // PRINCIPLE: Spatial Intelligence - Geospatial Indexing (2dsphere)
+    location: {
+      type: { type: String, enum: ['Point'], required: true },
+      coordinates: { type: [Number], required: true },
+    },
     scores: {
       mobility: { type: Number, min: 0, max: 10, default: 0 },
       climate: { type: Number, min: 0, max: 10, default: 0 },
@@ -61,5 +66,18 @@ const spatialCellSchema = new mongoose.Schema(
 
 spatialCellSchema.index({ compositeRisk: -1, lastUpdated: -1 });
 spatialCellSchema.index({ riskLevel: 1, lastUpdated: -1 });
+// PRINCIPLE: Spatial Intelligence - Geospatial Indexing (2dsphere)
+spatialCellSchema.index({ location: '2dsphere' });
 
-export const SpatialCell = mongoose.model('SpatialCell', spatialCellSchema);
+// Pre-save hook to automatically populate location from lat/lon
+spatialCellSchema.pre('save', function(next) {
+  if (this.isModified('latitude') || this.isModified('longitude')) {
+    this.location = {
+      type: 'Point',
+      coordinates: [this.longitude, this.latitude], // GeoJSON uses [lon, lat]
+    };
+  }
+  next();
+});
+
+export const SpatialCell = mongoose.models.SpatialCell || mongoose.model('SpatialCell', spatialCellSchema);

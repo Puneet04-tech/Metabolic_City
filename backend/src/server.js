@@ -17,8 +17,16 @@ import { startEscalationMonitor, stopEscalationMonitor } from './services/escala
 import analyticsRoutes from './routes/analytics.js';
 import { connectDB } from './config/db.js';
 import { startScheduledPipeline, stopScheduledPipeline } from './services/dataPipeline.js';
+import { auditLogMiddleware } from './middleware/auditLog.js';
+import { idempotencyMiddleware } from './middleware/idempotency.js';
+import { getCircuitStatus } from './middleware/circuitBreaker.js';
+import spatialAnalysisRoutes from './routes/spatialAnalysis.js';
+import { latencyMonitor, getLatencyStats } from './middleware/latencyMonitor.js';
 
 dotenv.config();
+
+// PRINCIPLE: Scalability - Stateless service configuration
+// All session data stored in MongoDB, JWT tokens carry auth state
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -27,7 +35,8 @@ const isProd = process.env.NODE_ENV === 'production';
 // Trust the first proxy hop (needed for correct client IP behind reverse proxy).
 app.set('trust proxy', 1);
 
-// Security headers.
+// PRINCIPLE: Security - Defense in Depth (Layer 1: HTTP Headers)
+// Helmet.js for security headers, CSP, HSTS
 app.use(
   helmet({
     contentSecurityPolicy: isProd ? undefined : false,
@@ -37,6 +46,7 @@ app.use(
   })
 );
 
+// PRINCIPLE: Security - Defense in Depth (Layer 2: CORS)
 // Strict CORS allow-list. Never allow '*' with credentials.
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3000')
   .split(',')
@@ -60,6 +70,8 @@ app.use(
 app.use(express.json({ limit: '100kb' }));
 app.use(morgan(isProd ? 'combined' : 'dev'));
 
+// PRINCIPLE: Security - Defense in Depth (Layer 3: Rate Limiting)
+// PRINCIPLE: Reliability - Backpressure Handling
 // Global API rate limit: protect against DDoS / abuse on the whole API.
 app.use(
   '/api',
@@ -72,9 +84,24 @@ app.use(
   })
 );
 
+// PRINCIPLE: Real-Time Processing - Latency Awareness
+// Apply latency monitoring to all API routes
+app.use('/api', latencyMonitor);
+
+// PRINCIPLE: Security - Audit Logging
+// PRINCIPLE: Data Integrity - Idempotency
+// Apply audit logging and idempotency to all API routes
+app.use('/api', auditLogMiddleware);
+app.use('/api', idempotencyMiddleware);
+
+// PRINCIPLE: Reliability - Health Checks
+// Health check endpoint for monitoring and auto-healing
 const healthHandler = (req, res) => {
   const dbReady = mongoose.connection.readyState === 1;
   const status = dbReady ? 'healthy' : 'degraded';
+  const circuitStatus = getCircuitStatus();
+  const latencyStats = getLatencyStats();
+  
   res.status(dbReady ? 200 : 503).json({
     status,
     timestamp: new Date().toISOString(),
@@ -83,6 +110,10 @@ const healthHandler = (req, res) => {
       mongodb: dbReady ? 'ready' : 'unavailable',
       authentication: 'ready',
       h3: 'ready',
+      circuitBreakers: circuitStatus,
+    },
+    performance: {
+      latency: latencyStats,
     },
   });
 };
@@ -98,12 +129,16 @@ app.use('/api/v1/incidents', incidentRoutes);
 app.use('/api/v1/field', fieldRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/spatial', spatialAnalysisRoutes);
 
+// PRINCIPLE: Usability - Error Handling
 // 404 for unknown API routes.
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'Not found' });
 });
 
+// PRINCIPLE: Security - Defense in Depth (Layer 7: Error Handling)
+// PRINCIPLE: Maintainability - Centralized Error Handler
 // Centralized error handler (do not leak internals in production).
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {

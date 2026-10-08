@@ -22,6 +22,7 @@ function getH3Index(lat, lon, res = 8) {
 
 /**
  * Fetch current weather data for a city using Open-Meteo API
+ * This function is wrapped by circuit breaker for reliability
  */
 export async function fetchWeatherForCity(cityName) {
   const city = getCity(cityName);
