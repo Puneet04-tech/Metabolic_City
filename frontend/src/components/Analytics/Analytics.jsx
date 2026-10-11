@@ -83,14 +83,14 @@ function Analytics() {
     ]);
   };
 
-  const totalIncidents = filteredIncidents.length;
+  const totalIncidents = (data.incidents || []).length;
   const statusBreakdown = (() => {
     const counts = new Map();
-    filteredIncidents.forEach((incident) => counts.set(incident.status, (counts.get(incident.status) || 0) + 1));
+    (data.incidents || []).forEach((incident) => counts.set(incident.status, (counts.get(incident.status) || 0) + 1));
     return [...counts.entries()].map(([status, count]) => ({ status, count }));
   })();
-  const avgRisk = filteredIncidents.length
-    ? (filteredIncidents.reduce((acc, incident) => acc + Number(incident.riskScore) || acc, 0) / filteredIncidents.length).toFixed(2)
+  const avgRisk = (data.incidents || []).length
+    ? ((data.incidents || []).reduce((acc, incident) => acc + Number(incident.riskScore) || acc, 0) / (data.incidents || []).length).toFixed(2)
     : '0.00';
 
   return (
@@ -125,6 +125,10 @@ function Analytics() {
               <div className="metric-card">
                 <span className="metric-label">Total incidents</span>
                 <strong className="metric-value">{totalIncidents}</strong>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Filtered incidents</span>
+                <strong className="metric-value">{filteredIncidents.length}</strong>
               </div>
               <div className="metric-card">
                 <span className="metric-label">Average risk</span>
