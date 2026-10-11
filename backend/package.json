@@ -5,7 +5,13 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "seed:synthetic": "node src/scripts/seedSyntheticTelemetry.js"
+    "seed:synthetic": "node src/scripts/seedSyntheticTelemetry.js",
+    "test": "jest",
+    "test:unit": "jest --selectProjects unit",
+    "test:integration": "jest --selectProjects integration",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "worker": "node src/workers/telemetryWorker.js"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.3.0",
