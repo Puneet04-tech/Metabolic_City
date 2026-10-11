@@ -3,28 +3,23 @@ import mongoose from 'mongoose';
 /**
  * Audit Log Schema
  * Security Principle: Audit Logging - All actions logged with user, timestamp, and context
+ * 
+ * Note: This schema must match backend/src/models/AuditLog.js to avoid conflicts
+ * Fields: actorId, action, entityType, entityId, metadata, createdAt
  */
 const auditLogSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  userEmail: { type: String },
-  userRole: { type: String },
+  actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   action: { type: String, required: true },
-  method: { type: String },
-  path: { type: String },
-  statusCode: { type: Number },
-  target: {
-    type: { type: String }, // 'cell', 'incident', 'user', etc.
-    id: { type: String },
-  },
-  context: { type: mongoose.Schema.Types.Mixed },
-  ipAddress: { type: String },
-  userAgent: { type: String },
-  timestamp: { type: Date, default: Date.now, index: true },
+  entityType: { type: String, required: true },
+  entityId: String,
+  metadata: mongoose.Schema.Types.Mixed,
+  createdAt: { type: Date, default: Date.now, index: true },
 });
 
-auditLogSchema.index({ userId: 1, timestamp: -1 });
-auditLogSchema.index({ action: 1, timestamp: -1 });
-auditLogSchema.index({ timestamp: -1 });
+auditLogSchema.index({ actorId: 1, createdAt: -1 });
+auditLogSchema.index({ action: 1, createdAt: -1 });
+auditLogSchema.index({ entityType: 1, createdAt: -1 });
+auditLogSchema.index({ createdAt: -1 });
 
 // Check if model already exists before defining (prevents hot reload errors)
 export const AuditLog = mongoose.models.AuditLog || mongoose.model('AuditLog', auditLogSchema);
@@ -42,32 +37,44 @@ export function auditLogMiddleware(req, res, next) {
     
     // Only log successful requests (status < 400)
     if (res.statusCode < 400 && req.user) {
-      const logData = {
-        userId: req.user._id,
-        userEmail: req.user.email,
-        userRole: req.user.role,
-        action: `${req.method} ${req.path}`,
-        method: req.method,
-        path: req.path,
-        statusCode: res.statusCode,
-        context: {
-          duration: `${duration}ms`,
-          body: req.method !== 'GET' ? sanitizeBody(req.body) : undefined,
-        },
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      };
-
-      // Add target information if available
+      // Determine entity type from path and params
+      let entityType = 'api';
+      let entityId = null;
+      
       if (req.params.h3Index) {
-        logData.target = { type: 'cell', id: req.params.h3Index };
+        entityType = 'cell';
+        entityId = req.params.h3Index;
+      } else if (req.params.incidentId) {
+        entityType = 'incident';
+        entityId = req.params.incidentId;
+      } else if (req.params.userId) {
+        entityType = 'user';
+        entityId = req.params.userId;
+      } else if (req.path.includes('/analytics')) {
+        entityType = 'analytics';
+      } else if (req.path.includes('/spatial-cells')) {
+        entityType = 'spatialCell';
+      } else if (req.path.includes('/telemetry')) {
+        entityType = 'telemetry';
       }
-      if (req.params.incidentId) {
-        logData.target = { type: 'incident', id: req.params.incidentId };
-      }
-      if (req.params.userId) {
-        logData.target = { type: 'user', id: req.params.userId };
-      }
+
+      const logData = {
+        actorId: req.user._id,
+        action: `${req.method} ${req.path}`,
+        entityType,
+        entityId,
+        metadata: {
+          method: req.method,
+          path: req.path,
+          statusCode: res.statusCode,
+          duration: `${duration}ms`,
+          userEmail: req.user.email,
+          userRole: req.user.role,
+          body: req.method !== 'GET' ? sanitizeBody(req.body) : undefined,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      };
 
       // Log asynchronously (don't block response)
       AuditLog.create(logData).catch((err) => {
