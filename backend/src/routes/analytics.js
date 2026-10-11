@@ -29,17 +29,26 @@ function msToReadable(ms) {
 }
 
 function velocityMetrics(incidents) {
+  // Fix: Only include incidents that have both detectedAt and operatorDecisionAt
   const detectionToApproval = incidents
-    .filter((i) => i.operatorDecisionAt || ['APPROVED', 'OVERRIDDEN'].includes(i.status))
-    .map((i) => msBetween(i.detectedAt, i.operatorDecisionAt || i.dispatchedAt));
+    .filter((i) => i.detectedAt && i.operatorDecisionAt)
+    .map((i) => msBetween(i.detectedAt, i.operatorDecisionAt));
 
-  const approvalToResolution = incidents.map((i) =>
-    msBetween(i.operatorDecisionAt || i.dispatchedAt, i.resolvedAt)
-  );
+  const approvalToResolution = incidents
+    .filter((i) => (i.operatorDecisionAt || i.dispatchedAt) && i.resolvedAt)
+    .map((i) => msBetween(i.operatorDecisionAt || i.dispatchedAt, i.resolvedAt));
 
-  const dispatchToAck = incidents.map((i) => msBetween(i.dispatchedAt, i.acknowledgedAt));
-  const ackToArrival = incidents.map((i) => msBetween(i.acknowledgedAt, i.arrivedAt));
-  const arrivalToResolution = incidents.map((i) => msBetween(i.arrivedAt, i.resolvedAt));
+  const dispatchToAck = incidents
+    .filter((i) => i.dispatchedAt && i.acknowledgedAt)
+    .map((i) => msBetween(i.dispatchedAt, i.acknowledgedAt));
+  
+  const ackToArrival = incidents
+    .filter((i) => i.acknowledgedAt && i.arrivedAt)
+    .map((i) => msBetween(i.acknowledgedAt, i.arrivedAt));
+  
+  const arrivalToResolution = incidents
+    .filter((i) => i.arrivedAt && i.resolvedAt)
+    .map((i) => msBetween(i.arrivedAt, i.resolvedAt));
 
   const closed = incidents.filter((i) => i.resolvedAt);
   const total = incidents.length;
