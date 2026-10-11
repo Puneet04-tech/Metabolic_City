@@ -8,6 +8,7 @@
     "seed:synthetic": "node src/scripts/seedSyntheticTelemetry.js"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^6.3.11",
     "cors": "^2.8.5",
@@ -24,6 +25,7 @@
     "mongoose": "^9.9.4",
     "morgan": "^1.10.0",
     "opossum": "^10.0.0",
+    "socket.io": "^4.8.4",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

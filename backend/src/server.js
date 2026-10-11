@@ -22,6 +22,7 @@ import { idempotencyMiddleware } from './middleware/idempotency.js';
 import { getCircuitStatus } from './middleware/circuitBreaker.js';
 import spatialAnalysisRoutes from './routes/spatialAnalysis.js';
 import { latencyMonitor, getLatencyStats } from './middleware/latencyMonitor.js';
+import { initializeStreamServer, closeStreamServer } from './services/streamManager.js';
 
 dotenv.config();
 
@@ -163,6 +164,7 @@ const shutdown = async (signal) => {
   console.log(`[server] ${signal} received; initiating graceful shutdown.`);
   stopEscalationMonitor();
   stopScheduledPipeline();
+  await closeStreamServer();
   if (server) {
     await new Promise((resolve) => server.close((err) => (err ? resolve() : resolve())));
   }
@@ -175,7 +177,7 @@ process.once('SIGTERM', () => shutdown('SIGTERM'));
 process.once('SIGINT', () => shutdown('SIGINT'));
 
 connectDB()
-  .then(() => {
+  .then(async () => {
     startTelemetryPollers();
     pollersStarted = true;
     startEscalationMonitor();
@@ -189,6 +191,10 @@ connectDB()
     });
     server.keepAliveTimeout = 65000;
     server.headersTimeout = 66000;
+    
+    // Initialize distributed WebSocket server with Redis adapter
+    // Reliability Principle: Distributed WebSocket - Multi-pod support
+    await initializeStreamServer(server);
   })
   .catch((error) => {
     console.error('Failed to connect to database:', error.message);

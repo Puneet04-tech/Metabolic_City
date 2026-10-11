@@ -5,6 +5,7 @@ import { DeadLetterMessage } from '../models/DeadLetterMessage.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { normalizeCoordinates, recalculateCell } from '../engine/risk.js';
 import { rateLimit } from 'express-rate-limit';
+import { addTelemetryEvent } from '../queues/telemetryQueue.js';
 
 const router = express.Router();
 
@@ -149,6 +150,43 @@ router.post('/batch', protect, authorize('operator', 'admin'), async (req, res) 
     affectedCellsCount: affectedCells.size,
     results,
   });
+});
+
+// POST /api/v1/telemetry/ingest - Async high-throughput ingestion via queue
+// Performance Principle: Async Processing - O(1) response time with background processing
+router.post('/ingest', async (req, res, next) => {
+  try {
+    const payload = req.body;
+
+    // Nil Input Guard
+    if (!payload || Object.keys(payload).length === 0) {
+      return res.status(400).json({
+        error_code: 'ERR_NIL_TELEMETRY_PAYLOAD',
+        message: 'Request payload cannot be null or empty.',
+      });
+    }
+
+    // Empty Input / Field Validation Guard
+    const { lat, lng, reading, sensorId } = payload;
+    if (lat === undefined || lng === undefined || !sensorId) {
+      return res.status(422).json({
+        error_code: 'ERR_INVALID_TELEMETRY_SCHEMA',
+        message: 'Payload missing required fields: lat, lng, sensorId.',
+      });
+    }
+
+    // Push to Queue (O(1) async execution)
+    const job = await addTelemetryEvent(payload);
+
+    return res.status(202).json({
+      status: 'QUEUED',
+      jobId: job.id,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    // Upstream Error Handling
+    next(err);
+  }
 });
 
 // GET /api/v1/telemetry/events

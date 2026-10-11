@@ -464,6 +464,10 @@ export async function recalculateCell(h3Index) {
         h3Index,
         latitude,
         longitude,
+        location: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+        },
         ...scored,
         history: updatedHistory,
         lastUpdated: new Date(),

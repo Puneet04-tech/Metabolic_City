@@ -17,6 +17,7 @@ MONGO_URI
 MONGODB_DB_NAME
 JWT_SECRET
 CORS_ORIGINS=https://your-vercel-domain.vercel.app
+REDIS_ENABLED=false
 ```
 
 Set optional variables only when the corresponding integrations are configured:
@@ -31,6 +32,8 @@ TWILIO_FROM_NUMBER
 ```
 
 Render terminates HTTPS before forwarding to Node. The backend trusts one proxy hop, emits HSTS in production, and refuses non-TLS MongoDB connections.
+
+Redis is optional. Keep `REDIS_ENABLED=false` unless a Redis 5+ service is configured. When enabled, Redis powers BullMQ ingestion and multi-instance Socket.IO fan-out; local Redis 3.x is intentionally bypassed.
 
 ## Vercel frontend
 
