@@ -75,7 +75,7 @@ router.get('/summary', protect, authorize('operator', 'admin'), async (req, res,
           },
         },
       ]),
-      Incident.find().sort({ detectedAt: -1 }).limit(100).lean(),
+      Incident.find().sort({ detectedAt: -1 }).limit(500).lean(),
       AuditLog.find().sort({ createdAt: -1 }).limit(100).lean(),
       getRiskThreshold(),
     ]);

@@ -15,7 +15,7 @@ function downloadCsv(filename, rows) {
 }
 
 const formatDuration = (ms) => {
-  if (ms === null || ms === undefined) return 'n/a';
+  if (ms === null || ms === undefined) return '--';
   if (ms < 1000) return `${ms} ms`;
   const minutes = ms / 60000;
   if (minutes < 60) return `${minutes.toFixed(1)} min`;
@@ -50,7 +50,7 @@ function Analytics() {
   const withinRange = (iso) => {
     const time = new Date(iso).getTime();
     if (fromDate && time < new Date(`${fromDate}T00:00:00`).getTime()) return false;
-    if (toDate && time > new Date(`${toDate}T23:59:59`).getTime()) return true;
+    if (toDate && time > new Date(`${toDate}T23:59:59`).getTime()) return false;
     return true;
   };
 
