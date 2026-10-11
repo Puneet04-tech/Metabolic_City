@@ -29,10 +29,21 @@ function msToReadable(ms) {
 }
 
 function velocityMetrics(incidents) {
-  // Fix: Only include incidents that have both detectedAt and operatorDecisionAt
+  // Fix: Use createdAt as detection time if detectedAt is same as operatorDecisionAt
+  // This handles cases where both timestamps are set to the same time
   const detectionToApproval = incidents
-    .filter((i) => i.detectedAt && i.operatorDecisionAt)
-    .map((i) => msBetween(i.detectedAt, i.operatorDecisionAt));
+    .filter((i) => {
+      const hasBoth = i.detectedAt && i.operatorDecisionAt;
+      const hasCreatedAt = i.createdAt && i.operatorDecisionAt;
+      // Use createdAt if detectedAt is same as operatorDecisionAt (within 100ms)
+      const useCreatedAt = hasBoth && Math.abs(new Date(i.detectedAt) - new Date(i.operatorDecisionAt)) < 100;
+      return useCreatedAt ? hasCreatedAt : hasBoth;
+    })
+    .map((i) => {
+      const useCreatedAt = i.detectedAt && i.operatorDecisionAt && Math.abs(new Date(i.detectedAt) - new Date(i.operatorDecisionAt)) < 100;
+      const detectionTime = useCreatedAt ? i.createdAt : i.detectedAt;
+      return msBetween(detectionTime, i.operatorDecisionAt);
+    });
 
   const approvalToResolution = incidents
     .filter((i) => (i.operatorDecisionAt || i.dispatchedAt) && i.resolvedAt)
