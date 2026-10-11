@@ -30,15 +30,11 @@ function msToReadable(ms) {
 }
 
 function velocityMetrics(incidents) {
-  // Simplified: Always use createdAt as detection time since detectedAt
-  // is set to the same time as operatorDecisionAt during incident creation
+  // Use createdAt as detection time since detectedAt is set to the same time
+  // as operatorDecisionAt during incident creation
   const detectionToApproval = incidents
     .filter((i) => i.createdAt && i.operatorDecisionAt)
-    .map((i) => {
-      const ms = msBetween(i.createdAt, i.operatorDecisionAt);
-      console.log(`[Analytics] Incident ${i._id}: createdAt=${i.createdAt}, operatorDecisionAt=${i.operatorDecisionAt}, ms=${ms}`);
-      return ms;
-    });
+    .map((i) => msBetween(i.createdAt, i.operatorDecisionAt));
 
   const approvalToResolution = incidents
     .filter((i) => (i.operatorDecisionAt || i.dispatchedAt) && i.resolvedAt)
@@ -59,16 +55,12 @@ function velocityMetrics(incidents) {
   const closed = incidents.filter((i) => i.resolvedAt);
   const total = incidents.length;
 
-  const avgMs = averageMs(detectionToApproval);
-  console.log(`[Analytics] detectionToApproval values:`, detectionToApproval);
-  console.log(`[Analytics] averageMs:`, avgMs);
-
   return {
     totalIncidents: total,
     resolved: closed.length,
     resolutionRate: total ? Math.round((closed.length / total) * 100) : 0,
-    avgDetectionToApprovalMs: avgMs,
-    avgDetectionToApproval: msToReadable(avgMs),
+    avgDetectionToApprovalMs: averageMs(detectionToApproval),
+    avgDetectionToApproval: msToReadable(averageMs(detectionToApproval)),
     avgApprovalToResolutionMs: averageMs(approvalToResolution),
     avgApprovalToResolution: msToReadable(averageMs(approvalToResolution)),
     avgDispatchToAckMs: averageMs(dispatchToAck),
