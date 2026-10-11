@@ -12,7 +12,8 @@ function msBetween(fromIso, toIso) {
   if (!fromIso || !toIso) return null;
   const from = new Date(fromIso).getTime();
   const to = new Date(toIso).getTime();
-  return Number.isFinite(from) && Number.isFinite(to) && to >= from ? to - from : null;
+  // Use absolute difference since timestamps can be set at the same time
+  return Number.isFinite(from) && Number.isFinite(to) ? Math.abs(to - from) : null;
 }
 
 function averageMs(values) {
