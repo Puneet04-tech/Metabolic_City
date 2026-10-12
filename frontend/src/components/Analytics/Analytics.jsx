@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../../api.js';
 import ProductShell from '../Shared/ProductShell.jsx';
+import {
+  IncidentTrendChart,
+  RiskDistributionChart,
+  StatusBreakdownChart,
+  RiskLevelAreaChart,
+  TelemetryVolumeChart,
+  ResolutionTimeChart,
+} from './AnalyticsCharts.jsx';
 
 function downloadCsv(filename, rows) {
   const escape = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
@@ -24,6 +32,7 @@ const formatDuration = (ms) => {
 
 function Analytics() {
   const [data, setData] = useState({ statusCounts: [], incidents: [], auditLogs: [], metrics: {} });
+  const [telemetryData, setTelemetryData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -34,9 +43,14 @@ function Analytics() {
   const load = () => {
     setLoading(true);
     setError('');
-    apiRequest('/v1/analytics/summary')
-      .then((responseData) => {
-        setData(responseData);
+    
+    Promise.all([
+      apiRequest('/v1/analytics/summary'),
+      apiRequest('/v1/analytics/telemetry-volume').catch(() => null),
+    ])
+      .then(([analyticsData, telemetryVolumeData]) => {
+        setData(analyticsData);
+        setTelemetryData(telemetryVolumeData);
         setLastUpdated(new Date());
       })
       .catch((reason) => setError(reason.message))
@@ -141,6 +155,43 @@ function Analytics() {
               <div className="metric-card">
                 <span className="metric-label">Avg detection to approval</span>
                 <strong className="metric-value">{formatDuration(data.metrics?.avgDetectionToApprovalMs)}</strong>
+              </div>
+            </div>
+
+            {/* Real-time Charts Section */}
+            <div className="charts-section">
+              <h3>Incident Trends (Real-Time)</h3>
+              <div className="chart-container">
+                <IncidentTrendChart incidents={data.incidents || []} />
+              </div>
+
+              <h3>Risk Distribution</h3>
+              <div className="chart-container">
+                <RiskDistributionChart incidents={data.incidents || []} />
+              </div>
+
+              <h3>Status Breakdown</h3>
+              <div className="chart-container">
+                <StatusBreakdownChart incidents={data.incidents || []} />
+              </div>
+
+              <h3>Average Risk Over Time</h3>
+              <div className="chart-container">
+                <RiskLevelAreaChart incidents={data.incidents || []} />
+              </div>
+
+              {telemetryData && (
+                <>
+                  <h3>Telemetry Volume (Last 24h)</h3>
+                  <div className="chart-container">
+                    <TelemetryVolumeChart telemetryData={telemetryData} />
+                  </div>
+                </>
+              )}
+
+              <h3>Resolution Time Distribution</h3>
+              <div className="chart-container">
+                <ResolutionTimeChart incidents={data.incidents || []} />
               </div>
             </div>
 
