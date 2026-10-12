@@ -4,6 +4,7 @@ import { fetchStream } from '../../api.js';
 import H3Map from './H3Map.jsx';
 import LiveCells from './LiveCells.jsx';
 import ProductShell from '../Shared/ProductShell.jsx';
+import { CellRiskDistributionChart, CriticalCellTrendChart } from './OperatorCharts.jsx';
 
 const lensLabels = {
   composite: 'Composite (Rc)',
@@ -190,6 +191,19 @@ function OperatorConsole() {
           )}
 
           {notice && <div className="alert-banner success">{notice}</div>}
+
+          {/* Real-time Charts Section */}
+          <div className="operator-charts-section">
+            <h3>Cell Risk Distribution</h3>
+            <div className="chart-container">
+              <CellRiskDistributionChart cells={cells} />
+            </div>
+
+            <h3>Critical Cell Trend (Last 7 Days)</h3>
+            <div className="chart-container">
+              <CriticalCellTrendChart cells={cells} />
+            </div>
+          </div>
 
           <LiveCells cells={cells} mode={mode} threshold={threshold} onSelect={select} />
         </div>

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { apiRequest } from '../../api.js';
 import ProductShell from '../Shared/ProductShell.jsx';
+import { SystemActivityChart, UserActivityChart, ActionTypeDistributionChart, RoleDistributionChart } from './AdminCharts.jsx';
 
 function AdminConsole() {
   const [weights, setWeights] = useState({ Wm: 0.4, Wc: 0.4, Wv: 0.2 });
   const [threshold, setThreshold] = useState(7);
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [incidents, setIncidents] = useState([]);
   const [preview, setPreview] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -16,12 +18,14 @@ function AdminConsole() {
       apiRequest('/v1/admin/weights'),
       apiRequest('/v1/admin/users'),
       apiRequest('/v1/analytics/summary'),
+      apiRequest('/v1/incidents').catch(() => ({ incidents: [] })),
     ])
-      .then(([weightData, userData, summary]) => {
+      .then(([weightData, userData, summary, incidentsData]) => {
         if (weightData.weights) setWeights(weightData.weights);
         if (Number.isFinite(weightData.threshold)) setThreshold(weightData.threshold);
         setUsers(userData.users || []);
         setAuditLogs(summary.auditLogs || []);
+        setIncidents(incidentsData.incidents || []);
       })
       .catch((error) => setMessage(error.message))
       .finally(() => setLoading(false));
@@ -124,6 +128,29 @@ function AdminConsole() {
                 <time>{new Date(log.createdAt).toLocaleString()}</time>
               </div>
             ))}
+          </div>
+
+          {/* Real-time Charts Section */}
+          <div className="admin-charts-section">
+            <h3>System Activity (Last 7 Days)</h3>
+            <div className="chart-container">
+              <SystemActivityChart auditLogs={auditLogs} />
+            </div>
+
+            <h3>User Activity (Top 10)</h3>
+            <div className="chart-container">
+              <UserActivityChart auditLogs={auditLogs} />
+            </div>
+
+            <h3>Action Type Distribution</h3>
+            <div className="chart-container">
+              <ActionTypeDistributionChart auditLogs={auditLogs} />
+            </div>
+
+            <h3>Role Distribution</h3>
+            <div className="chart-container">
+              <RoleDistributionChart users={users} />
+            </div>
           </div>
         </article>
       </section>

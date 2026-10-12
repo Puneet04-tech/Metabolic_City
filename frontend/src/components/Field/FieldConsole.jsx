@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiRequest } from '../../api.js';
 import { enqueueFieldUpdate, flushFieldOutbox } from '../../fieldOutbox.js';
 import ProductShell from '../Shared/ProductShell.jsx';
+import { TaskStatusDistributionChart, TaskResolutionTimeChart, RiskLevelByTaskChart } from './FieldCharts.jsx';
 
 function readPhotoAsThumbnail(file) {
   return new Promise((resolve, reject) => {
@@ -182,7 +183,26 @@ function FieldConsole() {
         ) : tasks.length === 0 ? (
           <div className="empty-state">No assigned tasks. New approved alerts will appear here when an operator dispatches them.</div>
         ) : (
-          tasks.map((task) => <TaskCard key={task._id} task={task} onUpdate={update} onResolve={handleResolve} />)
+          <>
+            <div className="field-charts-section">
+              <h3>Task Status Distribution</h3>
+              <div className="chart-container">
+                <TaskStatusDistributionChart tasks={tasks} />
+              </div>
+
+              <h3>Resolution Time Distribution</h3>
+              <div className="chart-container">
+                <TaskResolutionTimeChart tasks={tasks} />
+              </div>
+
+              <h3>Risk Level by Task</h3>
+              <div className="chart-container">
+                <RiskLevelByTaskChart tasks={tasks} />
+              </div>
+            </div>
+
+            {tasks.map((task) => <TaskCard key={task._id} task={task} onUpdate={update} onResolve={handleResolve} />)}
+          </>
         )}
       </section>
     </ProductShell>

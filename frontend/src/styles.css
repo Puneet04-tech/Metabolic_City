@@ -857,6 +857,51 @@ button, input, select, textarea {
   backdrop-filter: blur(8px);
 }
 
+/* Operator Console Charts */
+.operator-charts-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.operator-charts-section h3 {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  margin-top: 0;
+}
+
+/* Field Console Charts */
+.field-charts-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.field-charts-section h3 {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  margin-top: 0;
+}
+
+/* Admin Console Charts */
+.admin-charts-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.admin-charts-section h3 {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  margin-top: 0;
+}
+
 .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .panel-title { font-family: var(--font-mono); font-weight: 800; color: var(--primary); }
 .lock-timer {
