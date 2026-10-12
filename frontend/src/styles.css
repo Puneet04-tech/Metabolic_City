@@ -15,6 +15,9 @@
   --warning: #F59E0B;
   --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --neon-silver: #C0C0C0;
+  --neon-silver-light: #E8E8E8;
+  --neon-silver-glow: rgba(192, 192, 192, 0.6);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,6 +28,44 @@ body {
   color: var(--text);
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Neon Silver Glow Background Effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(192, 192, 192, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(192, 192, 192, 0.05) 0%, transparent 30%),
+    radial-gradient(circle at 80% 80%, rgba(192, 192, 192, 0.05) 0%, transparent 30%);
+  pointer-events: none;
+  z-index: 0;
+  animation: silverGlowPulse 8s ease-in-out infinite;
+}
+
+@keyframes silverGlowPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 button, input, select, textarea {
@@ -37,6 +78,8 @@ button, input, select, textarea {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
 }
 
 .glass-card-hover {
@@ -44,18 +87,45 @@ button, input, select, textarea {
 }
 
 .glass-card-hover:hover {
-  border-color: var(--border-hover);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: var(--neon-silver-glow);
+  box-shadow: 0 0 20px rgba(192, 192, 192, 0.3), 0 4px 12px rgba(0,0,0,0.15);
   transform: translateY(-1px);
 }
 
 .neon-border-glow {
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2), inset 0 0 8px rgba(168, 85, 247, 0.1);
-  border: 1px solid rgba(192, 132, 252, 0.3);
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.4), inset 0 0 8px rgba(192, 192, 192, 0.2);
+  border: 1px solid rgba(192, 192, 192, 0.5);
+  position: relative;
+}
+
+.neon-border-glow::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, rgba(192, 192, 192, 0.3), transparent, rgba(192, 192, 192, 0.3));
+  border-radius: inherit;
+  z-index: -1;
+  animation: silverBorderPulse 3s ease-in-out infinite;
+}
+
+@keyframes silverBorderPulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .neon-text-glow {
-  text-shadow: 0 0 6px rgba(168, 85, 247, 0.3);
+  text-shadow: 0 0 8px rgba(192, 192, 192, 0.6), 0 0 16px rgba(192, 192, 192, 0.4);
+}
+
+.neon-silver-glow {
+  box-shadow: 0 0 10px rgba(192, 192, 192, 0.5), 0 0 20px rgba(192, 192, 192, 0.3), 0 0 30px rgba(192, 192, 192, 0.2);
 }
 
 /* ============ SCR-01 Authentication ============ */
@@ -74,18 +144,21 @@ button, input, select, textarea {
   width: 100%;
   max-width: 460px;
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(192, 192, 192, 0.2);
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(192, 192, 192, 0.3);
   backdrop-filter: blur(16px);
+  position: relative;
+  z-index: 1;
 }
 
 .card-header {
   background: rgba(13, 14, 23, 0.6);
   color: #FFFFFF;
   padding: 28px 24px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(192, 192, 192, 0.3);
   text-align: left;
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.2);
 }
 
 .doc-badge {
@@ -340,9 +413,10 @@ button, input, select, textarea {
   align-items: center;
   padding: 12px 16px;
   background: rgba(13, 14, 23, 0.5);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(192, 192, 192, 0.3);
   border-radius: 8px;
   backdrop-filter: blur(8px);
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.2);
 }
 
 .last-updated {
@@ -405,7 +479,8 @@ button, input, select, textarea {
 
 .analytics-toolbar select:focus,
 .analytics-toolbar input[type="date"]:focus {
-  border-color: var(--primary);
+  border-color: var(--neon-silver);
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.4);
 }
 
 .metrics-grid {
@@ -497,16 +572,19 @@ button, input, select, textarea {
   letter-spacing: 0.5px;
   font-family: var(--font-mono);
   margin-top: 8px;
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
 }
 
-.btn-submit:hover { 
+.btn-submit:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(192, 192, 192, 0.5), 0 0 40px rgba(192, 192, 192, 0.3);
 }
 
 .btn-submit:disabled {
   opacity: 0.7;
   cursor: wait;
+  box-shadow: none;
 }
 
 .btn-secondary {
@@ -763,7 +841,7 @@ button, input, select, textarea {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(12px);
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 0 10px rgba(192, 192, 192, 0.2);
   position: relative;
   overflow: hidden;
 }
@@ -780,7 +858,7 @@ button, input, select, textarea {
 }
 .cell-card:hover {
   transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3), 0 0 25px rgba(192, 192, 192, 0.4);
   border-color: rgba(16, 185, 129, 0.4);
 }
 .cell-card:hover::before {
@@ -794,7 +872,7 @@ button, input, select, textarea {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
 }
 .cell-card.warning:hover {
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3), 0 0 25px rgba(192, 192, 192, 0.4);
   border-color: rgba(245, 158, 11, 0.4);
 }
 .cell-card.critical {
@@ -805,7 +883,7 @@ button, input, select, textarea {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
 }
 .cell-card.critical:hover {
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3), 0 0 25px rgba(192, 192, 192, 0.4);
   border-color: rgba(239, 68, 68, 0.4);
 }
 .cell-card strong {
@@ -851,10 +929,13 @@ button, input, select, textarea {
 
 .chart-container {
   background: rgba(30, 41, 59, 0.6);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(192, 192, 192, 0.3);
   border-radius: 12px;
   padding: 20px;
   backdrop-filter: blur(8px);
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.2);
+  position: relative;
+  z-index: 1;
 }
 
 /* Operator Console Charts */
@@ -1179,9 +1260,10 @@ button, input, select, textarea {
   align-items: center;
   padding: 12px 16px;
   background: rgba(13, 14, 23, 0.5);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(192, 192, 192, 0.3);
   border-radius: 8px;
   backdrop-filter: blur(8px);
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.2);
 }
 .last-updated {
   font-size: 12px;
@@ -1273,7 +1355,8 @@ button, input, select, textarea {
   z-index: 100;
   background: rgba(13, 14, 23, 0.9);
   backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(192, 192, 192, 0.3);
+  box-shadow: 0 0 20px rgba(192, 192, 192, 0.3);
 }
 
 .homepage-nav {
