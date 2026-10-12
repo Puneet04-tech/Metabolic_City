@@ -23,6 +23,7 @@ import { getCircuitStatus } from './middleware/circuitBreaker.js';
 import spatialAnalysisRoutes from './routes/spatialAnalysis.js';
 import { latencyMonitor, getLatencyStats } from './middleware/latencyMonitor.js';
 import { initializeStreamServer, closeStreamServer } from './services/streamManager.js';
+import qrRoutes from './routes/qr.js';
 
 dotenv.config();
 
@@ -131,6 +132,7 @@ app.use('/api/v1/field', fieldRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/spatial', spatialAnalysisRoutes);
+app.use('/api/v1/qr', qrRoutes);
 
 // PRINCIPLE: Usability - Error Handling
 // 404 for unknown API routes.

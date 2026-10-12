@@ -8,6 +8,7 @@ import AdminConsole from './components/Admin/AdminConsole.jsx';
 import Analytics from './components/Analytics/Analytics.jsx';
 import RoleHome from './components/Shared/RoleHome.jsx';
 import RequireAuth from './RequireAuth.jsx';
+import CitizenReport from './components/Citizen/CitizenReport.jsx';
 
 export default function App() {
   // Add ambient glow effect
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<AuthForm mode="login" />} />
       <Route path="/signup" element={<AuthForm mode="signup" />} />
+      <Route path="/citizen-report" element={<CitizenReport />} />
       <Route path="/role-home" element={<RequireAuth><RoleHome /></RequireAuth>} />
       <Route path="/operator" element={<RequireAuth roles={['operator']}><OperatorConsole /></RequireAuth>} />
       <Route path="/field" element={<RequireAuth roles={['field']}><FieldConsole /></RequireAuth>} />

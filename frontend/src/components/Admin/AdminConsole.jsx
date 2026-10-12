@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiRequest } from '../../api.js';
 import ProductShell from '../Shared/ProductShell.jsx';
 import { SystemActivityChart, UserActivityChart, ActionTypeDistributionChart, RoleDistributionChart } from './AdminCharts.jsx';
+import QRGenerator from './QRGenerator.jsx';
 
 function AdminConsole() {
   const [weights, setWeights] = useState({ Wm: 0.4, Wc: 0.4, Wv: 0.2 });
@@ -12,6 +13,7 @@ function AdminConsole() {
   const [preview, setPreview] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('weights');
 
   useEffect(() => {
     Promise.all([
@@ -75,7 +77,39 @@ function AdminConsole() {
     <ProductShell title="Administration">
       {loading && <div className="empty-state">Loading administration console...</div>}
       {message && <p className="inline-message">{message}</p>}
-      <section className="admin-grid">
+      
+      {/* Tab Navigation */}
+      <div className="admin-tabs">
+        <button
+          className={`tab-btn ${activeTab === 'weights' ? 'active' : ''}`}
+          onClick={() => setActiveTab('weights')}
+        >
+          Risk Engine
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          User Management
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'qr' ? 'active' : ''}`}
+          onClick={() => setActiveTab('qr')}
+        >
+          QR Codes
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          Analytics
+        </button>
+      </div>
+
+      {activeTab === 'qr' ? (
+        <QRGenerator />
+      ) : (
+        <section className="admin-grid">
         <article className="panel">
           <h2>Risk engine controls</h2>
           <p className="panel-sub">Deterministic formula: Rc = (Wm × Sm) + (Wc × Sc) + (Wv × Sv). Weights must sum to 1.00.</p>
@@ -154,6 +188,7 @@ function AdminConsole() {
           </div>
         </article>
       </section>
+      )}
     </ProductShell>
   );
 }
