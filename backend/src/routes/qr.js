@@ -14,6 +14,11 @@ const router = express.Router();
  * }
  */
 
+// Get frontend URL from environment or use default
+const getFrontendUrl = () => {
+  return process.env.FRONTEND_URL || 'http://localhost:5173';
+};
+
 // POST /api/v1/qr/generate - Generate QR code for a location
 router.post('/generate', async (req, res, next) => {
   try {
@@ -54,8 +59,12 @@ router.post('/generate', async (req, res, next) => {
       createdAt: new Date().toISOString()
     };
 
-    // Generate QR Code as base64 image
-    const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+    // Encode the data as a URL query parameter
+    const encodedData = encodeURIComponent(JSON.stringify(qrData));
+    const reportUrl = `${getFrontendUrl()}/citizen-report?data=${encodedData}`;
+
+    // Generate QR Code as base64 image (encodes the URL, not just JSON)
+    const qrCodeDataURL = await QRCode.toDataURL(reportUrl, {
       width: 300,
       margin: 2,
       color: {
@@ -67,6 +76,7 @@ router.post('/generate', async (req, res, next) => {
     res.json({
       success: true,
       qrCode: qrCodeDataURL,
+      reportUrl,
       data: qrData,
       h3Index
     });
