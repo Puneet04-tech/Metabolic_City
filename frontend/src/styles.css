@@ -2049,6 +2049,64 @@ button, input, select, textarea {
 .analytics-toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
 .toolbar-spacer { flex: 1; }
 
+/* 3D Background Styles */
+.app-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.threejs-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Ensure content appears above 3D background */
+.homepage,
+.login-card,
+.auth-card,
+.ProductShell,
+.console-layout,
+.field-layout,
+.admin-grid,
+.analytics-grid {
+  position: relative;
+  z-index: 1;
+}
+
+/* Add subtle overlay for better text readability over 3D background */
+.homepage::before,
+.login-card::before,
+.auth-card::before,
+.ProductShell::before,
+.console-layout::before,
+.field-layout::before,
+.admin-grid::before,
+.analytics-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Override for specific components that need different overlay handling */
+.homepage::before {
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.ProductShell::before {
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
+}
+
 .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .metric { display: grid; gap: 7px; padding: 16px; background: rgba(13, 14, 23, 0.5); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); transition: all 0.2s; }
 .metric:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); border-color: var(--border-hover); }
@@ -2086,4 +2144,63 @@ button, input, select, textarea {
   .app-user { margin-left: 0; }
   .table-row { grid-template-columns: 1fr 1fr; }
   .weight-row { grid-template-columns: 70px 1fr 80px; }
+}
+
+/* 3D Background Styles */
+.threejs-background-body {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Ensure content appears above 3D background */
+.homepage,
+.login-card,
+.auth-card,
+.ProductShell,
+.console-layout,
+.field-layout,
+.admin-grid,
+.analytics-grid,
+.app-shell {
+  position: relative;
+  z-index: 1;
+}
+
+/* Make app-shell background transparent to allow 3D background to show through */
+.app-shell {
+  background: transparent !important;
+}
+
+/* Add subtle overlay for better text readability over 3D background */
+.homepage::before,
+.login-card::before,
+.auth-card::before,
+.ProductShell::before,
+.console-layout::before,
+.field-layout::before,
+.admin-grid::before,
+.analytics-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Override for specific components that need different overlay handling */
+.homepage::before {
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.ProductShell::before {
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
 }
