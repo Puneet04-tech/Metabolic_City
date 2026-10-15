@@ -39,7 +39,7 @@ export function addStreamClient(response) {
 
 export function broadcastCells(cells) {
   if (!cells || !cells.length) return;
-  const payload = `event: h3_update\ndata: ${JSON.stringify({ cells, emittedAt: new Date().toISOString() })}\n\n`;
+  const payload = `event: h3_update\ndata: ${JSON.stringify({ cells: cells.map((c) => ({ ...c, latitude: c.latitude ?? c.lat ?? null, longitude: c.longitude ?? c.lon ?? null })), emittedAt: new Date().toISOString() })}\n\n`;
   for (const client of clients) {
     try {
       client.write(payload);

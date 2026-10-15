@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiRequest } from '../../api.js';
 import { fetchStream } from '../../api.js';
 import H3Map from './H3Map.jsx';
@@ -21,6 +21,23 @@ const cellBand = (value, threshold) => (value >= threshold ? 'critical' : value 
 function useLiveCells(threshold = 7) {
   const [cells, setCells] = useState([]);
   const [connection, setConnection] = useState('connecting');
+
+  // Production-ready: fetch initial cell data from API, not just stream
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await apiRequest('/v1/spatial-cells');
+        if (mounted && resp && resp.cells && resp.cells.length > 0) {
+          console.log('Initial cells loaded from API:', resp.cells.length);
+          setCells(resp.cells);
+        }
+      } catch (e) {
+        console.error('Initial cells fetch failed:', e.message);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,12 +106,45 @@ function LockTimer({ lock }) {
 
 function OperatorConsole() {
   const { cells, connection } = useLiveCells();
+  
+  // Use localStorage to persist the last known cells state across refreshes
+  const [persistedCells, setPersistedCells] = useState(() => {
+    const saved = localStorage.getItem('last-known-cells');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    if (cells.length > 0) {
+      setPersistedCells(cells);
+      localStorage.setItem('last-known-cells', JSON.stringify(cells));
+    }
+  }, [cells]);
+
+  // Use persisted cells for initial render
+  const displayCells = cells.length > 0 ? cells : persistedCells;
+  const cellsRef = useRef(displayCells);
   const [selected, setSelected] = useState(null);
   const [action, setAction] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [mode, setMode] = useState('composite');
   const threshold = 7;
+
+  useEffect(() => {
+    cellsRef.current = displayCells;
+  }, [displayCells]);
+
+  // If still connecting and no persisted data, show loading state
+  if (connection === 'connecting' && displayCells.length === 0) {
+    return (
+      <ProductShell title="Operator Command Console">
+        <div className="console-loading">
+          <div className="spinner"></div>
+          <p>Connecting to live city telemetry...</p>
+        </div>
+      </ProductShell>
+    );
+  }
 
   const select = async (cell) => {
     setError('');
@@ -175,7 +225,14 @@ function OperatorConsole() {
             <span className="legend-swatch normal" /> Normal (Rc &lt; 4)
           </div>
 
-          <H3Map cells={cells} mode={mode} threshold={threshold} onSelect={select} />
+          <H3Map cells={displayCells} mode={mode} threshold={threshold} onSelect={select} />
+
+          {cells.length === 0 && (
+            <div className="map-empty-overlay">
+              <h4>No active cells</h4>
+              <p>Telemetry data is being loaded. Check the SSE connection.</p>
+            </div>
+          )}
 
           {criticalCells.length > 0 && (
             <div className="ticker" aria-label="Live critical alerts">
