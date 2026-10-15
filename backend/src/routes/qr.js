@@ -97,6 +97,8 @@ router.post('/batch-generate', async (req, res, next) => {
       });
     }
 
+    const frontendUrl = getFrontendUrl();
+
     const qrCodes = await Promise.all(
       locations.map(async (location) => {
         const { locationId, latitude, longitude, label } = location;
@@ -120,7 +122,12 @@ router.post('/batch-generate', async (req, res, next) => {
           createdAt: new Date().toISOString()
         };
 
-        const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
+        // Encode the data as a URL query parameter
+        const encodedData = encodeURIComponent(JSON.stringify(qrData));
+        const reportUrl = `${frontendUrl}/citizen-report?data=${encodedData}`;
+
+        // Generate QR Code as base64 image (encodes the URL, not just JSON)
+        const qrCodeDataURL = await QRCode.toDataURL(reportUrl, {
           width: 300,
           margin: 2,
           color: {
@@ -132,6 +139,7 @@ router.post('/batch-generate', async (req, res, next) => {
         return {
           locationId,
           qrCode: qrCodeDataURL,
+          reportUrl,
           data: qrData,
           h3Index
         };

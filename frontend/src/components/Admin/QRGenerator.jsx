@@ -53,6 +53,10 @@ function QRGenerator() {
     link.click();
   };
 
+  const testQRCode = (reportUrl) => {
+    window.open(reportUrl, '_blank');
+  };
+
   const downloadAllQRCodes = () => {
     qrCodes.forEach((qr, index) => {
       setTimeout(() => {
@@ -174,13 +178,23 @@ function QRGenerator() {
                   <p><strong>{qr.locationId}</strong></p>
                   <p>{qr.data.label}</p>
                   {qr.h3Index && <p><small>H3: {qr.h3Index}</small></p>}
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => downloadQRCode(qr.qrCode, qr.locationId)}
-                  >
-                    Download
-                  </button>
+                  <p><small className="url-preview">{qr.reportUrl.substring(0, 40)}...</small></p>
+                  <div className="qr-card-actions">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => downloadQRCode(qr.qrCode, qr.locationId)}
+                    >
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => testQRCode(qr.reportUrl)}
+                    >
+                      Test
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
