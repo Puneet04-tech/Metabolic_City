@@ -3,6 +3,7 @@ import { generateTransitTelemetryEvents } from './transitService.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { processTelemetryToCells, recalculateAllActiveCells, normalizeCoordinates } from '../engine/risk.js';
 import { getCity, getConfiguredCityNames } from './cityConfig.js';
+import * as h3 from 'h3-js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -100,13 +101,35 @@ export async function runDataPipeline() {
 
       const actualWeather = weather;
       
-      // Generate weather telemetry
+      // Generate weather telemetry for city center
       const weatherEvent = weatherToTelemetry(cityName, actualWeather);
       const cityCoords = getCity(cityName);
       const weatherNorm = normalizeCoordinates(cityCoords.lat, cityCoords.lon);
       Object.assign(weatherEvent, weatherNorm);
       allTelemetryEvents.push(weatherEvent);
       successfulCityCodes.push(cityCoords.code);
+
+      // Generate additional weather events for distributed cells
+      // This ensures climate data is available across the city, not just at center
+      const h3RingFn = h3.gridDisk || h3.kRing;
+      if (typeof h3RingFn === 'function') {
+        const centerH3 = weatherNorm.h3Index;
+        const surroundingCells = h3RingFn(centerH3, 2); // Get cells within 2 rings
+        const sampleCells = surroundingCells.slice(0, 10); // Sample 10 surrounding cells
+        
+        for (const h3Idx of sampleCells) {
+          const cellToLatLngFn = h3.cellToLatLng || h3.h3ToGeo;
+          if (typeof cellToLatLngFn === 'function') {
+            const [lat, lon] = cellToLatLngFn(h3Idx);
+            const distributedWeatherEvent = weatherToTelemetry(cityName, actualWeather);
+            distributedWeatherEvent.h3Index = h3Idx;
+            distributedWeatherEvent.latitude = lat;
+            distributedWeatherEvent.longitude = lon;
+            allTelemetryEvents.push(distributedWeatherEvent);
+          }
+        }
+        console.log(`  Distributed weather to ${sampleCells.length} additional cells`);
+      }
 
       // Generate transit telemetry
       const transitEvents = generateTransitTelemetryEvents(cityName, actualWeather, 30);
