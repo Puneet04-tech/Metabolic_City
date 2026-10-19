@@ -158,75 +158,88 @@ function Analytics() {
               </div>
             </div>
 
-            {/* Real-time Charts Section */}
-            <div className="charts-section">
-              <h3>Incident Trends (Real-Time)</h3>
-              <div className="chart-container">
-                <IncidentTrendChart incidents={data.incidents || []} />
+            {/* Real-time Charts Section - Grid Layout */}
+            <div className="charts-grid">
+              <div className="chart-card">
+                <h3>Incident Trends (Real-Time)</h3>
+                <div className="chart-container">
+                  <IncidentTrendChart incidents={data.incidents || []} />
+                </div>
               </div>
 
-              <h3>Risk Distribution</h3>
-              <div className="chart-container">
-                <RiskDistributionChart incidents={data.incidents || []} />
+              <div className="chart-card">
+                <h3>Risk Distribution</h3>
+                <div className="chart-container">
+                  <RiskDistributionChart incidents={data.incidents || []} />
+                </div>
               </div>
 
-              <h3>Status Breakdown</h3>
-              <div className="chart-container">
-                <StatusBreakdownChart incidents={data.incidents || []} />
+              <div className="chart-card">
+                <h3>Status Breakdown</h3>
+                <div className="chart-container">
+                  <StatusBreakdownChart incidents={data.incidents || []} />
+                </div>
               </div>
 
-              <h3>Average Risk Over Time</h3>
-              <div className="chart-container">
-                <RiskLevelAreaChart incidents={data.incidents || []} />
+              <div className="chart-card">
+                <h3>Average Risk Over Time</h3>
+                <div className="chart-container">
+                  <RiskLevelAreaChart incidents={data.incidents || []} />
+                </div>
               </div>
 
               {telemetryData && (
-                <>
+                <div className="chart-card">
                   <h3>Telemetry Volume (Last 24h)</h3>
                   <div className="chart-container">
                     <TelemetryVolumeChart telemetryData={telemetryData} />
                   </div>
-                </>
+                </div>
               )}
 
-              <h3>Resolution Time Distribution</h3>
-              <div className="chart-container">
-                <ResolutionTimeChart incidents={data.incidents || []} />
+              <div className="chart-card">
+                <h3>Resolution Time Distribution</h3>
+                <div className="chart-container">
+                  <ResolutionTimeChart incidents={data.incidents || []} />
+                </div>
               </div>
             </div>
 
-            <article className="panel">
-              <h2>Incidents (FILTERED)</h2>
-              <div className="panel-controls">
-                <button className="btn-secondary" type="button" onClick={exportIncidents}>Export CSV</button>
-              </div>
-              <div className="table-list">
-                {filteredIncidents.length === 0 ? <p className="panel-sub">No incidents match the current filter.</p> : filteredIncidents.map((incident) => (
-                  <div className="table-row" key={incident._id}>
-                    <strong>{incident.h3Index}</strong>
-                    <span className={`status-badge ${incident.status.toLowerCase()}`}>{incident.status}</span>
-                    <span>Risk {incident.riskScore?.toFixed(1) || 'N/A'}</span>
-                    <time>{new Date(incident.detectedAt).toLocaleString()}</time>
-                  </div>
-                ))}
-              </div>
-            </article>
+            {/* Data Tables - Side by Side */}
+            <div className="data-tables-grid">
+              <article className="panel">
+                <h2>Incidents (FILTERED)</h2>
+                <div className="panel-controls">
+                  <button className="btn-secondary" type="button" onClick={exportIncidents}>Export CSV</button>
+                </div>
+                <div className="table-list">
+                  {filteredIncidents.length === 0 ? <p className="panel-sub">No incidents match the current filter.</p> : filteredIncidents.map((incident) => (
+                    <div className="table-row" key={incident._id}>
+                      <strong>{incident.h3Index}</strong>
+                      <span className={`status-badge ${incident.status.toLowerCase()}`}>{incident.status}</span>
+                      <span>Risk {incident.riskScore?.toFixed(1) || 'N/A'}</span>
+                      <time>{new Date(incident.detectedAt).toLocaleString()}</time>
+                    </div>
+                  ))}
+                </div>
+              </article>
 
-            <article className="panel">
-              <h2>Audit trail</h2>
-              <div className="panel-controls">
-                <button className="btn-secondary" type="button" onClick={exportAudits}>Export CSV</button>
-              </div>
-              <div className="table-list">
-                {filteredAudits.length === 0 ? <p className="panel-sub">No audit events match the current filter.</p> : filteredAudits.map((log) => (
-                  <div className="table-row" key={log._id}>
-                    <strong>{log.action}</strong>
-                    <span>{log.entityType}</span>
-                    <time>{new Date(log.createdAt).toLocaleString()}</time>
-                  </div>
-                ))}
-              </div>
-            </article>
+              <article className="panel">
+                <h2>Audit trail</h2>
+                <div className="panel-controls">
+                  <button className="btn-secondary" type="button" onClick={exportAudits}>Export CSV</button>
+                </div>
+                <div className="table-list">
+                  {filteredAudits.length === 0 ? <p className="panel-sub">No audit events match the current filter.</p> : filteredAudits.map((log) => (
+                    <div className="table-row" key={log._id}>
+                      <strong>{log.action}</strong>
+                      <span>{log.entityType}</span>
+                      <time>{new Date(log.createdAt).toLocaleString()}</time>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
           </>
         )}
       </section>

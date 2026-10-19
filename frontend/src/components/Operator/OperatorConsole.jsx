@@ -240,7 +240,7 @@ function OperatorConsole() {
   return (
     <ProductShell title="Operator Command Console">
       <section className="console-layout">
-        <div className="console-main">
+        <div className="console-header">
           <div className="status-strip">
             <span className={`status-dot ${connection}`} /> Telemetry {connection}
             <span>{cells.length} active H3 cells</span>
@@ -259,45 +259,55 @@ function OperatorConsole() {
             <span className="legend-swatch warning" /> Caution (Rc &#8805; 4)
             <span className="legend-swatch normal" /> Normal (Rc &lt; 4)
           </div>
+        </div>
 
-          <H3Map cells={displayCells} mode={mode} threshold={threshold} onSelect={select} />
+        <div className="console-main">
+          <div className="map-section">
+            <H3Map cells={displayCells} mode={mode} threshold={threshold} onSelect={select} />
 
-          {cells.length === 0 && (
-            <div className="map-empty-overlay">
-              <h4>No active cells</h4>
-              <p>Telemetry data is being loaded. Check the SSE connection.</p>
-            </div>
-          )}
-
-          {criticalCells.length > 0 && (
-            <div className="ticker" aria-label="Live critical alerts">
-              <span className="ticker-label">PULSE</span>
-              <div className="ticker-track">
-                {criticalCells.map((cell) => (
-                  <span key={cell.h3Index} className="ticker-item" onClick={() => select(cell)}>
-                    {cell.h3Index} · Rc {cell.compositeRisk.toFixed(2)}
-                  </span>
-                ))}
+            {cells.length === 0 && (
+              <div className="map-empty-overlay">
+                <h4>No active cells</h4>
+                <p>Telemetry data is being loaded. Check the SSE connection.</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {notice && <div className="alert-banner success">{notice}</div>}
+            {criticalCells.length > 0 && (
+              <div className="ticker" aria-label="Live critical alerts">
+                <span className="ticker-label">PULSE</span>
+                <div className="ticker-track">
+                  {criticalCells.map((cell) => (
+                    <span key={cell.h3Index} className="ticker-item" onClick={() => select(cell)}>
+                      {cell.h3Index} · Rc {cell.compositeRisk.toFixed(2)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {/* Real-time Charts Section */}
-          <div className="operator-charts-section">
-            <h3>Cell Risk Distribution</h3>
-            <div className="chart-container">
-              <CellRiskDistributionChart cells={cells} />
-            </div>
-
-            <h3>Critical Cell Trend (Last 7 Days)</h3>
-            <div className="chart-container">
-              <CriticalCellTrendChart cells={cells} />
-            </div>
+            {notice && <div className="alert-banner success">{notice}</div>}
           </div>
 
-          <LiveCells cells={cells} mode={mode} threshold={threshold} onSelect={select} />
+          <div className="console-sidebar">
+            <div className="sidebar-section">
+              <h3>Live Cells</h3>
+              <LiveCells cells={displayCells} mode={mode} threshold={threshold} onSelect={select} compact={true} />
+            </div>
+
+            <div className="sidebar-section">
+              <h3>Cell Risk Distribution</h3>
+              <div className="chart-container compact">
+                <CellRiskDistributionChart cells={cells} />
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <h3>Critical Cell Trend</h3>
+              <div className="chart-container compact">
+                <CriticalCellTrendChart cells={cells} />
+              </div>
+            </div>
+          </div>
         </div>
 
         <aside className="side-panel">
