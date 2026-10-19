@@ -1,5 +1,6 @@
 import express from 'express';
 import * as h3 from 'h3-js';
+import mongoose from 'mongoose';
 import { protect, authorize } from '../middleware/auth.js';
 import { listActiveCells, recalculateCell, getRiskDistributionSummary } from '../engine/risk.js';
 import { SpatialCell } from '../models/SpatialCell.js';
@@ -10,6 +11,9 @@ const router = express.Router();
 // GET /api/v1/spatial-cells/summary - Statistical overview
 router.get('/summary', protect, authorize('operator', 'field', 'admin'), async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not connected' });
+    }
     const summary = await getRiskDistributionSummary();
     return res.json(summary);
   } catch (error) {
@@ -20,6 +24,9 @@ router.get('/summary', protect, authorize('operator', 'field', 'admin'), async (
 // GET /api/v1/spatial-cells - List active cells with filtering
 router.get('/', protect, authorize('operator', 'field', 'admin'), async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ message: 'Database not connected' });
+    }
     const { minRisk, riskLevel, isDegraded, limit } = req.query;
     const cells = await listActiveCells({
       minRisk: minRisk != null ? Number(minRisk) : undefined,

@@ -55,10 +55,19 @@ export async function connectDB({ retries = DEFAULT_MAX_RETRIES } = {}) {
     dbName,
     maxPoolSize: parsePoolSize(),
     minPoolSize: 2,
+    maxIdleTimeMS: 10000, // Close idle connections after 10 seconds
+    waitQueueTimeoutMS: 5000, // Time to wait for connection from pool
     serverSelectionTimeoutMS: Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS ?? 30000),
     socketTimeoutMS: Number(process.env.MONGODB_SOCKET_TIMEOUT_MS ?? 45000),
     connectTimeoutMS: Number(process.env.MONGODB_CONNECT_TIMEOUT_MS ?? 20000),
     autoIndex: process.env.NODE_ENV !== 'production', // Build indexes automatically in dev
+    // Add DNS settings to prevent DNS resolution issues
+    family: 4, // Force IPv4 to avoid IPv6 DNS issues
+    // Keep connection alive
+    heartbeatFrequencyMS: 10000, // Send heartbeat every 10 seconds
+    // Retry writes on network errors
+    retryWrites: true,
+    retryReads: true,
   };
 
   mongoose.connection.on('connected', () => console.log(`[db] MongoDB connected successfully (${dbName})`));

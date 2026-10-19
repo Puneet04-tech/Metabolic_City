@@ -1,4 +1,5 @@
 import * as h3 from 'h3-js';
+import mongoose from 'mongoose';
 import { SpatialCell } from '../models/SpatialCell.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { ConfigWeights } from '../models/ConfigWeights.js';
@@ -270,10 +271,11 @@ async function computeCascadeRisk(h3Index, directRisk) {
 
 /**
  * Determines trend and velocity based on previous score and time elapsed.
+ * Returns formatted trend string for better UI display
  */
 function computeVelocityAndTrend(currentRisk, previousCell, calculatedAt = new Date()) {
   if (!previousCell || !Number.isFinite(previousCell.compositeRisk) || !previousCell.lastUpdated) {
-    return { velocity: 0, trend: 'STABLE' };
+    return { velocity: 0, trend: 'STABLE', trendDisplay: 'Stable (no history)' };
   }
 
   const timeDiffHours = Math.max(0.05, (calculatedAt.getTime() - new Date(previousCell.lastUpdated).getTime()) / (1000 * 60 * 60));
@@ -281,49 +283,67 @@ function computeVelocityAndTrend(currentRisk, previousCell, calculatedAt = new D
   const velocity = Number((riskDiff / timeDiffHours).toFixed(2));
 
   let trend = 'STABLE';
+  let trendDisplay = 'Stable';
+  
   if (velocity > 1.5) {
     trend = 'SURGING';
+    trendDisplay = `Surging (+${velocity.toFixed(1)}/h)`;
   } else if (velocity > 0.3) {
     trend = 'RISING';
+    trendDisplay = `Rising (+${velocity.toFixed(1)}/h)`;
   } else if (velocity < -0.3) {
     trend = 'DE-ESCALATING';
+    trendDisplay = `Falling (${velocity.toFixed(1)}/h)`;
+  } else {
+    trendDisplay = `Stable (${velocity.toFixed(1)}/h)`;
   }
 
-  return { velocity, trend };
+  return { velocity, trend, trendDisplay };
 }
 
 /**
  * Computes comprehensive data confidence and degradation metrics.
+ * Returns specific degradation status instead of generic "DEGRADED"
  */
 function computeConfidenceAndDegradation(mobilityData, climateData, vulnerabilityData) {
   const degradationReasons = [];
   let confidenceScore = 1.0;
+  let degradationStatus = 'HEALTHY';
 
   if (!mobilityData.hasData) {
     degradationReasons.push('mobility_data_missing');
     confidenceScore -= 0.35;
+    degradationStatus = 'NO_MOBILITY_DATA';
   } else if (mobilityData.sampleCount < 2) {
     degradationReasons.push('mobility_sparse_samples');
     confidenceScore -= 0.10;
+    if (degradationStatus === 'HEALTHY') degradationStatus = 'SPARSE_MOBILITY';
   }
 
   if (!climateData.hasData) {
     degradationReasons.push('climate_data_missing');
     confidenceScore -= 0.35;
+    if (degradationStatus === 'HEALTHY' || degradationStatus === 'NO_MOBILITY_DATA') {
+      degradationStatus = 'NO_CLIMATE_DATA';
+    } else {
+      degradationStatus = 'NO_CLIMATE_DATA';
+    }
   } else if (climateData.sampleCount < 2) {
     degradationReasons.push('climate_sparse_samples');
     confidenceScore -= 0.10;
+    if (degradationStatus === 'HEALTHY') degradationStatus = 'SPARSE_CLIMATE';
   }
 
   if (!vulnerabilityData.hasData) {
     degradationReasons.push('vulnerability_baseline_missing');
     confidenceScore -= 0.20;
+    if (degradationStatus === 'HEALTHY') degradationStatus = 'NO_VULNERABILITY_DATA';
   }
 
   confidenceScore = Math.max(0.1, Math.min(1.0, Number(confidenceScore.toFixed(2))));
   const isDegraded = degradationReasons.length > 0;
 
-  return { confidenceScore, isDegraded, degradationReasons };
+  return { confidenceScore, isDegraded, degradationReasons, degradationStatus };
 }
 
 /**
@@ -369,14 +389,14 @@ export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0
     (weights.Wm * mobility.score + weights.Wc * climate.score + weights.Wv * vulnerability.score).toFixed(2)
   );
 
-  const { confidenceScore, isDegraded, degradationReasons } = computeConfidenceAndDegradation(
+  const { confidenceScore, isDegraded, degradationReasons, degradationStatus } = computeConfidenceAndDegradation(
     mobility,
     climate,
     vulnerability
   );
 
   const previousCompositeRisk = previousCell?.compositeRisk;
-  const { velocity, trend } = computeVelocityAndTrend(directRisk, previousCell, new Date(now));
+  const { velocity, trend, trendDisplay } = computeVelocityAndTrend(directRisk, previousCell, new Date(now));
   const riskLevel = classifyRiskLevel(directRisk, threshold);
   const anomaly = detectAnomalies({ mobility: mobility.score, climate: climate.score, vulnerability: vulnerability.score }, directRisk, previousCompositeRisk);
 
@@ -395,10 +415,12 @@ export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0
     compositeRisk: directRisk,
     riskLevel,
     trend,
+    trendDisplay,
     riskVelocity: velocity,
     confidence: confidenceScore,
     isDegraded,
     degradationReasons,
+    degradationStatus,
     anomalyDetected: anomaly.detected,
     anomalyReason: anomaly.reason,
     telemetryStats: {
@@ -417,6 +439,12 @@ export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0
  * Recalculates and persists an H3 cell based on telemetry within the sliding window.
  */
 export async function recalculateCell(h3Index) {
+  // Check MongoDB connection before proceeding
+  if (mongoose.connection.readyState !== 1) {
+    console.warn('[risk-engine] MongoDB not connected, skipping cell recalculation');
+    return null;
+  }
+
   const windowStart = new Date(Date.now() - WINDOW_MS);
   const [previousCell, events, activeWeights, threshold] = await Promise.all([
     SpatialCell.findOne({ h3Index }).lean(),
@@ -471,6 +499,7 @@ export async function recalculateCell(h3Index) {
         ...scored,
         history: updatedHistory,
         lastUpdated: new Date(),
+        degradationStatus: scored.degradationStatus,
       },
     },
     { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
@@ -512,13 +541,19 @@ export async function processTelemetryToCells() {
  * Recalculates all active spatial cells (e.g. after weight update or batch ingest).
  */
 export async function recalculateAllActiveCells() {
+  // Check MongoDB connection before proceeding
+  if (mongoose.connection.readyState !== 1) {
+    console.warn('[risk-engine] MongoDB not connected, skipping cell recalculation');
+    return [];
+  }
+
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const cells = await SpatialCell.find({ lastUpdated: { $gte: cutoff } }, { h3Index: 1 }).lean();
   const results = [];
   for (const cell of cells) {
     try {
       const updated = await recalculateCell(cell.h3Index);
-      results.push(updated);
+      if (updated) results.push(updated);
     } catch (err) {
       console.error(`[risk-engine] Failed to recalculate cell ${cell.h3Index}:`, err.message);
     }
@@ -530,6 +565,12 @@ export async function recalculateAllActiveCells() {
  * Lists active cells within the last 24 hours, ordered by composite risk descending.
  */
 export async function listActiveCells(filters = {}) {
+  // Check MongoDB connection before proceeding
+  if (mongoose.connection.readyState !== 1) {
+    console.warn('[risk-engine] MongoDB not connected, returning empty cell list');
+    return [];
+  }
+
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const query = { lastUpdated: { $gte: cutoff } };
 

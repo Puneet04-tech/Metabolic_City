@@ -1,6 +1,8 @@
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
+import mongoose from 'mongoose';
+import { listActiveCells } from '../engine/risk.js';
 
 /**
  * Distributed WebSocket Stream Manager
@@ -14,6 +16,7 @@ let io = null;
 let pubClient = null;
 let subClient = null;
 let heartbeatTimer = null;
+let cellRefreshTimer = null;
 
 /**
  * Initialize distributed WebSocket server with Redis Adapter
@@ -98,6 +101,34 @@ export async function initializeStreamServer(server) {
       });
     }
   }, 30000);
+
+  // Periodic cell refresh for real-time updates (even without new telemetry)
+  cellRefreshTimer = setInterval(async () => {
+    try {
+      // Check if MongoDB is connected before attempting refresh
+      if (mongoose.connection.readyState !== 1) {
+        console.warn('[STREAM] MongoDB not connected, skipping cell refresh');
+        return;
+      }
+      
+      console.log('[STREAM] Periodic cell refresh - fetching active cells');
+      const cells = await listActiveCells({ limit: 50 });
+      if (cells.length > 0) {
+        io.emit('cells:update', cells);
+        console.log(`[STREAM] Broadcasted ${cells.length} cells to connected clients`);
+      } else {
+        console.log('[STREAM] No active cells found to broadcast');
+      }
+    } catch (error) {
+      // Don't crash the entire stream on MongoDB errors
+      if (error.message.includes('ENOTFOUND') || error.message.includes('Mongo')) {
+        console.error('[STREAM] MongoDB connection error during cell refresh:', error.message);
+        console.warn('[STREAM] Will retry in next cycle (60s)');
+      } else {
+        console.error('[STREAM] Error during periodic cell refresh:', error.message);
+      }
+    }
+  }, 60000); // Refresh every 60 seconds
 
   console.log(`[STREAM] WebSocket server initialized (${adapterOptions.adapter ? 'Redis adapter' : 'local mode'})`);
   return io;
@@ -186,6 +217,10 @@ export async function closeStreamServer() {
   if (heartbeatTimer) {
     clearInterval(heartbeatTimer);
     heartbeatTimer = null;
+  }
+  if (cellRefreshTimer) {
+    clearInterval(cellRefreshTimer);
+    cellRefreshTimer = null;
   }
   if (io) {
     await io.close();

@@ -21,6 +21,7 @@ const cellBand = (value, threshold) => (value >= threshold ? 'critical' : value 
 function useLiveCells(threshold = 7) {
   const [cells, setCells] = useState([]);
   const [connection, setConnection] = useState('connecting');
+  const pollIntervalRef = useRef(null);
 
   // Production-ready: fetch initial cell data from API, not just stream
   useEffect(() => {
@@ -34,10 +35,25 @@ function useLiveCells(threshold = 7) {
         }
       } catch (e) {
         console.error('Initial cells fetch failed:', e.message);
+        // Don't set degraded state on initial fetch failure
       }
     })();
     return () => { mounted = false; };
   }, []);
+
+  // Poll API as fallback if SSE fails
+  const pollCells = async () => {
+    try {
+      const resp = await apiRequest('/v1/spatial-cells');
+      if (resp && resp.cells) {
+        setCells(resp.cells);
+        setConnection('live (polling)');
+      }
+    } catch (e) {
+      console.error('Poll failed:', e.message);
+      setConnection('degraded');
+    }
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,6 +71,11 @@ function useLiveCells(threshold = 7) {
               console.log('Cell data sample:', data.cells[0]);
               setCells(data.cells);
               setConnection('live');
+              // Clear polling interval if SSE is working
+              if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+              }
             } else {
               console.log('No cells in payload');
             }
@@ -62,11 +83,25 @@ function useLiveCells(threshold = 7) {
         });
       } catch (e) {
         console.error('SSE connection error:', e);
-        if (!controller.signal.aborted) setConnection('degraded');
+        if (!controller.signal.aborted) {
+          setConnection('degraded (polling)');
+          // Start polling as fallback
+          if (!pollIntervalRef.current) {
+            console.log('Starting API polling as fallback');
+            pollCells(); // Immediate poll
+            pollIntervalRef.current = setInterval(pollCells, 30000); // Poll every 30 seconds
+          }
+        }
       }
     })();
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
   }, [threshold]);
 
   return { cells, connection };
