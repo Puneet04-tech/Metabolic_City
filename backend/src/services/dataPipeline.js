@@ -1,4 +1,4 @@
-import { fetchWeatherForAllCities, getWeatherSnapshot, weatherToTelemetry, generateSyntheticWeather } from './weatherService.js';
+import { fetchWeatherForAllCities, getWeatherSnapshot, weatherToTelemetry } from './weatherService.js';
 import { generateTransitTelemetryEvents } from './transitService.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { processTelemetryToCells, recalculateAllActiveCells, normalizeCoordinates } from '../engine/risk.js';
@@ -84,15 +84,22 @@ export async function runDataPipeline() {
 
     for (const cityName of cities) {
       const weather = weatherData[cityName];
-      // Use synthetic weather if API failed
-      const actualWeather = weather || generateSyntheticWeather(cityName);
+      // Skip cities with no weather data (synthetic fallback disabled)
+      if (!weather) {
+        console.log(`  Skipping ${cityName} - no weather data (synthetic fallback disabled)`);
+        failedCities.push(cityName);
+        continue;
+      }
       
-      if (!actualWeather) {
-        console.log(`  Skipping ${cityName} - no weather data (even synthetic failed)`);
+      // Skip cities with synthetic data if fallback is disabled
+      if (weather.synthetic && !process.env.WEATHER_SYNTHETIC_FALLBACK_ENABLED) {
+        console.log(`  Skipping ${cityName} - synthetic data not allowed (fallback disabled)`);
         failedCities.push(cityName);
         continue;
       }
 
+      const actualWeather = weather;
+      
       // Generate weather telemetry
       const weatherEvent = weatherToTelemetry(cityName, actualWeather);
       const cityCoords = getCity(cityName);

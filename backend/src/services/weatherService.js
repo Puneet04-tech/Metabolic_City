@@ -78,6 +78,13 @@ export function generateSyntheticWeather(cityName) {
 }
 
 /**
+ * Check if synthetic fallback is enabled
+ */
+function isSyntheticFallbackEnabled() {
+  return process.env.WEATHER_SYNTHETIC_FALLBACK_ENABLED !== 'false';
+}
+
+/**
  * Fetch current weather data for a city using Open-Meteo API
  * This function is wrapped by circuit breaker for reliability
  * Falls back to synthetic data if API fails
@@ -107,8 +114,13 @@ export async function fetchWeatherForCity(cityName) {
       if (!response.ok) {
         console.warn(`[weather] Open-Meteo API returned ${response.status} for ${cityName} (attempt ${attempt + 1}/${OPENMETEO_RETRIES + 1})`);
         if (attempt === OPENMETEO_RETRIES) {
-          console.warn(`[weather] All retries exhausted for ${cityName}, using synthetic fallback`);
-          return generateSyntheticWeather(cityName);
+          if (isSyntheticFallbackEnabled()) {
+            console.warn(`[weather] All retries exhausted for ${cityName}, using synthetic fallback`);
+            return generateSyntheticWeather(cityName);
+          } else {
+            console.error(`[weather] All retries exhausted for ${cityName}, synthetic fallback disabled`);
+            throw new Error(`Weather API failed for ${cityName} and synthetic fallback is disabled`);
+          }
         }
         throw new Error(`Open-Meteo API returned ${response.status}`);
       }
@@ -127,8 +139,13 @@ export async function fetchWeatherForCity(cityName) {
   }
 
   console.error(`[weather] All attempts failed for ${cityName}:`, lastError.message);
-  console.warn(`[weather] Using synthetic fallback for ${cityName} due to error`);
-  return generateSyntheticWeather(cityName);
+  if (isSyntheticFallbackEnabled()) {
+    console.warn(`[weather] Using synthetic fallback for ${cityName} due to error`);
+    return generateSyntheticWeather(cityName);
+  } else {
+    console.error(`[weather] Not using synthetic fallback for ${cityName} (disabled in config)`);
+    throw lastError;
+  }
 }
 
 export async function fetchWeatherForAllCities() {

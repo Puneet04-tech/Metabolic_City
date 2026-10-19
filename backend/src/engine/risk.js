@@ -6,8 +6,8 @@ import { ConfigWeights } from '../models/ConfigWeights.js';
 import { broadcastCells } from './stream.js';
 
 export const H3_RESOLUTION = 8;
-export const WINDOW_MS = 15 * 60 * 1000; // 15 minutes window
-export const HALF_LIFE_MS = 5 * 60 * 1000; // 5 minute temporal decay half-life
+export const WINDOW_MS = 60 * 60 * 1000; // 1 hour window (increased from 15 min for more real data)
+export const HALF_LIFE_MS = 30 * 60 * 1000; // 30 minute temporal decay half-life (increased from 5 min)
 
 const clamp = (value, min = 0, max = 10) => {
   const num = Number(value);
