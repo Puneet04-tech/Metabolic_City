@@ -3,16 +3,16 @@ import { useState, useEffect } from 'react';
 import { apiRequest } from '../../api.js';
 
 const COLORS = {
-  CRITICAL: '#EF4444',
-  HIGH: '#F59E0B',
-  MODERATE: '#10B981',
-  LOW: '#3B82F6',
-  APPROVED: '#10B981',
-  RESOLVED: '#059669',
+  CRITICAL: '#FF5C5C',
+  HIGH: '#FFB020',
+  MODERATE: '#22D3EE',
+  LOW: '#60A5FA',
+  APPROVED: '#2DD4A7',
+  RESOLVED: '#34D399',
   DISPATCHED: '#8B5CF6',
-  ACKNOWLEDGED: '#6366F1',
-  ARRIVED: '#EC4899',
-  DETECTED: '#6B7280',
+  ACKNOWLEDGED: '#A78BFA',
+  ARRIVED: '#F472B6',
+  DETECTED: '#64748B',
 };
 
 function IncidentTrendChart({ incidents }) {
@@ -36,15 +36,15 @@ function IncidentTrendChart({ incidents }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis dataKey="date" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis dataKey="date" stroke="#8A8FA3" />
+        <YAxis stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
-        <Line type="monotone" dataKey="count" stroke="#2563EB" strokeWidth={2} dot={{ fill: '#2563EB' }} name="Incidents" />
+        <Line type="monotone" dataKey="count" stroke="#60A5FA" strokeWidth={2} dot={{ fill: '#60A5FA' }} name="Incidents" />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -80,8 +80,8 @@ function RiskDistributionChart({ incidents }) {
           ))}
         </Pie>
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
       </PieChart>
@@ -103,7 +103,7 @@ function StatusBreakdownChart({ incidents }) {
       .map(([status, count]) => ({ 
         name: status, 
         value: count, 
-        fill: COLORS[status] || '#6B7280' 
+        fill: COLORS[status] || '#64748B' 
       }));
 
     setData(chartData);
@@ -112,12 +112,12 @@ function StatusBreakdownChart({ incidents }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis type="number" stroke="#94a3b8" />
-        <YAxis type="category" dataKey="name" width={100} stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis type="number" stroke="#8A8FA3" />
+        <YAxis type="category" dataKey="name" width={100} stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
         <Bar dataKey="value" />
@@ -154,15 +154,15 @@ function RiskLevelAreaChart({ incidents }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <AreaChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis dataKey="date" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis dataKey="date" stroke="#8A8FA3" />
+        <YAxis stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
-        <Area type="monotone" dataKey="avgRisk" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} name="Average Risk" />
+        <Area type="monotone" dataKey="avgRisk" stroke="#FFB020" fill="#FFB020" fillOpacity={0.16} name="Average Risk" />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -195,12 +195,12 @@ function TelemetryVolumeChart({ telemetryData }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis dataKey="hour" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis dataKey="hour" stroke="#8A8FA3" />
+        <YAxis stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
         <Bar dataKey="count" fill="#8B5CF6" name="Telemetry Events" />
@@ -232,15 +232,15 @@ function ResolutionTimeChart({ incidents }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis dataKey="name" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis dataKey="name" stroke="#8A8FA3" />
+        <YAxis stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
-        <Bar dataKey="value" fill="#10B981" name="Incidents" />
+        <Bar dataKey="value" fill="#2DD4A7" name="Incidents" />
       </BarChart>
     </ResponsiveContainer>
   );

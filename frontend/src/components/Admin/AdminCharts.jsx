@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const COLORS = {
-  CRITICAL: '#EF4444',
-  HIGH: '#F59E0B',
-  MODERATE: '#10B981',
-  LOW: '#3B82F6',
-  APPROVED: '#10B981',
-  RESOLVED: '#059669',
+  CRITICAL: '#FF5C5C',
+  HIGH: '#FFB020',
+  MODERATE: '#22D3EE',
+  LOW: '#60A5FA',
+  APPROVED: '#2DD4A7',
+  RESOLVED: '#34D399',
   DISPATCHED: '#8B5CF6',
-  ACKNOWLEDGED: '#6366F1',
-  ARRIVED: '#EC4899',
+  ACKNOWLEDGED: '#A78BFA',
+  ARRIVED: '#F472B6',
 };
 
 // Admin Console Charts
@@ -35,12 +35,12 @@ function SystemActivityChart({ auditLogs }) {
   return (
     <ResponsiveContainer width="100%" height={250}>
       <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis dataKey="date" stroke="#94a3b8" />
-        <YAxis stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis dataKey="date" stroke="#8A8FA3" />
+        <YAxis stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
         <Line type="monotone" dataKey="count" stroke="#8B5CF6" strokeWidth={2} dot={{ fill: '#8B5CF6' }} name="System Actions" />
@@ -70,15 +70,15 @@ function UserActivityChart({ auditLogs }) {
   return (
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis type="number" stroke="#94a3b8" />
-        <YAxis type="category" dataKey="name" width={150} stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis type="number" stroke="#8A8FA3" />
+        <YAxis type="category" dataKey="name" width={150} stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
-        <Bar dataKey="value" fill="#6366F1" />
+        <Bar dataKey="value" fill="#818CF8" />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -105,15 +105,15 @@ function ActionTypeDistributionChart({ auditLogs }) {
   return (
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-        <XAxis type="number" stroke="#94a3b8" />
-        <YAxis type="category" dataKey="name" width={150} stroke="#94a3b8" />
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+        <XAxis type="number" stroke="#8A8FA3" />
+        <YAxis type="category" dataKey="name" width={150} stroke="#8A8FA3" />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
-        <Bar dataKey="value" fill="#EC4899" />
+        <Bar dataKey="value" fill="#F472B6" />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -129,7 +129,7 @@ function RoleDistributionChart({ users }) {
     });
 
     const chartData = Object.entries(grouped)
-      .map(([role, count]) => ({ name: role, value: count, fill: COLORS[role] || '#6B7280' }));
+      .map(([role, count]) => ({ name: role, value: count, fill: COLORS[role] || '#64748B' }));
 
     setData(chartData);
   }, [users]);
@@ -143,8 +143,8 @@ function RoleDistributionChart({ users }) {
           ))}
         </Pie>
         <Tooltip 
-          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-          itemStyle={{ color: '#f8fafc' }}
+          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
+          itemStyle={{ color: '#F4F5F9' }}
         />
         <Legend />
       </PieChart>

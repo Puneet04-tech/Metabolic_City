@@ -71,6 +71,16 @@ function H3Map({ cells, mode, threshold, onSelect }) {
     };
   }, [node]);
 
+  // Keep the Leaflet viewport in sync with the (resizable) map container
+  useEffect(() => {
+    if (!node || !mapRef.current) return undefined;
+    const observer = new ResizeObserver(() => {
+      if (mapRef.current) mapRef.current.invalidateSize({ animate: false });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
+
   // Update polygon layers when cells/mode/threshold change
   useEffect(() => {
     console.log('H3Map cells update:', cells?.length);
@@ -89,7 +99,7 @@ function H3Map({ cells, mode, threshold, onSelect }) {
     cells.forEach((cell, index) => {
       const value = cellScore(cell, mode);
       const band = cellBand(value, threshold);
-      const color = band === 'critical' ? '#c8392b' : band === 'warning' ? '#c58a00' : '#287c61';
+      const color = band === 'critical' ? '#FF5C5C' : band === 'warning' ? '#FFB020' : '#2DD4A7';
 
       let boundary;
       try {
@@ -102,7 +112,7 @@ function H3Map({ cells, mode, threshold, onSelect }) {
       const polygon = L.polygon(boundary, {
         color: color,
         fillColor: color,
-        fillOpacity: band === 'critical' ? 0.65 : 0.55,
+        fillOpacity: band === 'critical' ? 0.55 : 0.4,
         weight: band === 'critical' ? 4 : 3,
         opacity: 1,
       }).addTo(layerGroupRef.current);
@@ -118,10 +128,10 @@ function H3Map({ cells, mode, threshold, onSelect }) {
         onSelect(cell);
       });
       polygon.on('mouseover', (e) => {
-        e.target.setStyle({ weight: 6, fillOpacity: 0.85 });
+        e.target.setStyle({ weight: 6, fillOpacity: 0.75 });
       });
       polygon.on('mouseout', (e) => {
-        e.target.setStyle({ weight: band === 'critical' ? 4 : 3, fillOpacity: band === 'critical' ? 0.65 : 0.55 });
+        e.target.setStyle({ weight: band === 'critical' ? 4 : 3, fillOpacity: band === 'critical' ? 0.55 : 0.4 });
       });
 
       layers.push(polygon);
