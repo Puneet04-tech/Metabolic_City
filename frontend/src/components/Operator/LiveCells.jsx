@@ -61,6 +61,14 @@ function LiveCells({ cells, mode, threshold, onSelect, compact = false }) {
         const trendColor = trend === 'SURGING' || trend === 'RISING' ? 'var(--error)' : trend === 'DE-ESCALATING' ? 'var(--success)' : 'var(--text-muted)';
         const history = Array.isArray(cell.history) ? cell.history.slice(-6) : [];
         const historyValues = history.map((h) => Number(h.compositeRisk) || 0);
+        
+        // Data quality indicators
+        const confidence = Math.round((cell.confidence || 1) * 100);
+        const confidenceColor = confidence >= 80 ? 'var(--success)' : confidence >= 50 ? 'var(--warning)' : 'var(--error)';
+        const telemetryStats = cell.telemetryStats || {};
+        const hasTransit = telemetryStats.transitEventsCount > 0;
+        const hasWeather = telemetryStats.weatherEventsCount > 0;
+        const hasCitizen = telemetryStats.citizenEventsCount > 0;
 
         return (
           <button
@@ -77,10 +85,20 @@ function LiveCells({ cells, mode, threshold, onSelect, compact = false }) {
             <MiniSpark values={historyValues} color={band === 'critical' ? 'var(--error)' : band === 'warning' ? 'var(--warning)' : 'var(--success)'} />
             <small>
               Rc {cell.compositeRisk.toFixed(2)} · M {cell.scores?.mobility?.toFixed(1) ?? '0.0'} / C {cell.scores?.climate?.toFixed(1) ?? '0.0'} / V {cell.scores?.vulnerability?.toFixed(1) ?? '0.0'}
-              {cell.isDegraded ? ' / DEGRADED' : ''}
+              {cell.isDegraded ? ` / ${cell.degradationStatus || 'INSUFFICIENT_DATA'}` : ''}
+            </small>
+            <small className="data-quality">
+              <span style={{ color: confidenceColor }}>Confidence: {confidence}%</span>
+              {hasTransit && <span> · Transit: ✓</span>}
+              {hasWeather && <span> · Weather: ✓</span>}
+              {hasCitizen && <span> · Citizen: ✓</span>}
+              {!hasTransit && !hasWeather && !hasCitizen && <span> · No data sources</span>}
+            </small>
+            <small className="data-quality">
+              Updated: {new Date(cell.lastUpdated).toLocaleTimeString()}
             </small>
             <div className="cell-card-foot">
-              <span className="pill" style={{ borderColor: trendColor, color: trendColor }}>{trend}</span>
+              <span className="pill" style={{ borderColor: trendColor, color: trendColor }}>{cell.trendDisplay || trend}</span>
               {cell.riskVelocity != null && (
                 <span className="cell-velocity">
                   {cell.riskVelocity > 0 ? '+' : ''}{cell.riskVelocity}/h

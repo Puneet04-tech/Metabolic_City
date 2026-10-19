@@ -32,6 +32,10 @@ const spatialCellSchema = new mongoose.Schema(
       enum: ['SURGING', 'RISING', 'STABLE', 'DE-ESCALATING'],
       default: 'STABLE',
     },
+    trendDisplay: {
+      type: String,
+      default: 'Stable (no history)',
+    },
     riskVelocity: { type: Number, default: 0 },
     confidence: { type: Number, min: 0, max: 1, default: 1.0 },
     cascadeRisk: { type: Number, min: 0, max: 10, default: 0 },
@@ -48,6 +52,11 @@ const spatialCellSchema = new mongoose.Schema(
     anomalyReason: { type: String, default: null },
     isDegraded: { type: Boolean, default: true },
     degradationReasons: [String],
+    degradationStatus: {
+      type: String,
+      enum: ['HEALTHY', 'NO_MOBILITY_DATA', 'NO_CLIMATE_DATA', 'NO_VULNERABILITY_DATA', 'SPARSE_MOBILITY', 'SPARSE_CLIMATE'],
+      default: 'HEALTHY',
+    },
     history: [
       {
         compositeRisk: Number,

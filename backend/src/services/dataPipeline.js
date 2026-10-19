@@ -1,4 +1,4 @@
-import { fetchWeatherForAllCities, getWeatherSnapshot, weatherToTelemetry } from './weatherService.js';
+import { fetchWeatherForAllCities, getWeatherSnapshot, weatherToTelemetry, generateSyntheticWeather } from './weatherService.js';
 import { generateTransitTelemetryEvents } from './transitService.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { processTelemetryToCells, recalculateAllActiveCells, normalizeCoordinates } from '../engine/risk.js';
@@ -12,7 +12,7 @@ let pipelineRunning = false;
 let scheduledPipelineHandle = null;
 
 /**
- * Run the data pipeline:
+ * Run the data pipeline with retry logic and partial success handling
  * 1. Fetch weather for all cities
  * 2. Generate transit telemetry based on weather
  * 3. Process telemetry into spatial cells
@@ -29,16 +29,50 @@ export async function runDataPipeline() {
 
   try {
     const cities = getConfiguredCityNames();
-    // Step 1: Fetch weather for all cities
+    
+    // Step 1: Fetch weather for all cities with retry logic
     console.log('Fetching weather data for all cities...');
-    const weatherData = await fetchWeatherForAllCities();
+    let weatherData;
+    let weatherRetryCount = 0;
+    const maxWeatherRetries = 3;
+    
+    while (weatherRetryCount < maxWeatherRetries) {
+      try {
+        weatherData = await fetchWeatherForAllCities();
+        const successfulCities = Object.keys(weatherData).filter(city => weatherData[city] !== null);
+        if (successfulCities.length > 0) {
+          console.log(`[pipeline] Weather fetch successful for ${successfulCities.length}/${cities.length} cities`);
+          break;
+        }
+        weatherRetryCount++;
+        if (weatherRetryCount < maxWeatherRetries) {
+          console.log(`[pipeline] Weather fetch attempt ${weatherRetryCount + 1} failed, retrying in 5 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      } catch (error) {
+        weatherRetryCount++;
+        console.error(`[pipeline] Weather fetch attempt ${weatherRetryCount + 1} failed:`, error.message);
+        if (weatherRetryCount < maxWeatherRetries) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      }
+    }
+    
+    if (!weatherData || Object.keys(weatherData).filter(city => weatherData[city] !== null).length === 0) {
+      console.warn('[pipeline] All weather fetch attempts failed, using synthetic fallback');
+      weatherData = {};
+      for (const cityName of cities) {
+        weatherData[cityName] = null; // Will trigger synthetic fallback in transit generation
+      }
+    }
     
     for (const cityName of Object.keys(weatherData)) {
       if (weatherData[cityName]) {
         const snapshot = getWeatherSnapshot(weatherData[cityName]);
-        console.log(`  ${cityName}: ${snapshot.temperatureC ?? 'unknown'}C, ${snapshot.rainMmHr ?? 0}mm rain`);
+        const isSynthetic = weatherData[cityName].synthetic || false;
+        console.log(`  ${cityName}: ${snapshot.temperatureC ?? 'unknown'}C, ${snapshot.rainMmHr ?? 0}mm rain${isSynthetic ? ' (synthetic)' : ''}`);
       } else {
-        console.log(`  ${cityName}: Failed to fetch weather`);
+        console.log(`  ${cityName}: Failed to fetch weather, will use synthetic fallback`);
       }
     }
 
@@ -50,14 +84,17 @@ export async function runDataPipeline() {
 
     for (const cityName of cities) {
       const weather = weatherData[cityName];
-      if (!weather) {
-        console.log(`  Skipping ${cityName} - no weather data`);
+      // Use synthetic weather if API failed
+      const actualWeather = weather || generateSyntheticWeather(cityName);
+      
+      if (!actualWeather) {
+        console.log(`  Skipping ${cityName} - no weather data (even synthetic failed)`);
         failedCities.push(cityName);
         continue;
       }
 
       // Generate weather telemetry
-      const weatherEvent = weatherToTelemetry(cityName, weather);
+      const weatherEvent = weatherToTelemetry(cityName, actualWeather);
       const cityCoords = getCity(cityName);
       const weatherNorm = normalizeCoordinates(cityCoords.lat, cityCoords.lon);
       Object.assign(weatherEvent, weatherNorm);
@@ -65,7 +102,7 @@ export async function runDataPipeline() {
       successfulCityCodes.push(cityCoords.code);
 
       // Generate transit telemetry
-      const transitEvents = generateTransitTelemetryEvents(cityName, weather, 30);
+      const transitEvents = generateTransitTelemetryEvents(cityName, actualWeather, 30);
       for (const event of transitEvents) {
         const transitNorm = normalizeCoordinates(event.latitude, event.longitude);
         Object.assign(event, transitNorm);

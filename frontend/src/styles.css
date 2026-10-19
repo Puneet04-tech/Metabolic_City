@@ -993,6 +993,12 @@ textarea::placeholder {
   margin-top: 4px;
 }
 
+.cell-card .data-quality {
+  color: var(--primary);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
 /* Analytics Charts Styles */
 .charts-section {
   margin-top: 32px;

@@ -21,8 +21,66 @@ function getH3Index(lat, lon, res = 8) {
 }
 
 /**
+ * Generate synthetic weather data as fallback when API fails
+ * Uses time-of-day patterns and seasonal variations
+ */
+export function generateSyntheticWeather(cityName) {
+  const city = getCity(cityName);
+  const now = new Date();
+  const hour = now.getHours();
+  
+  // Time-of-day temperature pattern
+  let baseTemp = 25; // Base temperature
+  if (hour >= 6 && hour < 12) baseTemp += 3; // Morning warming
+  else if (hour >= 12 && hour < 17) baseTemp += 5; // Afternoon peak
+  else if (hour >= 17 && hour < 21) baseTemp += 2; // Evening cooling
+  else baseTemp -= 2; // Night cooling
+  
+  // Add random variation (-2 to +2 degrees)
+  const tempVariation = (Math.random() * 4) - 2;
+  const temperatureC = Number((baseTemp + tempVariation).toFixed(1));
+  
+  // Humidity (higher in morning, lower in afternoon)
+  const baseHumidity = hour >= 6 && hour < 12 ? 75 : 50;
+  const humidityPct = Number((baseHumidity + (Math.random() * 20 - 10)).toFixed(0));
+  
+  // Precipitation (10% chance of rain)
+  const hasRain = Math.random() < 0.1;
+  const rainMmHr = hasRain ? Number((Math.random() * 5).toFixed(1)) : 0;
+  
+  // Wind speed
+  const windSpeed10m = Number((5 + Math.random() * 10).toFixed(1));
+  const windGusts10m = Number((windSpeed10m + Math.random() * 5).toFixed(1));
+  
+  // Visibility (reduced with rain)
+  const visibilityM = hasRain ? Number((1000 + Math.random() * 3000).toFixed(0)) : 10000;
+  
+  // Weather code (simplified)
+  let weatherCode = 0; // Clear
+  if (hasRain) weatherCode = 61; // Rain
+  else if (humidityPct > 80) weatherCode = 1; // Cloudy
+  
+  return {
+    current: {
+      temperature_2m: temperatureC,
+      relative_humidity_2m: humidityPct,
+      precipitation: rainMmHr,
+      weather_code: weatherCode,
+      wind_speed_10m: windSpeed10m,
+      wind_gusts_10m: windGusts10m,
+    },
+    hourly: {
+      visibility: [visibilityM],
+    },
+    synthetic: true, // Mark as synthetic
+    generatedAt: now.toISOString(),
+  };
+}
+
+/**
  * Fetch current weather data for a city using Open-Meteo API
  * This function is wrapped by circuit breaker for reliability
+ * Falls back to synthetic data if API fails
  */
 export async function fetchWeatherForCity(cityName) {
   const city = getCity(cityName);
@@ -47,11 +105,19 @@ export async function fetchWeatherForCity(cityName) {
     try {
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
+        console.warn(`[weather] Open-Meteo API returned ${response.status} for ${cityName} (attempt ${attempt + 1}/${OPENMETEO_RETRIES + 1})`);
+        if (attempt === OPENMETEO_RETRIES) {
+          console.warn(`[weather] All retries exhausted for ${cityName}, using synthetic fallback`);
+          return generateSyntheticWeather(cityName);
+        }
         throw new Error(`Open-Meteo API returned ${response.status}`);
       }
-      return response.json();
+      const data = await response.json();
+      console.log(`[weather] Successfully fetched weather for ${cityName} (attempt ${attempt + 1})`);
+      return data;
     } catch (error) {
       lastError = error;
+      console.warn(`[weather] Attempt ${attempt + 1} failed for ${cityName}:`, error.message);
       if (attempt < OPENMETEO_RETRIES) {
         await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
       }
@@ -60,8 +126,9 @@ export async function fetchWeatherForCity(cityName) {
     }
   }
 
-  console.error(`Error fetching weather for ${cityName}:`, lastError.message);
-  throw lastError;
+  console.error(`[weather] All attempts failed for ${cityName}:`, lastError.message);
+  console.warn(`[weather] Using synthetic fallback for ${cityName} due to error`);
+  return generateSyntheticWeather(cityName);
 }
 
 export async function fetchWeatherForAllCities() {
@@ -71,7 +138,8 @@ export async function fetchWeatherForAllCities() {
       results[cityName] = await fetchWeatherForCity(cityName);
     } catch (error) {
       console.error(`Failed to fetch weather for ${cityName}:`, error.message);
-      results[cityName] = null;
+      console.warn(`[weather] Using synthetic fallback for ${cityName} due to error`);
+      results[cityName] = generateSyntheticWeather(cityName);
     }
   }
   return results;
