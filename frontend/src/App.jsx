@@ -17,7 +17,7 @@ const OperatorConsole = lazy(() => import('./pages/OperatorConsole.jsx'));
 const FieldTasks = lazy(() => import('./pages/FieldTasks.jsx'));
 const FieldTaskDetail = lazy(() => import('./pages/FieldTaskDetail.jsx'));
 const AdminConsole = lazy(() => import('./components/Admin/AdminConsole.jsx'));
-const Analytics = lazy(() => import('./components/Analytics/Analytics.jsx'));
+const Analytics = lazy(() => import('./pages/Analytics.jsx'));
 const RoleHome = lazy(() => import('./components/Shared/RoleHome.jsx'));
 const CitizenReport = lazy(() => import('./pages/CitizenReport.jsx'));
 const Gallery = import.meta.env.DEV ? lazy(() => import('./components/gallery/Gallery.jsx')) : null;

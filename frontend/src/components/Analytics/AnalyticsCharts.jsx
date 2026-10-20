@@ -1,251 +1,309 @@
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { memo, useMemo } from 'react';
-import { apiRequest } from '../../api.js';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Label,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import ChartFrame from './ChartFrame';
+import { getChartTheme } from '../../lib/chartTheme.js';
+import styles from './AnalyticsCharts.module.css';
 
-const COLORS = {
-  CRITICAL: '#FF5C5C',
-  HIGH: '#FFB020',
-  MODERATE: '#22D3EE',
-  LOW: '#60A5FA',
-  APPROVED: '#2DD4A7',
-  RESOLVED: '#34D399',
-  DISPATCHED: '#8B5CF6',
-  ACKNOWLEDGED: '#A78BFA',
-  ARRIVED: '#F472B6',
-  DETECTED: '#64748B',
+const DAY_FORMAT = { day: '2-digit', month: 'short' };
+
+const dayKey = (value) => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-function IncidentTrendChart({ incidents }) {
+const dayLabel = (key) =>
+  new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { ...DAY_FORMAT, year: 'numeric' });
+
+/** Incidents per day in the selected range. */
+export const IncidentsPerDayChart = memo(function IncidentsPerDayChart({ incidents }) {
+  const theme = getChartTheme();
+
   const data = useMemo(() => {
-    // Group incidents by date
-    const grouped = {};
-    incidents.forEach(incident => {
-      const date = new Date(incident.detectedAt).toLocaleDateString();
-      grouped[date] = (grouped[date] || 0) + 1;
-    });
-
-    const chartData = Object.entries(grouped)
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    return chartData;
+    const counts = new Map();
+    for (const incident of incidents) {
+      const key = dayKey(incident.detectedAt || incident.createdAt);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, count]) => ({ day, label: dayLabel(day), count }));
   }, [incidents]);
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-        <XAxis dataKey="date" stroke="#8A8FA3" />
-        <YAxis stroke="#8A8FA3" />
-        <Tooltip 
-          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
-          itemStyle={{ color: '#F4F5F9' }}
-        />
-        <Legend />
-        <Line type="monotone" dataKey="count" stroke="#60A5FA" strokeWidth={2} dot={{ fill: '#60A5FA' }} name="Incidents" />
-      </LineChart>
-    </ResponsiveContainer>
+    <ChartFrame
+      title="Incidents per day"
+      question="How many incidents were raised each day in this range?"
+      columns={[
+        { key: 'label', header: 'Day' },
+        { key: 'count', header: 'Incidents', align: 'right' },
+      ]}
+      rows={data}
+      emptyTitle="No incidents in this range"
+      emptyDescription="Widen the date range or clear the status filter."
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid.stroke} vertical={false} />
+          <XAxis dataKey="label" stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} />
+          <YAxis allowDecimals={false} stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} width={36}>
+            <Label value="Incidents" position="insideLeft" angle={-90} style={theme.axis.tick} />
+          </YAxis>
+          <Tooltip {...theme.tooltip} cursor={theme.tooltip.cursor} />
+          <Bar dataKey="count" name="Incidents" fill={theme.colors.accent} radius={[4, 4, 0, 0]} maxBarSize={36} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartFrame>
   );
-}
+});
 
-function RiskDistributionChart({ incidents }) {
+/**
+ * The critical cell trend, moved here from the console.
+ * It counts the incidents that were raised at or above the critical threshold.
+ */
+export const CriticalIncidentsPerDayChart = memo(function CriticalIncidentsPerDayChart({ incidents, threshold }) {
+  const theme = getChartTheme();
+
   const data = useMemo(() => {
-    // Group by risk level
-    const grouped = { CRITICAL: 0, HIGH: 0, MODERATE: 0, LOW: 0 };
-    incidents.forEach(incident => {
-      const risk = incident.riskScore || 0;
-      if (risk >= 7) grouped.CRITICAL++;
-      else if (risk >= 5) grouped.HIGH++;
-      else if (risk >= 3) grouped.MODERATE++;
-      else grouped.LOW++;
-    });
-
-    const chartData = Object.entries(grouped)
-      .filter(([_, count]) => count > 0)
-      .map(([level, count]) => ({ name: level, value: count, fill: COLORS[level] }));
-
-    return chartData;
-  }, [incidents]);
+    const counts = new Map();
+    for (const incident of incidents) {
+      if (Number(incident.riskScore) < threshold) continue;
+      const key = dayKey(incident.detectedAt || incident.createdAt);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, count]) => ({ day, label: dayLabel(day), count }));
+  }, [incidents, threshold]);
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={80} label>
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.fill} />
+    <ChartFrame
+      title="Critical incidents per day"
+      question={`How many incidents at or above the critical threshold (${threshold}) were raised each day?`}
+      columns={[
+        { key: 'label', header: 'Day' },
+        { key: 'count', header: 'Critical incidents', align: 'right' },
+      ]}
+      rows={data}
+      emptyTitle="No critical incidents in this range"
+      emptyDescription="Nothing in this period reached the critical threshold."
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid.stroke} vertical={false} />
+          <XAxis dataKey="label" stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} />
+          <YAxis allowDecimals={false} stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} width={36}>
+            <Label value="Incidents" position="insideLeft" angle={-90} style={theme.axis.tick} />
+          </YAxis>
+          <Tooltip {...theme.tooltip} cursor={theme.tooltip.cursor} />
+          <Line
+            type="monotone"
+            dataKey="count"
+            name="Critical incidents"
+            stroke={theme.colors.critical}
+            strokeWidth={2}
+            dot={{ fill: theme.colors.critical, r: 3 }}
+            activeDot={{ r: 5 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartFrame>
+  );
+});
+
+const PIPELINE_ORDER = ['APPROVED', 'DISPATCHED', 'ACKNOWLEDGED', 'ARRIVED', 'RESOLVED'];
+const PIPELINE_LABELS = {
+  APPROVED: 'Approved',
+  DISPATCHED: 'Dispatched',
+  ACKNOWLEDGED: 'Accepted',
+  ARRIVED: 'On site',
+  RESOLVED: 'Resolved',
+};
+
+/** Where the incidents sit in the response pipeline — a stacked proportion bar. */
+export const ResponsePipelineChart = memo(function ResponsePipelineChart({ statusCounts }) {
+  const rows = useMemo(() => {
+    const counts = new Map((statusCounts || []).map((entry) => [entry._id, entry.count]));
+    const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
+    return PIPELINE_ORDER.filter((status) => counts.get(status)).map((status) => ({
+      status,
+      label: PIPELINE_LABELS[status],
+      count: counts.get(status),
+      share: total ? Math.round((counts.get(status) / total) * 100) : 0,
+    }));
+  }, [statusCounts]);
+
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+
+  return (
+    <ChartFrame
+      title="Response pipeline"
+      question="Where do the incidents sit in the response pipeline?"
+      columns={[
+        { key: 'label', header: 'Stage' },
+        { key: 'count', header: 'Incidents', align: 'right' },
+        { key: 'share', header: 'Share', align: 'right' },
+      ]}
+      rows={rows}
+      emptyTitle="No incidents in this range"
+      emptyDescription="Nothing has reached the response pipeline yet."
+    >
+      <div className={styles.pipeline}>
+        <div className={styles.pipelineBar} role="img" aria-label={`${total} incidents across ${rows.length} stages`}>
+          {rows.map((row, index) => (
+            <span
+              key={row.status}
+              className={styles.pipelineSegment}
+              data-tone={index % 3}
+              style={{ flexGrow: row.count / total }}
+              title={`${row.label}: ${row.count} (${row.share}%)`}
+            />
           ))}
-        </Pie>
-        <Tooltip 
-          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
-          itemStyle={{ color: '#F4F5F9' }}
-        />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+        </div>
+        <ul className={styles.pipelineLegend}>
+          {rows.map((row) => (
+            <li key={row.status}>
+              <span className={styles.pipelineLabel}>{row.label}</span>
+              <span className={styles.pipelineValue}>{row.count}</span>
+              <span className={styles.pipelineShare}>{row.share}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </ChartFrame>
   );
-}
+});
 
-function StatusBreakdownChart({ incidents }) {
-  const data = useMemo(() => {
-    // Group by status
-    const grouped = {};
-    incidents.forEach(incident => {
-      grouped[incident.status] = (grouped[incident.status] || 0) + 1;
-    });
+/** Telemetry readings per hour, split by source. */
+export const TelemetryByHourChart = memo(function TelemetryByHourChart({ telemetryData }) {
+  const theme = getChartTheme();
 
-    const chartData = Object.entries(grouped)
-      .map(([status, count]) => ({ 
-        name: status, 
-        value: count, 
-        fill: COLORS[status] || '#64748B' 
-      }));
+  const { rows, sources } = useMemo(() => {
+    const byHour = new Map();
+    const sourceNames = new Set();
 
-    return chartData;
-  }, [incidents]);
+    for (const entry of telemetryData?.data || []) {
+      const hour = entry._id?.hour;
+      const source = entry._id?.sourceType || 'OTHER';
+      sourceNames.add(source);
+      if (!byHour.has(hour)) byHour.set(hour, { hour, total: 0 });
+      const bucket = byHour.get(hour);
+      bucket[source] = (bucket[source] || 0) + entry.count;
+      bucket.total += entry.count;
+    }
 
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} layout="vertical">
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-        <XAxis type="number" stroke="#8A8FA3" />
-        <YAxis type="category" dataKey="name" width={100} stroke="#8A8FA3" />
-        <Tooltip 
-          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
-          itemStyle={{ color: '#F4F5F9' }}
-        />
-        <Legend />
-        <Bar dataKey="value" />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function RiskLevelAreaChart({ incidents }) {
-  const data = useMemo(() => {
-    // Group by date and average risk
-    const grouped = {};
-    incidents.forEach(incident => {
-      const date = new Date(incident.detectedAt).toLocaleDateString();
-      if (!grouped[date]) {
-        grouped[date] = { totalRisk: 0, count: 0 };
-      }
-      grouped[date].totalRisk += incident.riskScore || 0;
-      grouped[date].count += 1;
-    });
-
-    const chartData = Object.entries(grouped)
-      .map(([date, data]) => ({
-        date,
-        avgRisk: data.count > 0 ? data.totalRisk / data.count : 0,
-      }))
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    return chartData;
-  }, [incidents]);
-
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-        <XAxis dataKey="date" stroke="#8A8FA3" />
-        <YAxis stroke="#8A8FA3" />
-        <Tooltip 
-          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
-          itemStyle={{ color: '#F4F5F9' }}
-        />
-        <Legend />
-        <Area type="monotone" dataKey="avgRisk" stroke="#FFB020" fill="#FFB020" fillOpacity={0.16} name="Average Risk" />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
-function TelemetryVolumeChart({ telemetryData }) {
-  const data = useMemo(() => {
-    if (!telemetryData || !telemetryData.data) return [];
-
-    // Group by hour
-    const grouped = {};
-    telemetryData.data.forEach(item => {
-      const hour = item._id.hour;
-      const source = item._id.sourceType;
-      if (!grouped[hour]) {
-        grouped[hour] = 0;
-      }
-      grouped[hour] += item.count;
-    });
-
-    const chartData = Object.entries(grouped)
-      .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
-      .sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
-
-    return chartData;
+    return {
+      rows: [...byHour.values()].sort((a, b) => a.hour - b.hour).map((bucket) => ({
+        hour: `${String(bucket.hour).padStart(2, '0')}:00`,
+        ...bucket,
+      })),
+      sources: [...sourceNames].sort(),
+    };
   }, [telemetryData]);
 
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-        <XAxis dataKey="hour" stroke="#8A8FA3" />
-        <YAxis stroke="#8A8FA3" />
-        <Tooltip 
-          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
-          itemStyle={{ color: '#F4F5F9' }}
-        />
-        <Legend />
-        <Bar dataKey="count" fill="#8B5CF6" name="Telemetry Events" />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function ResolutionTimeChart({ incidents }) {
-  const data = useMemo(() => {
-    // Calculate resolution time by status
-    const grouped = {};
-    incidents.forEach(incident => {
-      if (incident.resolvedAt && incident.detectedAt) {
-        const hours = (new Date(incident.resolvedAt) - new Date(incident.detectedAt)) / (1000 * 60 * 60);
-        const bucket = hours < 1 ? '< 1h' : hours < 6 ? '1-6h' : hours < 24 ? '6-24h' : '> 24h';
-        grouped[bucket] = (grouped[bucket] || 0) + 1;
-      }
-    });
-
-    const chartData = Object.entries(grouped)
-      .map(([bucket, count]) => ({ name: bucket, value: count }));
-
-    return chartData;
-  }, [incidents]);
+  const palette = [
+    theme.colors.accent,
+    theme.colors.normal,
+    theme.colors.caution,
+    theme.colors.critical,
+    theme.colors.neutral,
+  ];
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-        <XAxis dataKey="name" stroke="#8A8FA3" />
-        <YAxis stroke="#8A8FA3" />
-        <Tooltip 
-          contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
-          itemStyle={{ color: '#F4F5F9' }}
-        />
-        <Legend />
-        <Bar dataKey="value" fill="#2DD4A7" name="Incidents" />
-      </BarChart>
-    </ResponsiveContainer>
+    <ChartFrame
+      title="Telemetry per hour"
+      question="How many readings arrived each hour, and from which source?"
+      columns={[
+        { key: 'hour', header: 'Hour' },
+        ...sources.map((source) => ({ key: source, header: source, align: 'right' })),
+        { key: 'total', header: 'Total', align: 'right' },
+      ]}
+      rows={rows}
+      emptyTitle="No telemetry in the last 24 hours"
+      emptyDescription="The ingest pipeline has not reported any readings."
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid.stroke} vertical={false} />
+          <XAxis dataKey="hour" stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} />
+          <YAxis allowDecimals={false} stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} width={36}>
+            <Label value="Readings" position="insideLeft" angle={-90} style={theme.axis.tick} />
+          </YAxis>
+          <Tooltip {...theme.tooltip} cursor={theme.tooltip.cursor} />
+          <Legend wrapperStyle={{ fontSize: 12, color: theme.colors.neutral }} />
+          {sources.map((source, index) => (
+            <Bar
+              key={source}
+              dataKey={source}
+              stackId="telemetry"
+              name={source}
+              fill={palette[index % palette.length]}
+              maxBarSize={28}
+            />
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartFrame>
   );
-}
+});
 
-const MemoIncidentTrendChart = memo(IncidentTrendChart);
-const MemoRiskDistributionChart = memo(RiskDistributionChart);
-const MemoStatusBreakdownChart = memo(StatusBreakdownChart);
-const MemoRiskLevelAreaChart = memo(RiskLevelAreaChart);
-const MemoTelemetryVolumeChart = memo(TelemetryVolumeChart);
-const MemoResolutionTimeChart = memo(ResolutionTimeChart);
+/** The risk band of every cell that reported in the last day. */
+export const CellRiskBandsChart = memo(function CellRiskBandsChart({ cells }) {
+  const theme = getChartTheme();
 
-export {
-  MemoIncidentTrendChart as IncidentTrendChart,
-  MemoRiskDistributionChart as RiskDistributionChart,
-  MemoStatusBreakdownChart as StatusBreakdownChart,
-  MemoRiskLevelAreaChart as RiskLevelAreaChart,
-  MemoTelemetryVolumeChart as TelemetryVolumeChart,
-  MemoResolutionTimeChart as ResolutionTimeChart,
-};
+  const rows = useMemo(() => {
+    const counts = { critical: 0, caution: 0, normal: 0 };
+    for (const cell of cells || []) {
+      if (cell.riskLevel === 'CRITICAL') counts.critical += 1;
+      else if (cell.riskLevel === 'HIGH') counts.caution += 1;
+      else counts.normal += 1;
+    }
+    return [
+      { band: 'critical', label: 'Critical', count: counts.critical, color: theme.colors.critical },
+      { band: 'caution', label: 'Caution', count: counts.caution, color: theme.colors.caution },
+      { band: 'normal', label: 'Normal', count: counts.normal, color: theme.colors.normal },
+    ].filter((row) => row.count > 0);
+  }, [cells, theme.colors]);
+
+  return (
+    <ChartFrame
+      title="Cells by risk band"
+      question="How many cells that reported in the last day are in each risk band?"
+      columns={[
+        { key: 'label', header: 'Band' },
+        { key: 'count', header: 'Cells', align: 'right' },
+      ]}
+      rows={rows}
+      emptyTitle="No cells reported in the last day"
+      emptyDescription="The risk engine has not scored a cell in the last 24 hours."
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={rows} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid.stroke} horizontal={false} />
+          <XAxis type="number" allowDecimals={false} stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} />
+          <YAxis type="category" dataKey="label" stroke={theme.axis.stroke} tick={theme.axis.tick} tickLine={false} width={80}>
+            <Label value="Cells" position="insideLeft" angle={-90} style={theme.axis.tick} />
+          </YAxis>
+          <Tooltip {...theme.tooltip} cursor={theme.tooltip.cursor} />
+          <Bar dataKey="count" name="Cells" radius={[0, 4, 4, 0]} maxBarSize={28}>
+            {rows.map((row) => (
+              <Cell key={row.band} fill={row.color} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartFrame>
+  );
+});

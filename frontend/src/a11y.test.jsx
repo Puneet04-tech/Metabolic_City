@@ -22,6 +22,7 @@ vi.mock('./lib/fieldOutbox.js', () => ({
 
 const { default: FieldTasks } = await import('./pages/FieldTasks.jsx');
 const { default: CitizenReport } = await import('./pages/CitizenReport.jsx');
+const { default: Analytics } = await import('./pages/Analytics.jsx');
 
 /**
  * Automated accessibility check of the migrated surfaces.
@@ -81,6 +82,17 @@ describe('accessibility', () => {
       <MemoryRouter initialEntries={[`/citizen-report?data=${data}`]}>
         <CitizenReport />
       </MemoryRouter>
+    );
+    expect(await check(container)).toEqual([]);
+  });
+
+  it('has no serious or critical violations on the analytics page', async () => {
+    const { container } = render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={['/analytics']}>
+          <Analytics />
+        </MemoryRouter>
+      </ToastProvider>
     );
     expect(await check(container)).toEqual([]);
   });

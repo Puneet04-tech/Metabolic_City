@@ -1,0 +1,62 @@
+.pipeline {
+  display: grid;
+  gap: var(--space-4);
+  height: 100%;
+  align-content: center;
+}
+
+.pipelineBar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-raised);
+}
+
+.pipelineSegment {
+  display: block;
+  min-width: 3px;
+  background: var(--accent);
+}
+
+.pipelineSegment[data-tone='1'] {
+  background: var(--normal);
+}
+
+.pipelineSegment[data-tone='2'] {
+  background: var(--caution);
+}
+
+.pipelineLegend {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pipelineLegend li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px 48px;
+  gap: var(--space-3);
+  align-items: baseline;
+  font-size: var(--text-xs);
+}
+
+.pipelineLabel {
+  color: var(--text-secondary);
+}
+
+.pipelineValue {
+  text-align: right;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+}
+
+.pipelineShare {
+  text-align: right;
+  color: var(--text-muted-secondary);
+  font-variant-numeric: tabular-nums;
+}
