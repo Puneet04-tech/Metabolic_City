@@ -24,6 +24,7 @@ export { default as Select } from './Select/Select';
 export { default as SeverityBadge } from './SeverityBadge/SeverityBadge';
 export { default as Skeleton } from './Skeleton/Skeleton';
 export { default as StatBlock } from './StatBlock/StatBlock';
+export { default as StatusDot } from './StatusDot/StatusDot';
 export { default as Switch } from './Switch/Switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs/Tabs';
 export { ToastProvider, ToastViewport, useToast } from './Toast/Toast';

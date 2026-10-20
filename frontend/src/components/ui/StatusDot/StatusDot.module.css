@@ -1,0 +1,44 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+}
+
+.label {
+  color: var(--text-secondary);
+}
+
+.status[data-status='healthy'] .dot {
+  background: var(--normal);
+  box-shadow: 0 0 8px rgba(47, 191, 143, 0.7);
+}
+
+.status[data-status='healthy'] .label {
+  color: var(--normal-text);
+}
+
+.status[data-status='attention'] .dot {
+  background: var(--caution);
+  box-shadow: 0 0 8px rgba(242, 169, 59, 0.7);
+}
+
+.status[data-status='attention'] .label {
+  color: var(--caution-text);
+}
+
+.status[data-status='critical'] .dot {
+  background: var(--critical);
+  box-shadow: 0 0 8px rgba(240, 82, 79, 0.7);
+}
+
+.status[data-status='critical'] .label {
+  color: var(--critical-text);
+}

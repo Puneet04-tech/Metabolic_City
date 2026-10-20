@@ -1,0 +1,60 @@
+.panel {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+  max-width: 672px;
+}
+
+.header {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+  letter-spacing: -0.015em;
+}
+
+.description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  text-wrap: pretty;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.count {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  display: grid;
+  gap: 1px;
+}
+
+.nameText {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.nameMeta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted-secondary);
+}
+
+.confirmText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

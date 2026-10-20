@@ -8,9 +8,18 @@ import SignIn from './pages/SignIn.jsx';
 import { ToastProvider } from './components/ui/Toast/Toast';
 
 vi.mock('./api.js', () => ({
-  apiRequest: vi.fn(async () => ({ count: 0, incidents: [] })),
+  apiRequest: vi.fn(async (path) => {
+    if (path.includes('/weights')) return { weights: { Wm: 0.4, Wc: 0.4, Wv: 0.2 }, threshold: 7 };
+    if (path.includes('audit-logs')) return { count: 0, logs: [] };
+    if (path.includes('/users')) return { users: [] };
+    if (path.includes('field/tasks')) return { count: 0, incidents: [] };
+    if (path.includes('analytics/summary')) {
+      return { threshold: 7, statusCounts: [], incidents: [], auditLogs: [], metrics: {} };
+    }
+    return { count: 0, incidents: [] };
+  }),
   clearSession: vi.fn(),
-  getStoredUser: () => ({ name: 'Asha Rao', role: 'operator', cityCode: 'CITY-IND-BPL8' }),
+  getStoredUser: () => ({ name: 'Asha Rao', role: 'administrator', cityCode: 'CITY-IND-BPL8' }),
   getNavItems: () => [],
 }));
 
@@ -23,6 +32,7 @@ vi.mock('./lib/fieldOutbox.js', () => ({
 const { default: FieldTasks } = await import('./pages/FieldTasks.jsx');
 const { default: CitizenReport } = await import('./pages/CitizenReport.jsx');
 const { default: Analytics } = await import('./pages/Analytics.jsx');
+const { default: Admin } = await import('./pages/Admin.jsx');
 
 /**
  * Automated accessibility check of the migrated surfaces.
@@ -91,6 +101,17 @@ describe('accessibility', () => {
       <ToastProvider>
         <MemoryRouter initialEntries={['/analytics']}>
           <Analytics />
+        </MemoryRouter>
+      </ToastProvider>
+    );
+    expect(await check(container)).toEqual([]);
+  });
+
+  it('has no serious or critical violations on the admin page', async () => {
+    const { container } = render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={['/admin']}>
+          <Admin />
         </MemoryRouter>
       </ToastProvider>
     );
