@@ -23,6 +23,21 @@ export async function enqueueFieldUpdate(update) {
   });
 }
 
+/** How many updates are still waiting to be sent. */
+export async function getPendingFieldUpdates() {
+  try {
+    const database = await openDatabase();
+    const updates = await new Promise((resolve, reject) => {
+      const request = database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return updates.length;
+  } catch {
+    return 0;
+  }
+}
+
 export async function flushFieldOutbox(apiRequest) {
   const database = await openDatabase();
   const updates = await new Promise((resolve, reject) => {

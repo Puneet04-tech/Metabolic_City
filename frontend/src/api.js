@@ -35,24 +35,29 @@ const canRefreshFor = (path, options) =>
   !options._retried && !path.startsWith('/auth/refresh') && !path.startsWith('/auth/login') && !path.startsWith('/auth/signup');
 
 export async function apiRequest(path, options = {}) {
+  const { auth = true, ...rest } = options;
   const headers = { ...(options.headers || {}) };
   if (options.body && typeof options.body === 'object') {
     headers['Content-Type'] = 'application/json';
   }
 
-  const token = getToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  // `auth: false` is for public endpoints: no token is attached and a 401
+  // never clears the session.
+  if (auth) {
+    const token = getToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   const response = await fetch(`${API_URL}${path}`, {
-    ...options,
+    ...rest,
     headers,
     credentials: 'include',
     body: options.body && typeof options.body === 'object' ? JSON.stringify(options.body) : options.body,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && auth) {
     if (canRefreshFor(path, options) && getToken()) {
       try {
         const refreshResponse = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });

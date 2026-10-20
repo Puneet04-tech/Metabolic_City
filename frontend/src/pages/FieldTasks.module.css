@@ -1,0 +1,41 @@
+.page {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) 96px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.count {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.syncing {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding-bottom: var(--space-8);
+  }
+}

@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../ui/DropdownMenu/DropdownMenu';
-import { Tabs, TabsList, TabsTrigger } from '../../ui/Tabs/Tabs';
 import { roleLabel } from '../../../lib/roles.js';
 import { cn } from '../../ui/cn';
 import styles from './AppShell.module.css';
@@ -60,17 +59,18 @@ export default function AppShell({ title, cityCode, user, navItems = [], activeI
 
       {navItems.length ? (
         <nav className={styles.nav} aria-label="Sections">
-          <Tabs value={activeId ?? ''}>
-            <TabsList>
-              {navItems.map((item) => (
-                <TabsTrigger key={item.id} value={item.id} asChild>
-                  <NavLink to={item.path} className={styles.navLink}>
-                    {item.nav}
-                  </NavLink>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <ul className={styles.navList}>
+            {navItems.map((item) => (
+              <li key={item.id}>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) => cn(styles.navLink, isActive && styles.navLinkActive)}
+                >
+                  {item.nav}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
         </nav>
       ) : null}
 

@@ -14,11 +14,12 @@ import RouteFallback from './components/system/RouteFallback.jsx';
 const SignIn = lazy(() => import('./pages/SignIn.jsx'));
 const SignUp = lazy(() => import('./pages/SignUp.jsx'));
 const OperatorConsole = lazy(() => import('./pages/OperatorConsole.jsx'));
-const FieldConsole = lazy(() => import('./components/Field/FieldConsole.jsx'));
+const FieldTasks = lazy(() => import('./pages/FieldTasks.jsx'));
+const FieldTaskDetail = lazy(() => import('./pages/FieldTaskDetail.jsx'));
 const AdminConsole = lazy(() => import('./components/Admin/AdminConsole.jsx'));
 const Analytics = lazy(() => import('./components/Analytics/Analytics.jsx'));
 const RoleHome = lazy(() => import('./components/Shared/RoleHome.jsx'));
-const CitizenReport = lazy(() => import('./components/Citizen/CitizenReport.jsx'));
+const CitizenReport = lazy(() => import('./pages/CitizenReport.jsx'));
 const Gallery = import.meta.env.DEV ? lazy(() => import('./components/gallery/Gallery.jsx')) : null;
 
 /**
@@ -57,7 +58,7 @@ export default function App() {
           path="/field"
           element={
             <RequireAuth routeId="field">
-              {withFrame('field', <FieldConsole />)}
+              {withFrame('field', <FieldTasks />)}
             </RequireAuth>
           }
         />
@@ -65,7 +66,7 @@ export default function App() {
           path="/field/tasks/:id"
           element={
             <RequireAuth routeId="field-task">
-              {withFrame('field-task', <FieldConsole />)}
+              {withFrame('field-task', <FieldTaskDetail />)}
             </RequireAuth>
           }
         />

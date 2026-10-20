@@ -1,0 +1,67 @@
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: calc(50% + 16px);
+  right: calc(-50% + 16px);
+  height: 1px;
+  background: var(--border);
+}
+
+.step[data-state='done']::after {
+  background: var(--normal);
+}
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+}
+
+.step[data-state='done'] .marker {
+  border-color: var(--normal);
+  background: var(--normal-soft);
+  color: var(--normal-text);
+}
+
+.step[data-state='active'] .marker {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.label {
+  font-size: 10px;
+  text-align: center;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.step[data-state='active'] .label {
+  color: var(--text-primary);
+  font-weight: var(--weight-medium);
+}
