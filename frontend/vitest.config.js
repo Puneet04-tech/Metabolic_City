@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.{js,jsx}'],
+    setupFiles: ['src/test-setup.js'],
     environmentMatchGlobs: [
       // Anything that touches the DOM (Leaflet, Radix, Testing Library) needs jsdom.
       ['src/**/*.dom.test.{js,jsx}', 'jsdom'],

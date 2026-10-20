@@ -1,0 +1,12 @@
+/*
+ * The canvas that paints the H3 cells.
+ * It is created imperatively by Leaflet, so it needs its own module to be
+ * positioned over the tile panes.
+ */
+.canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 450;
+}

@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import * as h3 from 'h3-js';
 import { getMapTheme } from '../../lib/mapTheme.js';
+import styles from './HexLayer.module.css';
 
 /**
  * HexLayer — every H3 cell drawn on one canvas.
@@ -18,7 +19,7 @@ const HexLayer = L.Layer.extend({
     this._selectedIndex = -1;
     this._frame = null;
 
-    this._canvas = L.DomUtil.create('canvas', 'hex-layer');
+    this._canvas = L.DomUtil.create('canvas', styles.canvas);
     this._canvas.setAttribute('aria-hidden', 'true');
     map.getContainer().appendChild(this._canvas);
     this._ctx = this._canvas.getContext('2d');
