@@ -1,0 +1,25 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 20px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge[data-tone='accent'] {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.badge[data-tone='muted'] {
+  color: var(--text-disabled);
+}

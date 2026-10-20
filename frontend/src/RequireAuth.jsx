@@ -1,18 +1,24 @@
 import { useEffect } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { clearSession, getStoredUser, isAuthenticated } from './api.js';
+import { canAccess, getRoute } from './lib/routes.js';
 
-const roleAliases = {
-  operator: ['operator'],
-  field: ['field', 'field_crew'],
-  admin: ['admin', 'administrator'],
-};
-
-export default function RequireAuth({ children, roles = [] }) {
-  const navigate = useNavigate();
+/**
+ * Route guard.
+ *
+ * - Not signed in  -> /login?returnTo=<current path>
+ * - Wrong role     -> /unauthorized
+ *
+ * The allowed roles come from the shared route table, so the guard and the
+ * navigation can never disagree.
+ */
+export default function RequireAuth({ routeId, children }) {
+  const location = useLocation();
+  const route = getRoute(routeId);
   const user = getStoredUser();
-  const allowedRoles = roles.flatMap((role) => roleAliases[role] || role);
 
+  // Inactivity sign-out. The 60-second "stay signed in" prompt is added in
+  // the session-handling phase; the destination is already the login page.
   useEffect(() => {
     if (!isAuthenticated()) return undefined;
 
@@ -21,7 +27,8 @@ export default function RequireAuth({ children, roles = [] }) {
       window.clearTimeout(timeoutId);
       timeoutId = window.setTimeout(() => {
         clearSession();
-        navigate('/?error=inactivity', { replace: true });
+        const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
+        window.location.replace(`/login?error=inactivity&returnTo=${returnTo}`);
       }, 15 * 60 * 1000);
     };
 
@@ -33,14 +40,15 @@ export default function RequireAuth({ children, roles = [] }) {
       window.clearTimeout(timeoutId);
       events.forEach((eventName) => window.removeEventListener(eventName, resetInactivityTimer));
     };
-  }, [navigate]);
+  }, [location.pathname, location.search]);
 
   if (!isAuthenticated()) {
-    return <Navigate to="/" replace />;
+    const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
   }
 
-  if (allowedRoles.length && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/?error=forbidden" replace />;
+  if (!canAccess(route, user.role)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

@@ -1,0 +1,43 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.button:hover {
+  border-color: var(--border);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.value {
+  letter-spacing: 0.01em;
+}
+
+.icon {
+  flex: 0 0 auto;
+  opacity: 0.7;
+}
+
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}

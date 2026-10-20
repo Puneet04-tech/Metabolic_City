@@ -1,0 +1,109 @@
+/*
+ * Metabolic City — design tokens
+ *
+ * Single source of truth for colour, radius, spacing, type, motion and
+ * stacking. This file is the ONLY place raw hex values are allowed;
+ * stylelint's `color-no-hex` rule is disabled for this path.
+ */
+
+:root {
+  /* ---------- Surfaces ---------- */
+  --bg: #0b0f17;
+  --surface: #111826;
+  --surface-raised: #162033;
+  --surface-sunken: #0e1420;
+  --border: #1f2a3d;
+  --border-strong: #2b3a55;
+
+  /* ---------- Text ---------- */
+  --text-primary: #e6eaf2;
+  --text-secondary: #9aa6ba;
+  --text-disabled: #5b677d;
+  --text-on-accent: #06101f;
+  --text-on-status: #ffffff;
+
+  /* ---------- Accent (single) ---------- */
+  --accent: #4c8dff;
+  --accent-hover: #6ba1ff;
+  --accent-active: #3a76e0;
+  --accent-soft: rgba(76, 141, 255, 0.12);
+  --accent-border: rgba(76, 141, 255, 0.36);
+  --accent-text: #7fabff;
+
+  /* ---------- Status (severity only — never decorative) ---------- */
+  --critical: #f0524f;
+  --critical-soft: rgba(240, 82, 79, 0.12);
+  --critical-border: rgba(240, 82, 79, 0.4);
+  --critical-text: #ff807d;
+
+  --caution: #f2a93b;
+  --caution-soft: rgba(242, 169, 59, 0.12);
+  --caution-border: rgba(242, 169, 59, 0.4);
+  --caution-text: #f7c069;
+
+  --normal: #2fbf8f;
+  --normal-soft: rgba(47, 191, 143, 0.12);
+  --normal-border: rgba(47, 191, 143, 0.4);
+  --normal-text: #63d4ae;
+
+  --info: var(--accent);
+  --info-soft: var(--accent-soft);
+  --info-border: var(--accent-border);
+  --info-text: var(--accent-text);
+
+  /* ---------- Radius ---------- */
+  --radius-control: 6px;
+  --radius-card: 8px;
+  --radius-pill: 999px;
+
+  /* ---------- Spacing (4px grid) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ---------- Type ---------- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+  --text-2xs: 12px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ---------- Elevation (one overlay shadow only) ---------- */
+  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  /* ---------- Motion ---------- */
+  --motion-duration: 150ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---------- Stacking ---------- */
+  --z-base: 0;
+  --z-sticky: 50;
+  --z-header: 100;
+  --z-dropdown: 200;
+  --z-drawer: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}

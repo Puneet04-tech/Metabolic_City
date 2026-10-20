@@ -1,0 +1,16 @@
+.content {
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  box-shadow: var(--shadow-overlay);
+  z-index: var(--z-dropdown);
+}
+
+.arrow {
+  fill: var(--surface-raised);
+}

@@ -1,0 +1,33 @@
+{
+  "customSyntax": "postcss-styled-syntax",
+  "ignoreFiles": [
+    "node_modules/**",
+    "dist/**",
+    "src/styles/tokens.css",
+    "src/styles.css"
+  ],
+  "rules": {
+    "color-no-hex": true,
+    "declaration-no-important": true,
+    "declaration-property-value-disallowed-list": [
+      {
+        "backdrop-filter": ["/.*/"]
+      },
+      {
+        "-webkit-backdrop-filter": ["/.*/"]
+      },
+      {
+        "background": ["/gradient/i"]
+      },
+      {
+        "background-image": ["/gradient/i"]
+      },
+      {
+        "filter": ["/blur\\(/i", "/drop-shadow\\(/i"]
+      },
+      {
+        "text-shadow": ["/.*/"]
+      }
+    ]
+  }
+}

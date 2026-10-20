@@ -1,71 +1,105 @@
-import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Route, Routes } from 'react-router-dom';
+import ErrorBoundary from './ErrorBoundary';
+import RequireAuth from './RequireAuth';
+import useDocumentMeta from './lib/useDocumentMeta.js';
+import { getRoute } from './lib/routes.js';
 import HomePage from './components/HomePage/HomePage.jsx';
-import AuthForm from './components/Auth/AuthForm.jsx';
-import OperatorConsole from './components/Operator/OperatorConsole.jsx';
-import FieldConsole from './components/Field/FieldConsole.jsx';
-import AdminConsole from './components/Admin/AdminConsole.jsx';
-import Analytics from './components/Analytics/Analytics.jsx';
-import RoleHome from './components/Shared/RoleHome.jsx';
-import RequireAuth from './RequireAuth.jsx';
-import CitizenReport from './components/Citizen/CitizenReport.jsx';
+import NotFound from './pages/NotFound.jsx';
+import Unauthorized from './pages/Unauthorized.jsx';
+import Spinner from './components/ui/Spinner/Spinner.jsx';
+import RouteFallback from './components/system/RouteFallback.jsx';
 
-// Apply the OLED spatial interface theme to the document
-const applyTheme = () => {
-  document.body.classList.add('neon-theme');
-  document.documentElement.style.colorScheme = 'dark';
-};
+// Route-level code splitting: each surface is fetched when it is first opened.
+const AuthForm = lazy(() => import('./components/Auth/AuthForm.jsx'));
+const OperatorConsole = lazy(() => import('./components/Operator/OperatorConsole.jsx'));
+const FieldConsole = lazy(() => import('./components/Field/FieldConsole.jsx'));
+const AdminConsole = lazy(() => import('./components/Admin/AdminConsole.jsx'));
+const Analytics = lazy(() => import('./components/Analytics/Analytics.jsx'));
+const RoleHome = lazy(() => import('./components/Shared/RoleHome.jsx'));
+const CitizenReport = lazy(() => import('./components/Citizen/CitizenReport.jsx'));
+const Gallery = import.meta.env.DEV ? lazy(() => import('./components/gallery/Gallery.jsx')) : null;
+
+/**
+ * Sets the document title and the robots directive for a route.
+ */
+function RouteFrame({ routeId, children }) {
+  const route = getRoute(routeId);
+  useDocumentMeta(route?.title, { noindex: route ? !route.public : false });
+  return children;
+}
+
+const withFrame = (routeId, element) => <RouteFrame routeId={routeId}>{element}</RouteFrame>;
 
 export default function App() {
-  useEffect(() => {
-    applyTheme();
-
-    // OLED spatial canvas: neon radial glow, film grain, drifting light orbs
-    const canvas = document.createElement('div');
-    canvas.className = 'neon-bg';
-    document.body.insertBefore(canvas, document.body.firstChild);
-
-    const grain = document.createElement('div');
-    grain.className = 'neon-grain';
-    document.body.insertBefore(grain, canvas.nextSibling);
-
-    const tints = [
-      'rgba(139, 92, 246, 0.5)',
-      'rgba(37, 99, 235, 0.45)',
-      'rgba(34, 211, 238, 0.3)',
-      'rgba(109, 40, 217, 0.42)',
-    ];
-    for (let i = 0; i < 5; i++) {
-      const orb = document.createElement('div');
-      orb.className = 'neon-orb';
-      const size = 320 + Math.random() * 420;
-      orb.style.width = `${size}px`;
-      orb.style.height = `${size}px`;
-      orb.style.left = `${Math.random() * 100}vw`;
-      orb.style.top = `${Math.random() * 100}vh`;
-      orb.style.background = tints[i % tints.length];
-      orb.style.animationDelay = `${-i * 5.5}s`;
-      orb.style.animationDuration = `${24 + i * 4}s`;
-      canvas.appendChild(orb);
-    }
-
-    return () => {
-      if (grain.parentNode) grain.parentNode.removeChild(grain);
-      if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
-    };
-  }, []);
-  
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<AuthForm mode="login" />} />
-      <Route path="/signup" element={<AuthForm mode="signup" />} />
-      <Route path="/citizen-report" element={<CitizenReport />} />
-      <Route path="/role-home" element={<RequireAuth><RoleHome /></RequireAuth>} />
-      <Route path="/operator" element={<RequireAuth roles={['operator']}><OperatorConsole /></RequireAuth>} />
-      <Route path="/field" element={<RequireAuth roles={['field']}><FieldConsole /></RequireAuth>} />
-      <Route path="/admin" element={<RequireAuth roles={['admin']}><AdminConsole /></RequireAuth>} />
-      <Route path="/analytics" element={<RequireAuth roles={['operator', 'admin']}><Analytics /></RequireAuth>} />
-    </Routes>
+    <ErrorBoundary>
+      <Suspense
+        fallback={<RouteFallback />}
+      >
+        <Routes>
+        <Route path="/" element={withFrame('home', <HomePage />)} />
+        <Route path="/login" element={withFrame('login', <AuthForm mode="login" />)} />
+        <Route path="/signup" element={withFrame('signup', <AuthForm mode="signup" />)} />
+        <Route path="/citizen-report" element={withFrame('citizen-report', <CitizenReport />)} />
+        <Route path="/role-home" element={withFrame('home', <RoleHome />)} />
+
+        <Route
+          path="/operator"
+          element={
+            <RequireAuth routeId="operator">
+              {withFrame('operator', <OperatorConsole />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/field"
+          element={
+            <RequireAuth routeId="field">
+              {withFrame('field', <FieldConsole />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/field/tasks/:id"
+          element={
+            <RequireAuth routeId="field-task">
+              {withFrame('field-task', <FieldConsole />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth routeId="admin">
+              {withFrame('admin', <AdminConsole />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <RequireAuth routeId="analytics">
+              {withFrame('analytics', <Analytics />)}
+            </RequireAuth>
+          }
+        />
+
+        <Route path="/unauthorized" element={withFrame('unauthorized', <Unauthorized />)} />
+        <Route path="*" element={withFrame('not-found', <NotFound />)} />
+
+        {import.meta.env.DEV && Gallery ? (
+          <Route
+            path="/__gallery"
+            element={
+              <RouteFrame routeId="not-found">
+                <Gallery />
+              </RouteFrame>
+            }
+          />
+        ) : null}
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

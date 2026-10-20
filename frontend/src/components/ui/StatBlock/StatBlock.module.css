@@ -1,0 +1,61 @@
+.block {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.label {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.unit {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+}
+
+.delta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+.delta[data-direction='up'] {
+  color: var(--normal-text);
+}
+
+.delta[data-direction='down'] {
+  color: var(--critical-text);
+}
+
+.deltaValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+}
+
+.deltaLabel {
+  color: var(--text-secondary);
+}
+
+.period {
+  font-size: var(--text-2xs);
+  color: var(--text-disabled);
+}

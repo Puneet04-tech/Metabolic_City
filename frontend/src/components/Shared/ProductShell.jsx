@@ -1,5 +1,7 @@
+import { memo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { apiRequest, clearSession, getStoredUser } from '../../api.js';
+import LegacyBackdrop from './LegacyBackdrop.jsx';
 
 const roleLabels = {
   operator: 'Dispatch Operator',
@@ -7,7 +9,7 @@ const roleLabels = {
   administrator: 'Administrator',
 };
 
-function ProductShell({ title, children }) {
+function ProductShell({ title, children, shellClassName = '' }) {
   const user = getStoredUser();
   const navigate = useNavigate();
   const logout = async () => { try { await apiRequest('/auth/logout', { method: 'POST' }); } catch { /* clear local session */ } clearSession(); navigate('/'); };
@@ -22,7 +24,8 @@ function ProductShell({ title, children }) {
   if (['operator', 'administrator'].includes(normalizedRole)) nav.push({ to: '/analytics', label: 'Analytics' });
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell${shellClassName ? ' ' + shellClassName : ''}`}>
+      <LegacyBackdrop />
       <header className="app-bar">
         <div className="app-bar-brand">
           <span className="eyebrow">{user.cityCode}</span>
@@ -46,4 +49,4 @@ function ProductShell({ title, children }) {
   );
 }
 
-export default ProductShell;
+export default memo(ProductShell);
