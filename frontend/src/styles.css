@@ -673,9 +673,11 @@ button, input, select, textarea { font: inherit; }
    Form controls — recessed into the black canvas
    ========================================================================== */
 
-input:not([type="checkbox"]):not([type="radio"]),
-select,
-textarea {
+/* Legacy form controls are scoped to the legacy shell so they cannot
+   override the new UI layer. Removed with this file in the cleanup phase. */
+.app-shell input:not([type="checkbox"]):not([type="radio"]),
+.app-shell select,
+.app-shell textarea {
   background: rgba(8, 8, 14, 0.75);
   color: var(--text);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -687,25 +689,25 @@ textarea {
   transition: box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
-select option {
+.app-shell select option {
   background: #0A0A12;
   color: var(--text);
 }
 
-input::placeholder,
-textarea::placeholder { color: var(--text-muted-tertiary); }
+.app-shell input::placeholder,
+.app-shell textarea::placeholder { color: var(--text-muted-tertiary); }
 
-input:focus,
-select:focus,
-textarea:focus {
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
   border-color: rgba(167, 139, 250, 0.55);
   background: rgba(12, 12, 20, 0.9);
   box-shadow: var(--neu-in-sm), 0 0 0 3px rgba(139, 92, 246, 0.16), 0 0 26px -8px rgba(139, 92, 246, 0.6);
 }
 
-input:disabled,
-select:disabled,
-textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+.app-shell input:disabled,
+.app-shell select:disabled,
+.app-shell textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ==========================================================================
    Cards, panels, metrics

@@ -22,8 +22,11 @@ export default function DataTable({
   loading = false,
   empty,
   pageSize,
+  fill = false,
   onRowClick,
+  onRowHover,
   isRowSelected,
+  isRowHighlighted,
   caption,
   className,
 }) {
@@ -65,7 +68,7 @@ export default function DataTable({
 
   if (loading) {
     return (
-      <div className={cn(styles.wrapper, className)}>
+      <div className={cn(styles.wrapper, fill && styles.wrapperFill, className)}>
         <div className={styles.skeletonTable}>
           {Array.from({ length: 5 }).map((_, index) => (
             <Skeleton key={index} height={40} />
@@ -76,12 +79,12 @@ export default function DataTable({
   }
 
   if (!rows.length) {
-    return <div className={cn(styles.wrapper, className)}>{empty}</div>;
+    return <div className={cn(styles.wrapper, fill && styles.wrapperFill, className)}>{empty}</div>;
   }
 
   return (
-    <div className={cn(styles.wrapper, className)}>
-      <div className={styles.scroll}>
+    <div className={cn(styles.wrapper, fill && styles.wrapperFill, className)}>
+      <div className={cn(styles.scroll, fill && styles.scrollFill)}>
         <table className={styles.table}>
           {caption ? <caption className={styles.caption}>{caption}</caption> : null}
           <thead className={styles.head}>
@@ -117,14 +120,18 @@ export default function DataTable({
           <tbody>
             {visible.map((row, index) => {
               const selected = isRowSelected ? isRowSelected(row) : false;
+              const highlighted = isRowHighlighted ? isRowHighlighted(row) : false;
               return (
                 <tr
                   key={getRowId(row, index)}
                   className={cn(styles.row, onRowClick && styles.interactive)}
                   data-selected={selected ? 'true' : undefined}
+                  data-highlighted={highlighted ? 'true' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   onKeyDown={onRowClick ? (event) => handleRowKeyDown(event, row) : undefined}
+                  onMouseEnter={onRowHover ? () => onRowHover(row) : undefined}
+                  onMouseLeave={onRowHover ? () => onRowHover(null) : undefined}
                 >
                   {columns.map((column) => (
                     <td key={column.key} className={styles.cell} data-align={column.align ?? 'left'}>

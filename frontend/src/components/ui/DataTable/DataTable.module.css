@@ -10,6 +10,19 @@
   background: var(--surface);
 }
 
+/* The table fills its parent and becomes the only vertical scroller. */
+.wrapperFill {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.scrollFill {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .table {
   width: 100%;
   border-collapse: separate;
@@ -71,6 +84,14 @@
 
 .row[data-selected='true'] {
   background: var(--accent-soft);
+}
+
+.row[data-highlighted='true'] {
+  background: var(--surface-raised);
+}
+
+.row[data-highlighted='true'] .cellName {
+  color: var(--accent-text);
 }
 
 .interactive {

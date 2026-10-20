@@ -1,4 +1,5 @@
 import { LogOut, User } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +16,9 @@ import styles from './AppShell.module.css';
  * landmark. The tab bar is driven by the same route table that guards the
  * routes, so it can only ever show pages this role can open.
  */
-export default function AppShell({ title, cityCode, user, navItems = [], activeId, onSignOut, children }) {
+export default function AppShell({ title, cityCode, user, navItems = [], activeId, onSignOut, viewport = false, children }) {
   return (
-    <div className={styles.shell}>
+    <div className={cn(styles.shell, viewport && styles.viewport)}>
       <a className={styles.skipLink} href="#main-content">
         Skip to content
       </a>
@@ -28,7 +29,7 @@ export default function AppShell({ title, cityCode, user, navItems = [], activeI
             MC
           </span>
           <span className={styles.brandText}>
-            <span className={styles.brandName}>Metabolic City</span>
+            <span className={styles.brandName}>{title}</span>
             {cityCode ? <span className={styles.cityCode}>{cityCode}</span> : null}
           </span>
         </div>
@@ -63,7 +64,9 @@ export default function AppShell({ title, cityCode, user, navItems = [], activeI
             <TabsList>
               {navItems.map((item) => (
                 <TabsTrigger key={item.id} value={item.id} asChild>
-                  <a href={item.path}>{item.nav}</a>
+                  <NavLink to={item.path} className={styles.navLink}>
+                    {item.nav}
+                  </NavLink>
                 </TabsTrigger>
               ))}
             </TabsList>

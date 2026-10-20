@@ -13,7 +13,7 @@ import RouteFallback from './components/system/RouteFallback.jsx';
 // Route-level code splitting: each surface is fetched when it is first opened.
 const SignIn = lazy(() => import('./pages/SignIn.jsx'));
 const SignUp = lazy(() => import('./pages/SignUp.jsx'));
-const OperatorConsole = lazy(() => import('./components/Operator/OperatorConsole.jsx'));
+const OperatorConsole = lazy(() => import('./pages/OperatorConsole.jsx'));
 const FieldConsole = lazy(() => import('./components/Field/FieldConsole.jsx'));
 const AdminConsole = lazy(() => import('./components/Admin/AdminConsole.jsx'));
 const Analytics = lazy(() => import('./components/Analytics/Analytics.jsx'));
