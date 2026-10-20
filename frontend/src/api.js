@@ -97,6 +97,15 @@ async function refreshAccessToken() {
   return false;
 }
 
+/**
+ * Public wrapper around the refresh flow. The server rotates the access and
+ * refresh tokens on every call, so a successful refresh also extends the
+ * session. Used by the "stay signed in" prompt.
+ */
+export async function refreshSession() {
+  return refreshAccessToken();
+}
+
 async function openStream(path, retried = false) {
   const headers = { Accept: 'text/event-stream' };
   const token = getToken();

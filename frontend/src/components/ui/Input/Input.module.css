@@ -39,3 +39,34 @@
 .input[data-invalid='true']:focus {
   border-color: var(--critical);
 }
+
+.revealWrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.revealable {
+  padding-right: 38px;
+}
+
+.revealButton {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.revealButton:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}

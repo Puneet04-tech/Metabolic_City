@@ -1,0 +1,360 @@
+.notice {
+  max-width: 1152px;
+  margin: var(--space-6) auto 0;
+  padding: 0 var(--space-6);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-10);
+  align-items: center;
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: var(--space-16) var(--space-6) var(--space-20);
+}
+
+.heroCopy {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 560px;
+}
+
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
+.heroTitle {
+  font-size: clamp(32px, 4.4vw, 48px);
+  font-weight: var(--weight-semibold);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.heroSubhead {
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* ---------- Console preview ---------- */
+
+.preview {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+}
+
+.previewFrame {
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.previewBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+
+.previewDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--normal);
+}
+
+.previewBarText {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+.previewBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.previewMap {
+  padding: var(--space-4);
+  border-right: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+.previewSvg {
+  width: 100%;
+  height: 160px;
+}
+
+.hexNormal {
+  fill: var(--normal-soft);
+  stroke: var(--normal);
+  stroke-width: 1.5;
+}
+
+.hexCaution {
+  fill: var(--caution-soft);
+  stroke: var(--caution);
+  stroke-width: 1.5;
+}
+
+.hexCritical {
+  fill: var(--critical-soft);
+  stroke: var(--critical);
+  stroke-width: 1.5;
+}
+
+.previewList {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.previewRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  height: 28px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.previewId {
+  width: 56px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+
+.previewScore {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+.previewRow[data-tone='critical'] .previewScore {
+  color: var(--critical-text);
+}
+
+.previewRow[data-tone='caution'] .previewScore {
+  color: var(--caution-text);
+}
+
+.previewRow[data-tone='normal'] .previewScore {
+  color: var(--normal-text);
+}
+
+.previewCaption {
+  font-size: var(--text-2xs);
+  color: var(--text-secondary);
+}
+
+/* ---------- Sections ---------- */
+
+.section {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: var(--space-20) var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.sectionHeading {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 640px;
+  margin-bottom: var(--space-10);
+}
+
+.sectionTitle {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.sectionIntro {
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.capabilityGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.capability {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.capabilityIcon {
+  color: var(--accent-text);
+}
+
+.capabilityTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.capabilityBody {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.roleGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.roleCard {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.roleTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.roleBody {
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.scoringGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.scoringCard {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.scoringIcon {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.scoringTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.scoringBody {
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+/* ---------- Closing CTA ---------- */
+
+.closing {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-24) var(--space-6);
+  text-align: center;
+}
+
+.closingTitle {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.closingBody {
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.closingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* ---------- Breakpoints ---------- */
+
+@media (min-width: 768px) {
+  .roleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scoringGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-16);
+    padding-top: var(--space-20);
+    padding-bottom: var(--space-24);
+  }
+
+  .capabilityGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

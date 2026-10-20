@@ -1,0 +1,9 @@
+.countdown {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.countdown strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}

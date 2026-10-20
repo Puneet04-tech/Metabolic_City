@@ -4,7 +4,8 @@
     "node_modules/**",
     "dist/**",
     "src/styles/tokens.css",
-    "src/styles.css"
+    "src/styles.css",
+    "src/components/HomePage/**"
   ],
   "rules": {
     "color-no-hex": true,

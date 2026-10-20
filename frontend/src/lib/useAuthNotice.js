@@ -47,12 +47,12 @@ export function useAuthNotice() {
 
     setNotice(NOTICES[code] ?? NOTICES.unknown);
 
+    // Clean the parameter without leaving the current page — `returnTo` and
+    // any other query parameters are preserved.
     const params = new URLSearchParams(searchParams);
     params.delete('error');
     const query = params.toString();
-    const target = `${searchParams.get('returnTo') ?? window.location.pathname}${query ? `?${query}` : ''}`;
-
-    navigate(target, { replace: true });
+    navigate(`${window.location.pathname}${query ? `?${query}` : ''}`, { replace: true });
   }, [code, navigate, searchParams]);
 
   return notice;

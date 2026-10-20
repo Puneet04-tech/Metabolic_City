@@ -1,194 +1,353 @@
-import { memo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiRequest, setSession, clearSession } from '../../api.js';
+import { Check, X } from 'lucide-react';
+import Button from '../ui/Button/Button';
+import FormField from '../ui/FormField/FormField';
+import Input from '../ui/Input/Input';
+import Notice from '../ui/Notice/Notice';
+import { apiRequest, setSession } from '../../api.js';
+import { safeReturnTo } from '../../lib/routes.js';
+import { ROLE_LABELS, ROLES } from '../../lib/roles.js';
+import useAuthNotice from '../../lib/useAuthNotice.js';
+import { PASSWORD_RULES, firstInvalidField, hasErrors, validateSignIn, validateSignUp } from '../../lib/validation.js';
+import styles from './AuthForm.module.css';
 
-const initialForm = {
-  cityCode: '',
-  role: 'operator',
-  email: '',
-  name: '',
-  municipalityCode: '',
-  opStaffId: '',
-  opPassword: '',
-  crewPhone: '',
-  crewPasscode: '',
-  adminId: '',
-  adminToken: '',
+const ROLE_OPTIONS = [
+  {
+    value: ROLES.OPERATOR,
+    label: ROLE_LABELS[ROLES.OPERATOR],
+    description: 'Monitors cells and approves or overrides alerts.',
+  },
+  {
+    value: ROLES.FIELD_CREW,
+    label: ROLE_LABELS[ROLES.FIELD_CREW],
+    description: 'Resolves incidents in the field from a phone.',
+  },
+  {
+    value: ROLES.ADMINISTRATOR,
+    label: ROLE_LABELS[ROLES.ADMINISTRATOR],
+    description: 'Configures weights, thresholds and user access.',
+  },
+];
+
+const IDENTIFIER_BY_ROLE = {
+  [ROLES.OPERATOR]: {
+    key: 'staffId',
+    label: 'Operator ID',
+    type: 'text',
+    hint: 'The staff ID issued by your municipality.',
+  },
+  [ROLES.FIELD_CREW]: {
+    key: 'phone',
+    label: 'Phone number',
+    type: 'tel',
+    hint: 'The mobile number registered for your crew.',
+  },
+  [ROLES.ADMINISTRATOR]: {
+    key: 'adminId',
+    label: 'Administrator ID',
+    type: 'text',
+    hint: 'The administrator ID issued to you.',
+  },
 };
 
-const homeFor = (role) => (role === 'field_crew' ? '/field' : role === 'administrator' ? '/admin' : '/operator');
+const FIELD_ORDER = ['cityCode', 'name', 'email', 'identifier', 'password'];
 
-function AuthForm({ mode: initialMode = 'login' }) {
-  const [mode, setMode] = useState(initialMode);
-  const [currentRole, setCurrentRole] = useState('OPERATOR');
-  const [form, setForm] = useState(initialForm);
-  const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState(null);
+const EMPTY = {
+  cityCode: '',
+  role: ROLES.OPERATOR,
+  name: '',
+  email: '',
+  jurisdiction: '',
+  identifier: '',
+  password: '',
+};
+
+export default function AuthForm({ mode = 'signin' }) {
+  const isSignUp = mode === 'signup';
+
+  const [values, setValues] = useState(EMPTY);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const notice = useAuthNotice();
+  const fieldRefs = useRef({});
+  const summaryRef = useRef(null);
 
-  const errorParam = searchParams.get('error');
-  if (errorParam && !alert) {
-    setAlert({ type: 'error', message: decodeURIComponent(errorParam) });
-  }
+  const identifier = IDENTIFIER_BY_ROLE[values.role] ?? IDENTIFIER_BY_ROLE[ROLES.OPERATOR];
 
-  const showAlert = (message, type = 'error') => setAlert({ type, message });
-  const clearAlert = () => setAlert(null);
+  const setValue = useCallback((field, value) => {
+    setValues((previous) => ({ ...previous, [field]: value }));
+  }, []);
 
-  const buildPayload = () => {
-    const role = currentRole.toUpperCase();
-    const base = { cityCode: form.cityCode.trim(), role, password: form.opPassword || form.crewPasscode || form.adminToken };
-    if (mode === 'signup') {
-      base.name = form.name.trim();
-      base.email = form.email.trim();
-      base.jurisdiction = form.municipalityCode.trim();
-    }
-    if (role === 'OPERATOR') base.staffId = form.opStaffId.trim();
-    if (role === 'FIELD_CREW') base.phone = form.crewPhone.trim();
-    if (role === 'ADMINISTRATOR') base.adminId = form.adminId.trim();
-    return base;
-  };
+  const validate = useCallback(
+    (nextValues) => (isSignUp ? validateSignUp(nextValues) : validateSignIn(nextValues)),
+    [isSignUp]
+  );
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    clearAlert();
-    setLoading(true);
+  const handleBlur = useCallback(
+    (field) => {
+      setTouched((previous) => ({ ...previous, [field]: true }));
+      const nextErrors = validate(values);
+      setErrors((previous) => ({ ...previous, [field]: nextErrors[field] }));
+    },
+    [validate, values]
+  );
 
-    try {
-      const endpoint = mode === 'signup' ? '/auth/signup' : '/auth/login';
-      const payload = mode === 'signup' ? { name: form.name.trim(), email: form.email.trim(), ...buildPayload() } : buildPayload();
+  const focusField = useCallback((field) => {
+    const element = fieldRefs.current[field];
+    if (element && typeof element.focus === 'function') element.focus();
+  }, []);
 
-      const data = await apiRequest(endpoint, { method: 'POST', body: payload });
+  const handleSubmit = useCallback(
+    async (event) => {
+      event.preventDefault();
+      setFormError(null);
 
-      setSession(data.token, data.user);
-      showAlert(
-        mode === 'signup' ? 'Account created successfully. Redirecting...' : 'Authentication successful. Redirecting...',
-        'success'
-      );
-      const normalizedRole = (data.user.role || '').toLowerCase();
-      setTimeout(() => navigate(homeFor(normalizedRole)), 400);
-    } catch (error) {
-      showAlert(error.message || 'Authentication failed.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      const nextErrors = validate(values);
+      setErrors(nextErrors);
+      setTouched(Object.fromEntries(FIELD_ORDER.map((field) => [field, true])));
 
-  const handleLogout = () => {
-    apiRequest('/auth/logout', { method: 'POST' }).catch(() => {});
-    clearSession();
-    navigate('/');
-  };
+      if (hasErrors(nextErrors)) {
+        const first = firstInvalidField(nextErrors, FIELD_ORDER);
+        if (first) focusField(first);
+        return;
+      }
 
-  const handleInputChange = (field) => (event) => setForm((previous) => ({ ...previous, [field]: event.target.value }));
+      setSubmitting(true);
+
+      const payload = {
+        cityCode: values.cityCode.trim(),
+        role: values.role,
+        password: values.password,
+        [identifier.key]: values.identifier.trim(),
+      };
+
+      if (isSignUp) {
+        payload.name = values.name.trim();
+        payload.email = values.email.trim();
+        payload.jurisdiction = values.jurisdiction.trim();
+      }
+
+      try {
+        const data = await apiRequest(isSignUp ? '/auth/signup' : '/auth/login', { method: 'POST', body: payload });
+        setSession(data.token, data.user);
+
+        const returnTo = safeReturnTo(searchParams.get('returnTo'));
+        const role = (data.user?.role || '').toLowerCase();
+        const fallback = role === 'field_crew' ? '/field' : role === 'administrator' ? '/admin' : '/operator';
+
+        navigate(returnTo ?? fallback, { replace: true });
+      } catch (error) {
+        // The API message can reveal whether an account exists, so it is
+        // replaced with a message that does not.
+        setFormError(
+          error.status === 401 || error.status === 400
+            ? 'Those details did not match an account. Check them and try again.'
+            : error.message || 'We could not complete that request. Please try again.'
+        );
+        summaryRef.current?.focus();
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [focusField, identifier.key, isSignUp, navigate, searchParams, validate, values]
+  );
+
+  // When the role changes, the identifier field changes with it.
+  useEffect(() => {
+    setValues((previous) => ({ ...previous, identifier: '' }));
+    setErrors((previous) => ({ ...previous, identifier: undefined }));
+  }, [values.role]);
+
+  const errorList = useMemo(
+    () => FIELD_ORDER.filter((field) => errors[field]).map((field) => ({ field, message: errors[field] })),
+    [errors]
+  );
+
+  const registerField = useCallback(
+    (field) => (element) => {
+      fieldRefs.current[field] = element;
+    },
+    []
+  );
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h2>{mode === 'login' ? 'Sign In' : 'Create Account'}</h2>
-          <p>{mode === 'login' ? 'Access your municipal command console' : 'Register for Metabolic City platform'}</p>
+    <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      {notice ? (
+        <Notice tone={notice.tone} title={notice.title}>
+          {notice.message}
+        </Notice>
+      ) : null}
+
+      {formError ? (
+        <div className={styles.errorSummary} role="alert" tabIndex={-1} ref={summaryRef}>
+          <p className={styles.errorSummaryTitle}>{formError}</p>
         </div>
+      ) : null}
 
-        <div className="auth-mode-switch">
-          <button type="button" className={mode === 'login' ? 'mode-btn active' : 'mode-btn'} onClick={() => setMode('login')}>Login</button>
-          <button type="button" className={mode === 'signup' ? 'mode-btn active' : 'mode-btn'} onClick={() => setMode('signup')}>Sign Up</button>
-        </div>
-
-        {alert && alert.message && <div className={`alert-banner ${alert.type || 'error'}`}>{alert.message}</div>}
-
-        <div className="notice-box">
-          <strong>Public Notice:</strong> Citizens do not log in here. Incident reports are ingested automatically via municipal hotlines and soft-sensing feeds.
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="role-selector">
-            <label>Role</label>
-            <div className="role-tabs">
-              {['OPERATOR', 'FIELD_CREW', 'ADMINISTRATOR'].map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  className={currentRole === role ? 'role-tab active' : 'role-tab'}
-                  onClick={() => setCurrentRole(role)}
-                >
-                  {role.replace('_', ' ')}
+      {errorList.length ? (
+        <div className={styles.errorSummary} role="alert" tabIndex={-1}>
+          <p className={styles.errorSummaryTitle}>Check these fields</p>
+          <ul className={styles.errorList}>
+            {errorList.map((item) => (
+              <li key={item.field}>
+                <button type="button" className={styles.errorLink} onClick={() => focusField(item.field)}>
+                  {item.message}
                 </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>City Code</label>
-            <input type="text" value={form.cityCode} onChange={handleInputChange('cityCode')} placeholder="e.g., CITY-IND-BPL8" required />
-          </div>
-
-          {mode === 'signup' && (
-            <>
-              <div className="form-group">
-                <label>Full Name</label>
-                <input type="text" value={form.name} onChange={handleInputChange('name')} placeholder="Your full name" required />
-              </div>
-              <div className="form-group">
-                <label>Email Address</label>
-                <input type="email" value={form.email} onChange={handleInputChange('email')} placeholder="your@email.com" required />
-              </div>
-              <div className="form-group">
-                <label>Municipality Code</label>
-                <input type="text" value={form.municipalityCode} onChange={handleInputChange('municipalityCode')} placeholder="Optional jurisdiction code" />
-              </div>
-            </>
-          )}
-
-          {currentRole === 'OPERATOR' && (
-            <div className="form-group">
-              <label>Staff ID</label>
-              <input type="text" value={form.opStaffId} onChange={handleInputChange('opStaffId')} placeholder="Operator Staff ID" required />
-            </div>
-          )}
-
-          {currentRole === 'FIELD_CREW' && (
-            <div className="form-group">
-              <label>Phone Number</label>
-              <input type="tel" value={form.crewPhone} onChange={handleInputChange('crewPhone')} placeholder="Mobile number" required />
-            </div>
-          )}
-
-          {currentRole === 'ADMINISTRATOR' && (
-            <div className="form-group">
-              <label>Administrator ID</label>
-              <input type="text" value={form.adminId} onChange={handleInputChange('adminId')} placeholder="Admin ID" required />
-            </div>
-          )}
-
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              value={form.opPassword || form.crewPasscode || form.adminToken}
-              onChange={handleInputChange(currentRole === 'OPERATOR' ? 'opPassword' : currentRole === 'FIELD_CREW' ? 'crewPasscode' : 'adminToken')}
-              placeholder="Your password"
-              required
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            />
-          </div>
-
-          <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
-          </button>
-        </form>
-
-        <div className="auth-footer">
-          <p>
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <button type="button" className="link-btn" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}>
-              {mode === 'login' ? 'Sign Up' : 'Sign In'}
-            </button>
-          </p>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-    </div>
+      ) : null}
+
+      <fieldset className={styles.roleGroup}>
+        <legend className={styles.legend}>Role</legend>
+        <div className={styles.roleCards}>
+          {ROLE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={styles.roleCard}
+              data-selected={values.role === option.value ? 'true' : undefined}
+            >
+              <input
+                type="radio"
+                name="role"
+                value={option.value}
+                checked={values.role === option.value}
+                onChange={() => setValue('role', option.value)}
+                className={styles.radio}
+              />
+              <span className={styles.roleLabel}>{option.label}</span>
+              <span className={styles.roleDescription}>{option.description}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <FormField
+        label="City code"
+        required
+        error={touched.cityCode ? errors.cityCode : undefined}
+        hint="For example CITY-IND-BPL8"
+      >
+        {(props) => (
+          <Input
+            {...props}
+            ref={registerField('cityCode')}
+            value={values.cityCode}
+            onChange={(event) => setValue('cityCode', event.target.value)}
+            onBlur={() => handleBlur('cityCode')}
+            autoComplete="organization"
+            autoCapitalize="characters"
+            spellCheck={false}
+          />
+        )}
+      </FormField>
+
+      {isSignUp ? (
+        <>
+          <FormField label="Full name" required error={touched.name ? errors.name : undefined}>
+            {(props) => (
+              <Input
+                {...props}
+                ref={registerField('name')}
+                value={values.name}
+                onChange={(event) => setValue('name', event.target.value)}
+                onBlur={() => handleBlur('name')}
+                autoComplete="name"
+              />
+            )}
+          </FormField>
+
+          <FormField label="Email address" required error={touched.email ? errors.email : undefined}>
+            {(props) => (
+              <Input
+                {...props}
+                ref={registerField('email')}
+                type="email"
+                inputMode="email"
+                value={values.email}
+                onChange={(event) => setValue('email', event.target.value)}
+                onBlur={() => handleBlur('email')}
+                autoComplete="email"
+              />
+            )}
+          </FormField>
+
+          <FormField label="Municipality code" hint="Optional. Used to scope the account to one jurisdiction.">
+            {(props) => (
+              <Input
+                {...props}
+                value={values.jurisdiction}
+                onChange={(event) => setValue('jurisdiction', event.target.value)}
+                autoComplete="off"
+              />
+            )}
+          </FormField>
+        </>
+      ) : null}
+
+      <FormField
+        label={identifier.label}
+        required
+        error={touched.identifier ? errors.identifier : undefined}
+        hint={identifier.hint}
+      >
+        {(props) => (
+          <Input
+            {...props}
+            ref={registerField('identifier')}
+            type={identifier.type}
+            inputMode={identifier.type === 'tel' ? 'tel' : 'text'}
+            value={values.identifier}
+            onChange={(event) => setValue('identifier', event.target.value)}
+            onBlur={() => handleBlur('identifier')}
+            autoComplete={identifier.type === 'tel' ? 'tel' : 'username'}
+          />
+        )}
+      </FormField>
+
+      <FormField
+        label="Password"
+        required
+        error={touched.password ? errors.password : undefined}
+        hint={isSignUp ? 'Choose a password that meets the rules below.' : undefined}
+      >
+        {(props) => (
+          <Input
+            {...props}
+            ref={registerField('password')}
+            reveal
+            value={values.password}
+            onChange={(event) => setValue('password', event.target.value)}
+            onBlur={() => handleBlur('password')}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+          />
+        )}
+      </FormField>
+
+      {isSignUp ? (
+        <ul className={styles.passwordRules}>
+          {PASSWORD_RULES.map((rule) => {
+            const passed = rule.test(values.password);
+            return (
+              <li key={rule.id} data-passed={passed ? 'true' : 'false'}>
+                {passed ? <Check size={13} aria-hidden="true" /> : <X size={13} aria-hidden="true" />}
+                {rule.label}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      <Button type="submit" variant="primary" loading={submitting} disabled={submitting}>
+        {isSignUp ? 'Create account' : 'Sign in'}
+      </Button>
+    </form>
   );
 }
-
-export default memo(AuthForm);

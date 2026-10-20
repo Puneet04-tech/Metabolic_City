@@ -4,14 +4,15 @@ import ErrorBoundary from './ErrorBoundary';
 import RequireAuth from './RequireAuth';
 import useDocumentMeta from './lib/useDocumentMeta.js';
 import { getRoute } from './lib/routes.js';
-import HomePage from './components/HomePage/HomePage.jsx';
+import Landing from './pages/Landing.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Unauthorized from './pages/Unauthorized.jsx';
-import Spinner from './components/ui/Spinner/Spinner.jsx';
+import SessionGuard from './components/session/SessionGuard.jsx';
 import RouteFallback from './components/system/RouteFallback.jsx';
 
 // Route-level code splitting: each surface is fetched when it is first opened.
-const AuthForm = lazy(() => import('./components/Auth/AuthForm.jsx'));
+const SignIn = lazy(() => import('./pages/SignIn.jsx'));
+const SignUp = lazy(() => import('./pages/SignUp.jsx'));
 const OperatorConsole = lazy(() => import('./components/Operator/OperatorConsole.jsx'));
 const FieldConsole = lazy(() => import('./components/Field/FieldConsole.jsx'));
 const AdminConsole = lazy(() => import('./components/Admin/AdminConsole.jsx'));
@@ -38,9 +39,9 @@ export default function App() {
         fallback={<RouteFallback />}
       >
         <Routes>
-        <Route path="/" element={withFrame('home', <HomePage />)} />
-        <Route path="/login" element={withFrame('login', <AuthForm mode="login" />)} />
-        <Route path="/signup" element={withFrame('signup', <AuthForm mode="signup" />)} />
+        <Route path="/" element={withFrame('home', <Landing />)} />
+        <Route path="/login" element={withFrame('login', <SignIn />)} />
+        <Route path="/signup" element={withFrame('signup', <SignUp />)} />
         <Route path="/citizen-report" element={withFrame('citizen-report', <CitizenReport />)} />
         <Route path="/role-home" element={withFrame('home', <RoleHome />)} />
 
@@ -100,6 +101,7 @@ export default function App() {
         ) : null}
         </Routes>
       </Suspense>
+      <SessionGuard />
     </ErrorBoundary>
   );
 }
