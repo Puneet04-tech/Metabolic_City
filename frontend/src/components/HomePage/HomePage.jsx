@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function HomePage() {
@@ -145,4 +146,4 @@ function HomePage() {
   );
 }
 
-export default HomePage;
+export default memo(HomePage);

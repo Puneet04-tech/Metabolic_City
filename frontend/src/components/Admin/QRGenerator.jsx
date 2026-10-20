@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { apiRequest } from '../../api.js';
 import ProductShell from '../Shared/ProductShell.jsx';
 
@@ -205,4 +205,4 @@ function QRGenerator() {
   );
 }
 
-export default QRGenerator;
+export default memo(QRGenerator);

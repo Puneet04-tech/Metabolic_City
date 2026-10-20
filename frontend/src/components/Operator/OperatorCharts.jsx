@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useMemo } from 'react';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const COLORS = {
@@ -14,10 +14,8 @@ const COLORS = {
 };
 
 // Operator Console Charts
-function CellRiskDistributionChart({ cells }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+function CellRiskDistributionChart({ cells, height = 250 }) {
+  const data = useMemo(() => {
     const grouped = { CRITICAL: 0, HIGH: 0, MODERATE: 0, LOW: 0 };
     cells.forEach(cell => {
       if (cell.compositeRisk >= 7) grouped.CRITICAL++;
@@ -30,13 +28,17 @@ function CellRiskDistributionChart({ cells }) {
       .filter(([_, count]) => count > 0)
       .map(([level, count]) => ({ name: level, value: count, fill: COLORS[level] }));
 
-    setData(chartData);
+    return chartData;
   }, [cells]);
 
+  if (!data.length) {
+    return <div className="chart-empty">No cells in the current window</div>;
+  }
+
   return (
-    <ResponsiveContainer width="100%" height={250}>
+    <ResponsiveContainer width="100%" height={height}>
       <PieChart>
-        <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={70} label>
+        <Pie data={data} cx="50%" cy="50%" innerRadius={44} outerRadius={64} cornerRadius={3} paddingAngle={1.5} isAnimationActive={false}>
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.fill} />
           ))}
@@ -45,16 +47,13 @@ function CellRiskDistributionChart({ cells }) {
           contentStyle={{ backgroundColor: 'rgba(14, 14, 22, 0.92)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: '16px', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.95), 0 0 30px -12px rgba(139,92,246,0.7)', backdropFilter: 'blur(18px)' }}
           itemStyle={{ color: '#F4F5F9' }}
         />
-        <Legend />
       </PieChart>
     </ResponsiveContainer>
   );
 }
 
-function CriticalCellTrendChart({ cells }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+function CriticalCellTrendChart({ cells, height = 250 }) {
+  const data = useMemo(() => {
     const criticalCells = cells.filter(c => c.compositeRisk >= 7);
     const grouped = {};
     criticalCells.forEach(cell => {
@@ -66,11 +65,15 @@ function CriticalCellTrendChart({ cells }) {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    setData(chartData);
+    return chartData;
   }, [cells]);
 
+  if (!data.length) {
+    return <div className="chart-empty">No critical cells in the current window</div>;
+  }
+
   return (
-    <ResponsiveContainer width="100%" height={250}>
+    <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
         <XAxis dataKey="date" stroke="#8A8FA3" />
@@ -88,9 +91,7 @@ function CriticalCellTrendChart({ cells }) {
 
 // Field Console Charts
 function TaskStatusDistributionChart({ tasks }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     tasks.forEach(task => {
       grouped[task.status] = (grouped[task.status] || 0) + 1;
@@ -103,7 +104,7 @@ function TaskStatusDistributionChart({ tasks }) {
         fill: COLORS[status] || '#64748B' 
       }));
 
-    setData(chartData);
+    return chartData;
   }, [tasks]);
 
   return (
@@ -124,9 +125,7 @@ function TaskStatusDistributionChart({ tasks }) {
 }
 
 function TaskResolutionTimeChart({ tasks }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const resolvedTasks = tasks.filter(t => t.resolvedAt && t.dispatchedAt);
     const grouped = {};
     resolvedTasks.forEach(task => {
@@ -138,7 +137,7 @@ function TaskResolutionTimeChart({ tasks }) {
     const chartData = Object.entries(grouped)
       .map(([bucket, count]) => ({ name: bucket, value: count }));
 
-    setData(chartData);
+    return chartData;
   }, [tasks]);
 
   return (
@@ -160,9 +159,7 @@ function TaskResolutionTimeChart({ tasks }) {
 
 // Admin Console Charts
 function SystemActivityChart({ auditLogs }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     auditLogs.forEach(log => {
       const date = new Date(log.createdAt).toLocaleDateString();
@@ -174,7 +171,7 @@ function SystemActivityChart({ auditLogs }) {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(-7); // Last 7 days
 
-    setData(chartData);
+    return chartData;
   }, [auditLogs]);
 
   return (
@@ -195,9 +192,7 @@ function SystemActivityChart({ auditLogs }) {
 }
 
 function UserActivityChart({ auditLogs }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     auditLogs.forEach(log => {
       const user = log.userEmail || 'Unknown';
@@ -209,7 +204,7 @@ function UserActivityChart({ auditLogs }) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 10); // Top 10 users
 
-    setData(chartData);
+    return chartData;
   }, [auditLogs]);
 
   return (
@@ -230,9 +225,7 @@ function UserActivityChart({ auditLogs }) {
 }
 
 function IncidentTypeDistributionChart({ incidents }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     incidents.forEach(incident => {
       const type = incident.type || 'UNKNOWN';
@@ -242,7 +235,7 @@ function IncidentTypeDistributionChart({ incidents }) {
     const chartData = Object.entries(grouped)
       .map(([type, count]) => ({ name: type, value: count }));
 
-    setData(chartData);
+    return chartData;
   }, [incidents]);
 
   return (
@@ -263,12 +256,20 @@ function IncidentTypeDistributionChart({ incidents }) {
   );
 }
 
+const MemoCellRiskDistributionChart = memo(CellRiskDistributionChart);
+const MemoCriticalCellTrendChart = memo(CriticalCellTrendChart);
+const MemoTaskStatusDistributionChart = memo(TaskStatusDistributionChart);
+const MemoTaskResolutionTimeChart = memo(TaskResolutionTimeChart);
+const MemoSystemActivityChart = memo(SystemActivityChart);
+const MemoUserActivityChart = memo(UserActivityChart);
+const MemoIncidentTypeDistributionChart = memo(IncidentTypeDistributionChart);
+
 export {
-  CellRiskDistributionChart,
-  CriticalCellTrendChart,
-  TaskStatusDistributionChart,
-  TaskResolutionTimeChart,
-  SystemActivityChart,
-  UserActivityChart,
-  IncidentTypeDistributionChart,
+  MemoCellRiskDistributionChart as CellRiskDistributionChart,
+  MemoCriticalCellTrendChart as CriticalCellTrendChart,
+  MemoTaskStatusDistributionChart as TaskStatusDistributionChart,
+  MemoTaskResolutionTimeChart as TaskResolutionTimeChart,
+  MemoSystemActivityChart as SystemActivityChart,
+  MemoUserActivityChart as UserActivityChart,
+  MemoIncidentTypeDistributionChart as IncidentTypeDistributionChart,
 };

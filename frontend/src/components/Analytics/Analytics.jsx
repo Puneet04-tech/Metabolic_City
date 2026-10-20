@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../api.js';
 import ProductShell from '../Shared/ProductShell.jsx';
 import {
@@ -40,10 +40,10 @@ function Analytics() {
   const [toDate, setToDate] = useState('');
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError('');
-    
+
     Promise.all([
       apiRequest('/v1/analytics/summary'),
       apiRequest('/v1/analytics/telemetry-volume').catch(() => null),
@@ -55,57 +55,59 @@ function Analytics() {
       })
       .catch((reason) => setError(reason.message))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
-  const withinRange = (iso) => {
-    const time = new Date(iso).getTime();
-    if (fromDate && time < new Date(`${fromDate}T00:00:00`).getTime()) return false;
-    if (toDate && time > new Date(`${toDate}T23:59:59`).getTime()) return false;
-    return true;
-  };
-
-  const filteredIncidents = (data.incidents || []).filter(
-    (incident) => (!statusFilter || incident.status === statusFilter) && withinRange(incident.detectedAt)
+  const withinRange = useCallback(
+    (iso) => {
+      const time = new Date(iso).getTime();
+      if (fromDate && time < new Date(`${fromDate}T00:00:00`).getTime()) return false;
+      if (toDate && time > new Date(`${toDate}T23:59:59`).getTime()) return false;
+      return true;
+    },
+    [fromDate, toDate]
   );
-  const filteredAudits = (data.auditLogs || []).filter((log) => withinRange(log.createdAt));
 
-  const perDay = (() => {
-    const counts = new Map();
-    filteredIncidents.forEach((incident) => {
-      const day = new Date(incident.detectedAt).toLocaleDateString();
-      counts.set(day, (counts.get(day) || 0) + 1);
-    });
-    return [...counts.entries()].map(([day, count]) => ({ day, count }));
-  })();
-  const maxDay = Math.max(1, ...perDay.map((row) => row.count));
+  // Stable array identities keep the memoized charts from re-rendering
+  const incidents = useMemo(() => data.incidents || [], [data.incidents]);
+  const auditLogs = useMemo(() => data.auditLogs || [], [data.auditLogs]);
 
-  const exportIncidents = () => {
+  const filteredIncidents = useMemo(
+    () => incidents.filter((incident) => (!statusFilter || incident.status === statusFilter) && withinRange(incident.detectedAt)),
+    [incidents, statusFilter, withinRange]
+  );
+  const filteredAudits = useMemo(() => auditLogs.filter((log) => withinRange(log.createdAt)), [auditLogs, withinRange]);
+
+  const exportIncidents = useCallback(() => {
     downloadCsv('incidents.csv', [
       ['h3Index', 'status', 'riskScore', 'detectedAt', 'resolvedAt', 'dispatchText'],
       ...filteredIncidents.map((incident) => [incident.h3Index, incident.status, incident.riskScore, new Date(incident.detectedAt).toISOString(), new Date(incident.resolvedAt || '').toISOString(), incident.action?.dispatchText || '']),
     ]);
-  };
+  }, [filteredIncidents]);
 
-  const exportAudits = () => {
+  const exportAudits = useCallback(() => {
     downloadCsv('audit-trail.csv', [
       ['action', 'entityType', 'entityId', 'createdAt'],
       ...filteredAudits.map((log) => [log.action, log.entityType, log.entityId, new Date(log.createdAt).toISOString()]),
     ]);
-  };
+  }, [filteredAudits]);
 
-  const totalIncidents = (data.incidents || []).length;
-  const statusBreakdown = (() => {
+  const totalIncidents = incidents.length;
+  const statusBreakdown = useMemo(() => {
     const counts = new Map();
-    (data.incidents || []).forEach((incident) => counts.set(incident.status, (counts.get(incident.status) || 0) + 1));
+    incidents.forEach((incident) => counts.set(incident.status, (counts.get(incident.status) || 0) + 1));
     return [...counts.entries()].map(([status, count]) => ({ status, count }));
-  })();
-  const avgRisk = (data.incidents || []).length
-    ? ((data.incidents || []).reduce((acc, incident) => acc + Number(incident.riskScore) || acc, 0) / (data.incidents || []).length).toFixed(2)
-    : '0.00';
+  }, [incidents]);
+  const avgRisk = useMemo(
+    () =>
+      incidents.length
+        ? (incidents.reduce((acc, incident) => acc + Number(incident.riskScore) || acc, 0) / incidents.length).toFixed(2)
+        : '0.00',
+    [incidents]
+  );
 
   return (
     <ProductShell title="Incident Analytics">
@@ -163,28 +165,28 @@ function Analytics() {
               <div className="chart-card">
                 <h3>Incident Trends (Real-Time)</h3>
                 <div className="chart-container">
-                  <IncidentTrendChart incidents={data.incidents || []} />
+                  <IncidentTrendChart incidents={incidents} />
                 </div>
               </div>
 
               <div className="chart-card">
                 <h3>Risk Distribution</h3>
                 <div className="chart-container">
-                  <RiskDistributionChart incidents={data.incidents || []} />
+                  <RiskDistributionChart incidents={incidents} />
                 </div>
               </div>
 
               <div className="chart-card">
                 <h3>Status Breakdown</h3>
                 <div className="chart-container">
-                  <StatusBreakdownChart incidents={data.incidents || []} />
+                  <StatusBreakdownChart incidents={incidents} />
                 </div>
               </div>
 
               <div className="chart-card">
                 <h3>Average Risk Over Time</h3>
                 <div className="chart-container">
-                  <RiskLevelAreaChart incidents={data.incidents || []} />
+                  <RiskLevelAreaChart incidents={incidents} />
                 </div>
               </div>
 
@@ -200,7 +202,7 @@ function Analytics() {
               <div className="chart-card">
                 <h3>Resolution Time Distribution</h3>
                 <div className="chart-container">
-                  <ResolutionTimeChart incidents={data.incidents || []} />
+                  <ResolutionTimeChart incidents={incidents} />
                 </div>
               </div>
             </div>
@@ -247,4 +249,4 @@ function Analytics() {
   );
 }
 
-export default Analytics;
+export default memo(Analytics);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ProductShell from '../Shared/ProductShell.jsx';
 
@@ -190,4 +190,4 @@ function CitizenReport() {
   );
 }
 
-export default CitizenReport;
+export default memo(CitizenReport);

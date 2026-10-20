@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 
 /**
  * Reusable KPI card with optional trend arrow and glow accent.
  */
-export function KPI({ label, value, trend, accent = 'primary', unit, subtitle }) {
+export const KPI = memo(function KPI({ label, value, trend, accent = 'primary', unit, subtitle }) {
   const trendColor = trend > 0 ? 'var(--success)' : trend < 0 ? 'var(--error)' : 'var(--text-muted)';
   const arrow = trend > 0 ? '▲' : trend < 0 ? '▼' : '•';
 
@@ -22,12 +22,12 @@ export function KPI({ label, value, trend, accent = 'primary', unit, subtitle })
       )}
     </div>
   );
-}
+});
 
 /**
  * Glassmorphism card wrapper with optional header + footer.
  */
-export function Card({ title, headerExtra, footer, accent, children, className = '' }) {
+export const Card = memo(function Card({ title, headerExtra, footer, accent, children, className = '' }) {
   return (
     <div className={`card${className ? ' ' + className : ''}`}>
       {(title || headerExtra) && (
@@ -40,12 +40,12 @@ export function Card({ title, headerExtra, footer, accent, children, className =
       {footer && <div className="card-foot">{footer}</div>}
     </div>
   );
-}
+});
 
 /**
  * Status pill with color-coded state.
  */
-export function Pill({ status, label }) {
+export const Pill = memo(function Pill({ status, label }) {
   const map = {
     CRITICAL: 'error',
     HIGH: 'warning',
@@ -59,12 +59,12 @@ export function Pill({ status, label }) {
   };
   const cls = map[status] || 'info';
   return <span className={`pill pill-${cls}`}>{label || status}</span>;
-}
+});
 
 /**
  * Segmented control / tab bar.
  */
-export function Segmented({ options, value, onChange }) {
+export const Segmented = memo(function Segmented({ options, value, onChange }) {
   return (
     <div className="segmented">
       {options.map((opt) => (
@@ -80,12 +80,12 @@ export function Segmented({ options, value, onChange }) {
       ))}
     </div>
   );
-}
+});
 
 /**
  * Skeleton loader for cards / lists.
  */
-export function Skeleton({ count = 3, height = 80, className = '' }) {
+export const Skeleton = memo(function Skeleton({ count = 3, height = 80, className = '' }) {
   return (
     <div className={`skeleton-list ${className}`}>
       {Array.from({ length: count }).map((_, i) => (
@@ -93,12 +93,12 @@ export function Skeleton({ count = 3, height = 80, className = '' }) {
       ))}
     </div>
   );
-}
+});
 
 /**
  * Empty state with icon + message + optional action.
  */
-export function EmptyState({ icon, title, description, action }) {
+export const EmptyState = memo(function EmptyState({ icon, title, description, action }) {
   return (
     <div className="empty-state-card">
       {icon && <div className="empty-state-icon">{icon}</div>}
@@ -107,21 +107,13 @@ export function EmptyState({ icon, title, description, action }) {
       {action}
     </div>
   );
-}
+});
 
 /**
  * Toast notification container (renders at root). Lightweight alternative to react-hot-toast.
  */
-export function useToast() {
-  const [toasts, setToasts] = useState([]);
-
-  const push = (message, type = 'info', duration = 4000) => {
-    const id = Math.random().toString(36).slice(2);
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration);
-  };
-
-  const ToastContainer = () => (
+const ToastContainer = memo(function ToastContainer({ toasts }) {
+  return (
     <div className="toast-container" aria-live="polite">
       {toasts.map((t) => (
         <div key={t.id} className={`toast toast-${t.type}`}>
@@ -131,32 +123,46 @@ export function useToast() {
       ))}
     </div>
   );
+});
 
-  return { push, ToastContainer };
+export function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const toastsRef = useRef(toasts);
+  toastsRef.current = toasts;
+
+  const push = useCallback((message, type = 'info', duration = 4000) => {
+    const id = Math.random().toString(36).slice(2);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration);
+  }, []);
+
+  // Stable component identity: the container is never remounted between renders
+  const Container = useCallback(() => <ToastContainer toasts={toastsRef.current} />, []);
+
+  return { push, ToastContainer: Container };
 }
 
 /**
  * Copy-to-clipboard helper button.
  */
-export function CopyButton({ text, label = 'Copy' }) {
+export const CopyButton = memo(function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  }, [text]);
+
   return (
-    <button
-      type="button"
-      className="copy-btn"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        } catch {
-          /* ignore */
-        }
-      }}
-    >
+    <button type="button" className="copy-btn" onClick={handleCopy}>
       {copied ? 'Copied!' : label}
     </button>
   );
-}
+});
 
 export default { KPI, Card, Pill, Segmented, Skeleton, EmptyState, useToast, CopyButton };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useMemo } from 'react';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const COLORS = {
@@ -15,9 +15,7 @@ const COLORS = {
 
 // Admin Console Charts
 function SystemActivityChart({ auditLogs }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     auditLogs.forEach(log => {
       const date = new Date(log.createdAt).toLocaleDateString();
@@ -29,7 +27,7 @@ function SystemActivityChart({ auditLogs }) {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(-7); // Last 7 days
 
-    setData(chartData);
+    return chartData;
   }, [auditLogs]);
 
   return (
@@ -50,9 +48,7 @@ function SystemActivityChart({ auditLogs }) {
 }
 
 function UserActivityChart({ auditLogs }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     auditLogs.forEach(log => {
       const user = log.userEmail || 'Unknown';
@@ -64,7 +60,7 @@ function UserActivityChart({ auditLogs }) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 10); // Top 10 users
 
-    setData(chartData);
+    return chartData;
   }, [auditLogs]);
 
   return (
@@ -85,9 +81,7 @@ function UserActivityChart({ auditLogs }) {
 }
 
 function ActionTypeDistributionChart({ auditLogs }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     auditLogs.forEach(log => {
       const action = log.action;
@@ -99,7 +93,7 @@ function ActionTypeDistributionChart({ auditLogs }) {
       .sort((a, b) => b.value - a.value)
       .slice(0, 10); // Top 10 actions
 
-    setData(chartData);
+    return chartData;
   }, [auditLogs]);
 
   return (
@@ -120,9 +114,7 @@ function ActionTypeDistributionChart({ auditLogs }) {
 }
 
 function RoleDistributionChart({ users }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     users.forEach(user => {
       grouped[user.role] = (grouped[user.role] || 0) + 1;
@@ -131,7 +123,7 @@ function RoleDistributionChart({ users }) {
     const chartData = Object.entries(grouped)
       .map(([role, count]) => ({ name: role, value: count, fill: COLORS[role] || '#64748B' }));
 
-    setData(chartData);
+    return chartData;
   }, [users]);
 
   return (
@@ -152,9 +144,14 @@ function RoleDistributionChart({ users }) {
   );
 }
 
+const MemoSystemActivityChart = memo(SystemActivityChart);
+const MemoUserActivityChart = memo(UserActivityChart);
+const MemoActionTypeDistributionChart = memo(ActionTypeDistributionChart);
+const MemoRoleDistributionChart = memo(RoleDistributionChart);
+
 export {
-  SystemActivityChart,
-  UserActivityChart,
-  ActionTypeDistributionChart,
-  RoleDistributionChart,
+  MemoSystemActivityChart as SystemActivityChart,
+  MemoUserActivityChart as UserActivityChart,
+  MemoActionTypeDistributionChart as ActionTypeDistributionChart,
+  MemoRoleDistributionChart as RoleDistributionChart,
 };

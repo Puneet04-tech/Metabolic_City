@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useMemo } from 'react';
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const COLORS = {
@@ -15,9 +15,7 @@ const COLORS = {
 
 // Field Console Charts
 function TaskStatusDistributionChart({ tasks }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = {};
     tasks.forEach(task => {
       grouped[task.status] = (grouped[task.status] || 0) + 1;
@@ -30,7 +28,7 @@ function TaskStatusDistributionChart({ tasks }) {
         fill: COLORS[status] || '#64748B' 
       }));
 
-    setData(chartData);
+    return chartData;
   }, [tasks]);
 
   return (
@@ -51,9 +49,7 @@ function TaskStatusDistributionChart({ tasks }) {
 }
 
 function TaskResolutionTimeChart({ tasks }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const resolvedTasks = tasks.filter(t => t.resolvedAt && t.dispatchedAt);
     const grouped = {};
     resolvedTasks.forEach(task => {
@@ -65,7 +61,7 @@ function TaskResolutionTimeChart({ tasks }) {
     const chartData = Object.entries(grouped)
       .map(([bucket, count]) => ({ name: bucket, value: count }));
 
-    setData(chartData);
+    return chartData;
   }, [tasks]);
 
   return (
@@ -86,9 +82,7 @@ function TaskResolutionTimeChart({ tasks }) {
 }
 
 function RiskLevelByTaskChart({ tasks }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     const grouped = { CRITICAL: 0, HIGH: 0, MODERATE: 0, LOW: 0 };
     tasks.forEach(task => {
       const risk = task.riskScore || 0;
@@ -102,7 +96,7 @@ function RiskLevelByTaskChart({ tasks }) {
       .filter(([_, count]) => count > 0)
       .map(([level, count]) => ({ name: level, value: count, fill: COLORS[level] }));
 
-    setData(chartData);
+    return chartData;
   }, [tasks]);
 
   return (
@@ -123,8 +117,12 @@ function RiskLevelByTaskChart({ tasks }) {
   );
 }
 
+const MemoTaskStatusDistributionChart = memo(TaskStatusDistributionChart);
+const MemoTaskResolutionTimeChart = memo(TaskResolutionTimeChart);
+const MemoRiskLevelByTaskChart = memo(RiskLevelByTaskChart);
+
 export {
-  TaskStatusDistributionChart,
-  TaskResolutionTimeChart,
-  RiskLevelByTaskChart,
+  MemoTaskStatusDistributionChart as TaskStatusDistributionChart,
+  MemoTaskResolutionTimeChart as TaskResolutionTimeChart,
+  MemoRiskLevelByTaskChart as RiskLevelByTaskChart,
 };

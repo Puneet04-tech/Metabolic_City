@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../api.js';
 import ProductShell from '../Shared/ProductShell.jsx';
 import { SystemActivityChart, UserActivityChart, ActionTypeDistributionChart, RoleDistributionChart } from './AdminCharts.jsx';
@@ -33,9 +33,9 @@ function AdminConsole() {
       .finally(() => setLoading(false));
   }, []);
 
-  const sum = Object.values(weights).reduce((acc, val) => acc + val, 0);
+  const sum = useMemo(() => Object.values(weights).reduce((acc, val) => acc + val, 0), [weights]);
 
-  const dryRun = async () => {
+  const dryRun = useCallback(async () => {
     try {
       const result = await apiRequest('/v1/admin/weights/dry-run', { method: 'POST', body: { ...weights, threshold } });
       setPreview(result.cells || []);
@@ -43,9 +43,9 @@ function AdminConsole() {
     } catch (error) {
       setMessage(error.message);
     }
-  };
+  }, [weights, threshold]);
 
-  const save = async () => {
+  const save = useCallback(async () => {
     if (Math.abs(sum - 1) > 0.0001) return setMessage('Weights must sum to 1.00.');
     try {
       await apiRequest('/v1/admin/weights', { method: 'PUT', body: { ...weights, threshold } });
@@ -54,23 +54,26 @@ function AdminConsole() {
     } catch (error) {
       setMessage(error.message);
     }
-  };
+  }, [sum, weights, threshold]);
 
-  const toggleUser = async (user) => {
+  const toggleUser = useCallback(async (user) => {
     try {
       await apiRequest(`/v1/admin/users/${user._id}`, { method: 'PATCH', body: { active: !user.active } });
       setUsers((previous) => previous.map((u) => (u._id === user._id ? { ...u, active: !u.active } : u)));
     } catch (error) {
       setMessage(error.message);
     }
-  };
+  }, []);
 
-  const weightInput = (key) => (
-    <label className="weight-row" key={key}>
-      <span className="weight-name">{key}</span>
-      <input type="range" min="0" max="1" step="0.01" value={Number(weights[key])} onChange={(event) => setWeights((previous) => ({ ...previous, [key]: Number(event.target.value) }))} />
-      <input type="number" min="0" max="1" step="0.05" value={Number(weights[key])} onChange={(event) => setWeights((previous) => ({ ...previous, [key]: Number(event.target.value) }))} />
-    </label>
+  const weightInput = useCallback(
+    (key) => (
+      <label className="weight-row" key={key}>
+        <span className="weight-name">{key}</span>
+        <input type="range" min="0" max="1" step="0.01" value={Number(weights[key])} onChange={(event) => setWeights((previous) => ({ ...previous, [key]: Number(event.target.value) }))} />
+        <input type="number" min="0" max="1" step="0.05" value={Number(weights[key])} onChange={(event) => setWeights((previous) => ({ ...previous, [key]: Number(event.target.value) }))} />
+      </label>
+    ),
+    [weights]
   );
 
   return (
@@ -193,4 +196,4 @@ function AdminConsole() {
   );
 }
 
-export default AdminConsole;
+export default memo(AdminConsole);

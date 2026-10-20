@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest, setSession, clearSession } from '../../api.js';
 
@@ -191,4 +191,4 @@ function AuthForm({ mode: initialMode = 'login' }) {
   );
 }
 
-export default AuthForm;
+export default memo(AuthForm);

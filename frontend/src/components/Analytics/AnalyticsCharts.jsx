@@ -1,5 +1,5 @@
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { useState, useEffect } from 'react';
+import { memo, useMemo } from 'react';
 import { apiRequest } from '../../api.js';
 
 const COLORS = {
@@ -16,9 +16,7 @@ const COLORS = {
 };
 
 function IncidentTrendChart({ incidents }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     // Group incidents by date
     const grouped = {};
     incidents.forEach(incident => {
@@ -30,7 +28,7 @@ function IncidentTrendChart({ incidents }) {
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    setData(chartData);
+    return chartData;
   }, [incidents]);
 
   return (
@@ -51,9 +49,7 @@ function IncidentTrendChart({ incidents }) {
 }
 
 function RiskDistributionChart({ incidents }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     // Group by risk level
     const grouped = { CRITICAL: 0, HIGH: 0, MODERATE: 0, LOW: 0 };
     incidents.forEach(incident => {
@@ -68,7 +64,7 @@ function RiskDistributionChart({ incidents }) {
       .filter(([_, count]) => count > 0)
       .map(([level, count]) => ({ name: level, value: count, fill: COLORS[level] }));
 
-    setData(chartData);
+    return chartData;
   }, [incidents]);
 
   return (
@@ -90,9 +86,7 @@ function RiskDistributionChart({ incidents }) {
 }
 
 function StatusBreakdownChart({ incidents }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     // Group by status
     const grouped = {};
     incidents.forEach(incident => {
@@ -106,7 +100,7 @@ function StatusBreakdownChart({ incidents }) {
         fill: COLORS[status] || '#64748B' 
       }));
 
-    setData(chartData);
+    return chartData;
   }, [incidents]);
 
   return (
@@ -127,9 +121,7 @@ function StatusBreakdownChart({ incidents }) {
 }
 
 function RiskLevelAreaChart({ incidents }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     // Group by date and average risk
     const grouped = {};
     incidents.forEach(incident => {
@@ -148,7 +140,7 @@ function RiskLevelAreaChart({ incidents }) {
       }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    setData(chartData);
+    return chartData;
   }, [incidents]);
 
   return (
@@ -169,10 +161,8 @@ function RiskLevelAreaChart({ incidents }) {
 }
 
 function TelemetryVolumeChart({ telemetryData }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
-    if (!telemetryData || !telemetryData.data) return;
+  const data = useMemo(() => {
+    if (!telemetryData || !telemetryData.data) return [];
 
     // Group by hour
     const grouped = {};
@@ -189,7 +179,7 @@ function TelemetryVolumeChart({ telemetryData }) {
       .map(([hour, count]) => ({ hour: `${hour}:00`, count }))
       .sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
 
-    setData(chartData);
+    return chartData;
   }, [telemetryData]);
 
   return (
@@ -210,9 +200,7 @@ function TelemetryVolumeChart({ telemetryData }) {
 }
 
 function ResolutionTimeChart({ incidents }) {
-  const [data, setData] = useState([]);
-
-  useEffect(() => {
+  const data = useMemo(() => {
     // Calculate resolution time by status
     const grouped = {};
     incidents.forEach(incident => {
@@ -226,7 +214,7 @@ function ResolutionTimeChart({ incidents }) {
     const chartData = Object.entries(grouped)
       .map(([bucket, count]) => ({ name: bucket, value: count }));
 
-    setData(chartData);
+    return chartData;
   }, [incidents]);
 
   return (
@@ -246,11 +234,18 @@ function ResolutionTimeChart({ incidents }) {
   );
 }
 
+const MemoIncidentTrendChart = memo(IncidentTrendChart);
+const MemoRiskDistributionChart = memo(RiskDistributionChart);
+const MemoStatusBreakdownChart = memo(StatusBreakdownChart);
+const MemoRiskLevelAreaChart = memo(RiskLevelAreaChart);
+const MemoTelemetryVolumeChart = memo(TelemetryVolumeChart);
+const MemoResolutionTimeChart = memo(ResolutionTimeChart);
+
 export {
-  IncidentTrendChart,
-  RiskDistributionChart,
-  StatusBreakdownChart,
-  RiskLevelAreaChart,
-  TelemetryVolumeChart,
-  ResolutionTimeChart,
+  MemoIncidentTrendChart as IncidentTrendChart,
+  MemoRiskDistributionChart as RiskDistributionChart,
+  MemoStatusBreakdownChart as StatusBreakdownChart,
+  MemoRiskLevelAreaChart as RiskLevelAreaChart,
+  MemoTelemetryVolumeChart as TelemetryVolumeChart,
+  MemoResolutionTimeChart as ResolutionTimeChart,
 };

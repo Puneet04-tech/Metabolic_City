@@ -26,8 +26,8 @@
   --glass-fill: linear-gradient(158deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.018) 100%);
   --glass-blur: 34px;
   --glass-saturate: 190%;
-  --glass-edge: linear-gradient(135deg, rgba(167, 139, 250, 0.95) 0%, rgba(59, 130, 246, 0.14) 44%, rgba(34, 211, 238, 0.6) 100%);
-  --glass-shadow: 0 36px 90px rgba(0, 0, 0, 0.78), 0 0 60px -28px rgba(124, 58, 237, 0.65);
+  --glass-edge: linear-gradient(135deg, rgba(34, 211, 238, 0.95) 0%, rgba(56, 189, 248, 0.2) 36%, rgba(129, 140, 248, 0.72) 70%, rgba(34, 211, 238, 0.9) 100%);
+  --glass-shadow: 0 36px 90px rgba(0, 0, 0, 0.78), 0 0 62px -30px rgba(34, 211, 238, 0.9);
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)' opacity='0.5'/%3E%3C/svg%3E");
 
   /* ---------- Dark neumorphism ---------- */
@@ -50,9 +50,9 @@
   /* ---------- Typography ---------- */
   --text: #F4F5F9;
   --text-strong: #FFFFFF;
-  --text-muted: rgba(244, 245, 249, 0.62);
-  --text-muted-secondary: rgba(244, 245, 249, 0.44);
-  --text-muted-tertiary: rgba(244, 245, 249, 0.28);
+  --text-muted: rgba(244, 245, 249, 0.74);
+  --text-muted-secondary: rgba(244, 245, 249, 0.58);
+  --text-muted-tertiary: rgba(244, 245, 249, 0.42);
   --muted: var(--text-muted);
 
   /* ---------- Legacy aliases ---------- */
@@ -123,9 +123,11 @@ body.neon-theme {
   pointer-events: none;
   overflow: hidden;
   background:
-    radial-gradient(1150px 780px at 50% 40%, rgba(109, 40, 217, 0.42) 0%, rgba(37, 99, 235, 0.2) 34%, rgba(0, 0, 0, 0) 70%),
-    radial-gradient(820px 560px at 16% 8%, rgba(139, 92, 246, 0.2) 0%, rgba(0, 0, 0, 0) 62%),
-    radial-gradient(900px 620px at 86% 88%, rgba(37, 99, 235, 0.18) 0%, rgba(0, 0, 0, 0) 64%);
+    radial-gradient(1150px 780px at 50% 42%, rgba(49, 46, 129, 0.55) 0%, rgba(37, 99, 235, 0.3) 30%, rgba(6, 182, 212, 0.14) 54%, rgba(0, 0, 0, 0) 72%),
+    radial-gradient(780px 540px at 14% 8%, rgba(79, 70, 229, 0.32) 0%, rgba(0, 0, 0, 0) 62%),
+    radial-gradient(840px 580px at 88% 86%, rgba(6, 182, 212, 0.26) 0%, rgba(0, 0, 0, 0) 64%),
+    radial-gradient(620px 420px at 74% 14%, rgba(56, 189, 248, 0.18) 0%, rgba(0, 0, 0, 0) 60%),
+    radial-gradient(520px 360px at 26% 78%, rgba(129, 140, 248, 0.16) 0%, rgba(0, 0, 0, 0) 62%);
 }
 
 /* Cinematic vignette keeps the eye on the central module */
@@ -166,10 +168,171 @@ body.neon-theme {
 
 @media (prefers-reduced-motion: reduce) {
   .neon-orb { animation: none; }
+  .ribbon { animation: none; }
 }
 
 @media (max-width: 640px) {
   .neon-orb { display: none; }
+}
+
+/* Full-screen decorative layers are composited once and never re-rasterised */
+.neon-bg,
+.neon-grain,
+.energy-ribbons,
+.energy-ribbons-front,
+.lens-flares,
+.chromatic-edge {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* ==========================================================================
+   Glowing energy ribbons & twisting neon data streams
+   ========================================================================== */
+
+.energy-ribbons,
+.energy-ribbons-front {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Behind the glass modules — refracted by the backdrop blur */
+.energy-ribbons {
+  z-index: -1;
+  opacity: 0.9;
+}
+
+/* Passing over the glass modules with a soft screen blend */
+.energy-ribbons-front {
+  z-index: 3;
+  opacity: 0.34;
+  mix-blend-mode: screen;
+}
+
+.ribbon {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 14 190;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.55));
+  animation-name: ribbon-flow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.ribbon-blur {
+  stroke-width: 12;
+  stroke-dasharray: 120 320;
+  opacity: 0.45;
+  filter: blur(8px);
+  animation-name: ribbon-breathe;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes ribbon-flow {
+  0% { stroke-dashoffset: 0; transform: scaleY(1) translateY(0); }
+  50% { transform: scaleY(1.08) translateY(-6px); }
+  100% { stroke-dashoffset: -460; transform: scaleY(1) translateY(0); }
+}
+
+@keyframes ribbon-breathe {
+  0%, 100% { opacity: 0.26; transform: scaleY(1); }
+  50% { opacity: 0.6; transform: scaleY(1.07); }
+}
+
+/* ==========================================================================
+   Cinematic lens flares
+   ========================================================================== */
+
+.lens-flares {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  mix-blend-mode: screen;
+}
+
+.flare-streak {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 46vw;
+  height: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0) 0%, rgba(165, 243, 252, 0.55) 50%, rgba(34, 211, 238, 0) 100%);
+  filter: blur(3px);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.55);
+  opacity: 0.75;
+  animation: flare-breathe 9s ease-in-out infinite;
+}
+
+.flare-core {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  width: 190px;
+  height: 190px;
+  margin: -95px 0 0 -95px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(224, 231, 255, 0.35), rgba(99, 102, 241, 0.12) 45%, rgba(0, 0, 0, 0) 72%);
+  filter: blur(6px);
+  animation: flare-breathe 9s ease-in-out infinite;
+}
+
+.flare-ghost {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(34, 211, 238, 0.16), rgba(0, 0, 0, 0) 70%);
+  filter: blur(2px);
+}
+
+.flare-ghost-1 {
+  top: 34%;
+  left: 22%;
+  width: 120px;
+  height: 120px;
+  animation: flare-drift 16s ease-in-out infinite alternate;
+}
+
+.flare-ghost-2 {
+  top: 62%;
+  left: 78%;
+  width: 180px;
+  height: 180px;
+  animation: flare-drift 21s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes flare-breathe {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes flare-drift {
+  from { transform: translate3d(-3vw, 2vh, 0) scale(1); opacity: 0.5; }
+  to { transform: translate3d(4vw, -3vh, 0) scale(1.15); opacity: 0.9; }
+}
+
+/* ==========================================================================
+   Soft chromatic aberration at the screen edges
+   ========================================================================== */
+
+.chromatic-edge {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(128% 104% at 50% 50%, rgba(0, 0, 0, 0) 58%, rgba(255, 40, 90, 0.055) 88%, rgba(0, 190, 255, 0.075) 100%),
+    linear-gradient(90deg, rgba(255, 0, 80, 0.035) 0%, rgba(0, 0, 0, 0) 12%, rgba(0, 0, 0, 0) 88%, rgba(0, 220, 255, 0.045) 100%);
 }
 
 /* ==========================================================================
@@ -205,6 +368,10 @@ body.neon-theme {
   border-radius: 26px;
   box-shadow: var(--glass-shadow);
   isolation: isolate;
+  /* GPU promotion: the frosted surface is composited, never re-rasterised */
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* Micro-grain surface */
@@ -306,7 +473,6 @@ body.neon-theme {
 
 .card:hover,
 .panel:hover,
-.side-panel:hover,
 .chart-card:hover,
 .feature-item:hover,
 .info-card:hover,
@@ -942,6 +1108,8 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
   font-size: 13px;
   box-shadow: 0 20px 50px -18px rgba(0, 0, 0, 0.9);
   animation: toastSlide 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translateZ(0);
+  will-change: transform, opacity;
 }
 
 @keyframes toastSlide {
@@ -1303,20 +1471,37 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
    Operator console
    ========================================================================== */
 
+/* ==========================================================================
+   Operator console — viewport shell
+   ========================================================================== */
+
+/* The console owns the full viewport: header + filter bar are fixed height,
+   the three columns scroll only where they are allowed to. */
+.app-shell.console-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.app-shell.console-shell .app-bar { flex: 0 0 auto; }
+
 .console-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px 400px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr) minmax(320px, 0.9fr);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "toolbar toolbar toolbar"
     "map     sidebar drawer";
-  gap: 20px;
-  height: calc(100vh - 132px);
-  max-height: calc(100vh - 132px);
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   max-width: 1920px;
+  width: 100%;
   margin: 0 auto;
-  padding: 22px;
   position: relative;
   z-index: 1;
 }
@@ -1324,38 +1509,254 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .console-header {
   grid-area: toolbar;
   display: flex;
-  gap: 18px;
   align-items: center;
-  padding: 16px 20px;
-  border-radius: 22px;
+  gap: 12px;
   flex-wrap: wrap;
+  padding: 12px 18px;
+  min-height: 64px;
+  border-radius: 20px;
+  flex: 0 0 auto;
+}
+
+/* Single row on wide screens: the legend is pushed to the far right */
+@media (min-width: 1440px) {
+  .console-header { flex-wrap: nowrap; }
+}
+
+.console-header .legend {
+  margin-left: auto;
+  flex-wrap: nowrap;
 }
 
 .map-section {
   grid-area: map;
-  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  min-width: 0;
+  gap: 12px;
   overflow: hidden;
   border-radius: 26px;
   padding: 14px;
+}
+
+.map-frame {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: var(--neu-in);
+  background: #05050A;
 }
 
 .console-sidebar {
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-height: 0;
-  height: 100%;
+  min-width: 0;
+  /* The column scrolls only when the viewport is too short to hold the
+     Live Cells panel plus both chart cards — the trend chart must always
+     be reachable. */
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 8px;
+  padding-right: 4px;
 }
 
-.console-sidebar .sidebar-section { flex: 0 0 auto; }
+.console-sidebar .sidebar-section { min-width: 0; padding: 14px; flex: 0 0 auto; }
+.console-sidebar .sidebar-section h3 { margin-bottom: 10px; }
+
+/* The live-cells panel takes the free height; only the list itself scrolls */
+.console-sidebar .sidebar-section.grow {
+  flex: 1 1 50%;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+.console-sidebar .sidebar-section.grow h3 { flex: 0 0 auto; }
+
+.console-sidebar .sidebar-section.grow .cell-grid-compact {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* ==========================================================================
+   Chart frames — fixed height, chart fills, total centred in the donut hole
+   ========================================================================== */
+
+.chart-frame {
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(6, 6, 11, 0.55);
+  box-shadow: var(--neu-in-sm);
+}
+
+.chart-frame.trend { height: 100px; }
+
+.chart-fill { position: absolute; inset: 0; }
+
+.chart-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.chart-total { display: grid; justify-items: center; gap: 1px; }
+
+.chart-total strong {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.chart-total span {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted-secondary);
+}
+
+.mini-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted-secondary);
+}
+
+.mini-legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.mini-legend-item .legend-swatch { width: 10px; height: 10px; margin-right: 0; }
+
+/* ==========================================================================
+   Live cell chips
+   ========================================================================== */
+
+/* Column count follows the panel width, not the viewport, so the chips stay
+   two-across in the sidebar and stack when the panel is narrow. */
+.cell-grid-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+  padding: 2px;
+}
+
+.cell-card.compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-line);
+  border-left: 3px solid var(--success);
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  background: linear-gradient(165deg, rgba(22, 22, 32, 0.92) 0%, rgba(8, 8, 13, 0.94) 100%);
+  box-shadow: var(--neu-out-xs);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.cell-card.compact.normal { border-left-color: var(--success); }
+.cell-card.compact.warning { border-left-color: var(--warning); }
+.cell-card.compact.critical { border-left-color: var(--error); }
+
+.cell-card.compact:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--neu-out-sm), 0 0 26px -10px rgba(34, 211, 238, 0.95);
+}
+
+.cell-card.compact .cell-label { flex: 1 1 auto; min-width: 0; }
+.cell-card.compact .cell-label-text { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell-card.compact .cell-score { flex: 0 0 auto; font-variant-numeric: tabular-nums; font-size: 14px; }
+.cell-card.compact .cell-severity-dot { width: 7px; height: 7px; flex: 0 0 auto; }
+
+/* ==========================================================================
+   Action drawer — one scroll container (the alerts list)
+   ========================================================================== */
+
+.side-panel {
+  grid-area: drawer;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
+  padding: 20px;
+  border-radius: 24px;
+}
+
+.side-panel h2 { flex: 0 0 auto; }
+
+.drawer-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.drawer-hint { flex: 0 0 auto; color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+.drawer-stats { flex: 0 0 auto; }
+.drawer-subtitle { flex: 0 0 auto; }
+
+.top-alerts {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  padding-bottom: 16px;
+}
+
+.selected-content {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 4px;
+  padding-bottom: 16px;
+}
+
+/* ==========================================================================
+   Thin themed scrollbars
+   ========================================================================== */
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.5) rgba(8, 8, 14, 0.45);
+}
+
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-track { background: rgba(8, 8, 14, 0.45); border-radius: 999px; }
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.65), rgba(37, 99, 235, 0.5));
+  border-radius: 999px;
+}
 
 .sidebar-section {
   border-radius: 24px;
@@ -1364,16 +1765,19 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .sidebar-section h3 { color: var(--text-strong); font-size: 14px; font-weight: 600; margin-bottom: 14px; margin-top: 0; }
 
-.side-panel {
-  grid-area: drawer;
-  min-height: 0;
-  max-height: none;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 22px;
-  border-radius: 26px;
-  transition: box-shadow 0.3s ease;
+.section-count {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  color: #7DD3FC;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  vertical-align: 1px;
 }
 
 .side-panel h2 { color: var(--text-strong); font-size: 18px; font-weight: 600; margin-bottom: 12px; letter-spacing: -0.015em; }
@@ -1404,26 +1808,41 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- Map ---------- */
+/* The Leaflet container fills the frame exactly — no dead space below it */
 .map-canvas {
-  flex: 1 1 auto;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
-  min-height: 340px;
-  margin: 0 0 12px;
+  height: 100%;
   z-index: 0;
-  border-radius: 22px;
   overflow: hidden;
   background: #05050A;
-  position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: var(--neu-in);
 }
 
 .map-section .ticker { margin: 0; flex: 0 0 auto; }
 
-/* OSM tiles are light — invert them into the OLED palette */
-.leaflet-container .leaflet-tile { filter: invert(1) hue-rotate(185deg) brightness(0.78) contrast(1.08) saturate(0.7); }
+/* OSM tiles are light — invert them into the OLED palette.
+   Leaflet ships `.leaflet-tile { filter: inherit }`, so the inversion has to
+   win explicitly. Filtering per tile (instead of on the whole pane) keeps
+   panning cheap: each tile caches its filtered texture and only translates. */
+.leaflet-container .leaflet-tile {
+  filter: invert(1) hue-rotate(185deg) brightness(1.4) contrast(0.95) saturate(0.55) !important;
+  will-change: transform;
+}
+
 .leaflet-container { background: #05050A; font-family: var(--font-heading); }
+
+/* ---------- Canvas overlays (cells + telemetry hot spots) ---------- */
+.h3-cells-canvas,
+.h3-hotspots-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 450;
+}
+
+.h3-hotspots-canvas { z-index: 460; }
 
 .map-empty-overlay {
   position: absolute;
@@ -1529,17 +1948,17 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .status-dot.degraded { background: var(--error); box-shadow: 0 0 12px rgba(255, 92, 92, 0.9); }
 
 .lens-toggle { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.lens-toggle-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted-secondary); text-transform: uppercase; letter-spacing: 0.12em; margin-right: 4px; }
+.lens-toggle-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-right: 4px; }
 .lens-btn { padding: 9px 16px; font-size: 12px; }
 
 .legend {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
   margin: 10px 2px 0;
-  font-size: 10px;
-  color: var(--text-muted-secondary);
+  font-size: 10.5px;
+  color: var(--text-muted);
   font-family: var(--font-mono);
   letter-spacing: 0.08em;
 }
@@ -1549,10 +1968,13 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
   width: 14px;
   height: 14px;
   border-radius: 5px;
-  margin-right: 6px;
+  margin-right: 5px;
   vertical-align: -2px;
   box-shadow: 0 0 14px -2px currentColor;
 }
+
+.legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend-item .legend-swatch { margin-right: 0; }
 
 .legend-swatch.critical { background: #FF5C5C; color: #FF5C5C; }
 .legend-swatch.warning { background: #FFB020; color: #FFB020; }
@@ -1605,13 +2027,7 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 /* ---------- Cell cards ---------- */
 .cell-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
 
-.cell-grid-compact {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  max-height: min(42vh, 460px);
-  overflow-y: auto;
-  padding: 6px;
-}
+/* .cell-grid-compact is defined in the "Live cell chips" block above */
 
 .cell-card {
   display: grid;
@@ -1633,10 +2049,57 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .cell-card.warning { border-left-color: var(--warning); }
 .cell-card.critical { border-left-color: var(--error); }
 
-.cell-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; grid-column: 1 / -1; }
+.cell-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; grid-column: 1 / -1; padding-right: 2px; }
 .cell-card strong { font-weight: 600; color: var(--text-strong); font-size: 13px; }
-.cell-card span { font-weight: 600; color: #A78BFA; font-size: 18px; }
+.cell-card .cell-score { font-weight: 600; color: #A78BFA; font-size: 18px; white-space: nowrap; }
+
+/* Severity colouring — the score always reads against its risk band */
+.cell-card.normal .cell-score { color: var(--success); }
+.cell-card.warning .cell-score { color: var(--warning); }
+.cell-card.critical .cell-score { color: var(--error); }
+
+.cell-label { display: flex; align-items: center; gap: 7px; min-width: 0; }
+
+.cell-label-text {
+  font-weight: 600;
+  color: var(--text-strong);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell-severity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--success);
+  box-shadow: 0 0 10px rgba(45, 212, 167, 0.9);
+}
+
+.cell-card.warning .cell-severity-dot { background: var(--warning); box-shadow: 0 0 10px rgba(255, 176, 32, 0.9); }
+.cell-card.critical .cell-severity-dot { background: var(--error); box-shadow: 0 0 12px rgba(255, 92, 92, 0.95); }
+
+.cell-id {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-muted-tertiary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Selected cell is linked to the map and the action drawer */
+.cell-card.is-selected {
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: var(--neu-out-sm), var(--neu-rim), 0 0 0 1px rgba(34, 211, 238, 0.45), 0 0 30px -10px rgba(34, 211, 238, 0.95);
+}
+
+.cell-card.is-selected .cell-label-text { color: #E6FAFF; }
 .cell-card small { grid-column: 1 / -1; color: var(--text-muted-secondary); font-family: var(--font-mono); font-size: 10px; margin-top: 4px; line-height: 1.5; }
+.cell-card .cell-breakdown { color: var(--text-muted); }
 .cell-card .data-quality { color: var(--text-muted-tertiary); font-size: 10px; margin-top: 3px; font-weight: 500; }
 
 .cell-card-foot {
@@ -1653,10 +2116,30 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .cell-velocity { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); }
 .spark { width: 100%; height: 30px; grid-column: 1 / -1; }
 
-.cell-card.compact { padding: 12px; font-size: 12px; }
-.cell-card.compact strong { font-size: 12px; }
-.cell-card.compact span { font-size: 14px; }
-.cell-card.compact small { display: none; }
+/* The compact chip layout is defined in the "Live cell chips" block above;
+   only the floating motion and the hover glow live here. */
+
+/* Floating data cards — the live telemetry nodes drift in place */
+.cell-card.compact {
+  animation: float-card 7.5s ease-in-out infinite;
+}
+
+.cell-card.compact:nth-child(2n) { animation-duration: 8.6s; animation-delay: -1.8s; }
+.cell-card.compact:nth-child(3n) { animation-duration: 9.4s; animation-delay: -3.4s; }
+.cell-card.compact:nth-child(5n) { animation-duration: 8.1s; animation-delay: -2.6s; }
+
+.cell-card.compact:hover {
+  transform: none;
+  box-shadow: var(--neu-out-sm), var(--neu-rim), 0 0 28px -8px rgba(34, 211, 238, 0.95);
+}
+
+@keyframes float-card {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* ---------- Luminous coordinate grid + turquoise hot spots ---------- */
+.leaflet-grid-canvas { pointer-events: none; }
 
 /* ---------- Lens bars ---------- */
 .lens-bars { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; overflow-x: hidden; }
@@ -1689,7 +2172,75 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 .score-hero span { color: var(--text-muted-secondary); font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; }
 
 .cell-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-.cell-header h3 { color: var(--text-strong); font-size: 16px; font-weight: 600; }
+.cell-header h3 { color: var(--text-strong); font-size: 16px; font-weight: 600; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cell-header h3 .cell-id { display: block; }
+
+/* ---------- Action drawer summary (shown when no cell is selected) ---------- */
+.drawer-summary { display: grid; gap: 16px; }
+
+.drawer-hint { color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+
+.drawer-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.drawer-stat {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 12px 8px;
+  border-radius: 16px;
+  background: rgba(8, 8, 14, 0.55);
+  border: 1px solid var(--border);
+  box-shadow: var(--neu-in-sm);
+}
+
+.drawer-stat strong { font-size: 20px; font-weight: 600; color: var(--text-strong); }
+.drawer-stat span { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted-secondary); }
+.drawer-stat.critical strong { color: var(--error); }
+.drawer-stat.warning strong { color: var(--warning); }
+.drawer-stat.normal strong { color: var(--success); }
+
+.drawer-subtitle {
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.top-alerts { display: grid; gap: 8px; }
+
+.top-alert {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 13px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--success);
+  background: rgba(8, 8, 14, 0.5);
+  box-shadow: var(--neu-out-xs);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.top-alert:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--neu-out-sm), 0 0 24px -10px rgba(34, 211, 238, 0.9);
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+.top-alert.warning { border-left-color: var(--warning); }
+.top-alert.critical { border-left-color: var(--error); }
+
+.top-alert-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.top-alert-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-strong); }
+.top-alert-score { font-family: var(--font-mono); font-size: 14px; font-weight: 600; color: #A78BFA; }
+.top-alert-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted-secondary); }
 
 .score-pill {
   display: inline-flex;
@@ -1725,8 +2276,62 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
   transition: box-shadow 0.3s ease;
 }
 
-.chart-container:hover { transform: none; box-shadow: var(--neu-in), 0 0 40px -24px rgba(139, 92, 246, 0.9); }
+.chart-container:hover { transform: none; box-shadow: var(--neu-in), 0 0 40px -24px rgba(34, 211, 238, 0.9); }
 .chart-container.compact { min-height: 180px; padding: 12px; }
+
+/* Empty state for charts with no data in the current window */
+.chart-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 110px;
+  padding: 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- Holographic donut projection ---------- */
+.donut-holo { position: relative; overflow: hidden; }
+
+.donut-holo::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: 68%;
+  height: 78%;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(closest-side, rgba(34, 211, 238, 0.34) 0%, rgba(99, 102, 241, 0.16) 45%, rgba(0, 0, 0, 0) 72%);
+  filter: blur(16px);
+  pointer-events: none;
+  z-index: 0;
+  animation: holo-breathe 6s ease-in-out infinite;
+}
+
+.donut-holo::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  width: 44%;
+  height: 10px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(165, 243, 252, 0.4), rgba(34, 211, 238, 0) 78%);
+  filter: blur(6px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.donut-holo .recharts-surface { position: relative; z-index: 1; }
+
+@keyframes holo-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
 
 .chart-card { border-radius: 26px; padding: 22px; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease; }
 .chart-card h3 { color: var(--text-strong); font-size: 15px; font-weight: 600; margin-bottom: 18px; margin-top: 0; letter-spacing: -0.01em; }
@@ -1861,7 +2466,7 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
   box-shadow: var(--neu-out), var(--neu-rim);
 }
 
-.last-updated { font-size: 11px; color: var(--text-muted-secondary); font-family: var(--font-mono); letter-spacing: 0.06em; }
+.last-updated { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); letter-spacing: 0.06em; }
 
 .analytics-toolbar {
   display: flex;
@@ -2053,38 +2658,42 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
    Responsive
    ========================================================================== */
 
-@media (max-width: 1500px) {
-  .console-layout {
-    grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "toolbar toolbar"
-      "map     sidebar"
-      "drawer  drawer";
+/* Below the large breakpoint the console becomes a normal scrolling page */
+@media (max-width: 1023px) {
+  .app-shell.console-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
   }
 
-  .side-panel { height: auto; max-height: 36vh; }
-}
-
-@media (max-width: 1000px) {
   .console-layout {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto;
+    grid-template-rows: none;
     grid-template-areas:
       "toolbar"
       "map"
       "sidebar"
       "drawer";
-    height: auto;
-    max-height: none;
     overflow: visible;
+    height: auto;
+    flex: 0 0 auto;
   }
 
-  .map-section { height: auto; }
-  .map-canvas { flex: none; height: 420px; min-height: 320px; }
-  .console-sidebar { height: auto; overflow: visible; }
-  .side-panel { height: auto; max-height: none; overflow: visible; }
-  .cell-grid-compact { max-height: none; overflow: visible; }
+  .map-section { overflow: visible; }
+  .map-frame { min-height: 420px; flex: 0 0 auto; }
+  .console-sidebar { overflow: visible; }
+  .console-sidebar .sidebar-section.grow { min-height: 0; }
+  .console-sidebar .sidebar-section.grow .cell-grid-compact { max-height: 420px; }
+  .side-panel { height: auto; overflow: visible; }
+  .top-alerts,
+  .selected-content { overflow: visible; }
+}
+
+/* Short viewports: tighten the chart cards so the whole column still fits */
+@media (max-height: 940px) {
+  .chart-frame { height: 136px; }
+  .chart-frame.trend { height: 88px; }
+  .console-sidebar .sidebar-section.grow { min-height: 220px; }
 }
 
 @media (max-width: 1200px) {
@@ -2093,8 +2702,7 @@ textarea:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 @media (max-width: 850px) {
-  .console-layout, .admin-grid { grid-template-columns: 1fr; }
-  .map-canvas { height: 360px; }
+  .admin-grid { grid-template-columns: 1fr; }
   .app-bar { align-items: flex-start; }
   .app-user { margin-left: 0; }
   .table-row { grid-template-columns: 1fr 1fr; }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { apiRequest } from '../../api.js';
 import { enqueueFieldUpdate, flushFieldOutbox } from '../../fieldOutbox.js';
 import ProductShell from '../Shared/ProductShell.jsx';
@@ -27,7 +27,7 @@ function readPhotoAsThumbnail(file) {
   });
 }
 
-function TaskCard({ task, onUpdate, onResolve }) {
+const TaskCard = memo(function TaskCard({ task, onUpdate, onResolve }) {
   const [note, setNote] = useState('');
   const [photoDataUrl, setPhotoDataUrl] = useState('');
   const [locating, setLocating] = useState(false);
@@ -90,7 +90,7 @@ function TaskCard({ task, onUpdate, onResolve }) {
       </div>
     </article>
   );
-}
+});
 
 function notesProgressive(status, onUpdate, task) {
   const buttons = ['ACKNOWLEDGED', 'ARRIVED'].filter((step) => status !== step);
@@ -109,7 +109,7 @@ function FieldConsole() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     apiRequest('/v1/field/tasks')
       .then((data) => {
@@ -118,7 +118,7 @@ function FieldConsole() {
       })
       .catch((error) => setMessage(error.message))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     load();
@@ -127,9 +127,9 @@ function FieldConsole() {
     return () => {
       window.removeEventListener('online', flush);
     };
-  }, []);
+  }, [load]);
 
-  const update = async (task, status) => {
+  const update = useCallback(async (task, status) => {
     try {
       await apiRequest('/v1/field/sync', {
         method: 'POST',
@@ -144,23 +144,26 @@ function FieldConsole() {
         setMessage(error.message);
       }
     }
-  };
+  }, []);
 
-  const handleResolve = async (task, note, photoDataUrl) => {
-    if (!note.trim()) return setMessage('Resolution note is required.');
-    const captureLocation = () =>
-      new Promise((resolve) => {
-        if (!navigator.geolocation) return resolve([undefined, undefined]);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-          () => resolve([undefined, undefined]),
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
-      });
-    return captureLocation().then(([latitude, longitude]) =>
-      update(task, 'RESOLVED', { resolutionNote: note, resolutionPhotoUrl: photoDataUrl || undefined, latitude, longitude })
-    );
-  };
+  const handleResolve = useCallback(
+    async (task, note, photoDataUrl) => {
+      if (!note.trim()) return setMessage('Resolution note is required.');
+      const captureLocation = () =>
+        new Promise((resolve) => {
+          if (!navigator.geolocation) return resolve([undefined, undefined]);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
+            () => resolve([undefined, undefined]),
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        });
+      return captureLocation().then(([latitude, longitude]) =>
+        update(task, 'RESOLVED', { resolutionNote: note, resolutionPhotoUrl: photoDataUrl || undefined, latitude, longitude })
+      );
+    },
+    [update]
+  );
 
   return (
     <ProductShell title="Field Crew PWA">
@@ -209,4 +212,4 @@ function FieldConsole() {
   );
 }
 
-export default FieldConsole;
+export default memo(FieldConsole);
