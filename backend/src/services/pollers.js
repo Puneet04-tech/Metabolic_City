@@ -1,4 +1,10 @@
 import { ingest } from '../routes/telemetry.js';
+import { congestionLevelFor } from './transitService.js';
+import {
+  expectedSpeedMpsFor,
+  findStopById,
+  nearestStopDistanceKm,
+} from './staticGTFSData.js';
 
 function parseWeatherPoints() {
   return (process.env.OPENWEATHER_POINTS || '')
@@ -97,26 +103,55 @@ async function pollTransit() {
       if (!position?.latitude || !position?.longitude) continue;
 
       const speedMps = position.speed; // speed in meters per second
-      const normalSpeedMps = 11.1; // ~40 km/h baseline
+
+      // The stop the vehicle is serving decides which cell the disruption
+      // belongs to. The feed names the stop it has just left, and when that
+      // is not in the static data the vehicle's own position is used.
+      const stop = findStopById(vehicle.trip?.stopId);
+      const latitude = stop ? stop.stopLat : position.latitude;
+      const longitude = stop ? stop.stopLon : position.longitude;
+
+      // How fast a vehicle is expected to run past a stop is set by how
+      // closely the stops are spaced there, not by one global number.
+      const spacingKm = stop ? nearestStopDistanceKm(stop.cityName, stop) : null;
+      const expectedSpeedMps = expectedSpeedMpsFor(spacingKm);
+
       let speedReductionPct = 0;
-      if (Number.isFinite(speedMps) && speedMps < normalSpeedMps) {
-        speedReductionPct = Math.round(((normalSpeedMps - Math.max(0, speedMps)) / normalSpeedMps) * 100);
+      if (Number.isFinite(speedMps) && speedMps < expectedSpeedMps) {
+        speedReductionPct = Math.round(((expectedSpeedMps - Math.max(0, speedMps)) / expectedSpeedMps) * 100);
+      }
+
+      // The time the vehicle has lost on the run into this stop: the
+      // distance to the next stop at the speed it is actually doing, less
+      // the time it would have taken at the expected speed.
+      let delayMins;
+      if (Number.isFinite(speedMps) && speedMps > 0.5 && Number.isFinite(spacingKm)) {
+        const timeLostSeconds = (spacingKm / speedMps - spacingKm / expectedSpeedMps) * 3600;
+        delayMins = Math.max(0, Math.round(timeLostSeconds / 60));
       }
 
       await ingest('GTFS_TRANSIT', {
-        latitude: position.latitude,
-        longitude: position.longitude,
+        latitude,
+        longitude,
         timestamp: new Date(Number(vehicle.timestamp || feed.header?.timestamp || Date.now()) * 1000).toISOString(),
         vehicleId: vehicle.vehicle?.id || entity.id,
         routeId: vehicle.trip?.routeId,
-        delayMins: 0,
+        delayMins,
         speedReductionPct,
+        congestionLevel: congestionLevelFor(speedReductionPct),
         rawPayload: {
           source: 'GTFS-RT',
           vehicleId: vehicle.vehicle?.id,
           tripId: vehicle.trip?.tripId,
+          stopId: stop?.stopId ?? null,
+          stopName: stop?.stopName ?? null,
+          cityCode: stop?.cityCode ?? null,
           bearing: position.bearing,
           speed: speedMps,
+          expectedSpeedMps,
+          stopSpacingKm: spacingKm,
+          vehicleLatitude: position.latitude,
+          vehicleLongitude: position.longitude,
         },
       });
     }

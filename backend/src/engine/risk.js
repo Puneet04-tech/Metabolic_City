@@ -401,9 +401,13 @@ export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0
   const anomaly = detectAnomalies({ mobility: mobility.score, climate: climate.score, vulnerability: vulnerability.score }, directRisk, previousCompositeRisk);
 
   const sources = [...new Set(events.map((e) => e.sourceType))];
+  // The last time something was actually observed here. When nothing has been
+  // observed inside the window, this keeps the last real observation rather
+  // than the last time the cell was written, so a cell that has gone quiet
+  // stops counting as active.
   const lastObserved = events.length
     ? new Date(Math.max(...events.map((e) => new Date(e.observedAt).getTime())))
-    : previousCell?.lastUpdated || new Date();
+    : previousCell?.telemetryStats?.lastObservedAt || null;
 
   return {
     scores: {
@@ -511,14 +515,16 @@ export async function recalculateCell(h3Index) {
 
 /**
  * Processes all telemetry from the database into spatial cells.
- * This clears existing cells and recreates them based on current telemetry.
+ *
+ * Cells are created from the telemetry that exists, and existing cells are
+ * recalculated rather than deleted, so the rolling history of each cell
+ * survives from one cycle to the next. Clearing the collection here used to
+ * throw that history away every ten minutes, which left the history at a
+ * single entry and made any trend or change detection impossible.
  */
 export async function processTelemetryToCells() {
   try {
     const uniqueH3Indices = await TelemetryEvent.distinct('h3Index');
-
-    // Clear existing spatial cells
-    await SpatialCell.deleteMany({});
 
     const results = [];
     for (const h3Index of uniqueH3Indices) {
@@ -530,6 +536,17 @@ export async function processTelemetryToCells() {
         console.error(`[risk-engine] Failed to process cell ${h3Index}:`, err.message);
       }
     }
+
+    // A cell whose telemetry is gone is a cell that no longer describes
+    // anything. It is removed so the list of cells only ever holds places
+    // that are actually being observed.
+    const live = new Set(uniqueH3Indices.filter(Boolean));
+    const stale = await SpatialCell.find({ h3Index: { $nin: [...live] } }, { h3Index: 1 }).lean();
+    if (stale.length) {
+      await SpatialCell.deleteMany({ h3Index: { $in: stale.map((cell) => cell.h3Index) } });
+      console.log(`[risk-engine] Removed ${stale.length} cells that no longer have telemetry.`);
+    }
+
     return results;
   } catch (error) {
     console.error('[risk-engine] Error in processTelemetryToCells:', error.message);
@@ -572,7 +589,13 @@ export async function listActiveCells(filters = {}) {
   }
 
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const query = { lastUpdated: { $gte: cutoff } };
+  // A cell counts as active when something was actually observed in it, not
+  // merely when it was written to. A cell that has had no reading for a day
+  // is not one an operator can act on.
+  const query = {
+    lastUpdated: { $gte: cutoff },
+    'telemetryStats.lastObservedAt': { $gte: cutoff },
+  };
 
   if (filters.riskLevel) {
     query.riskLevel = filters.riskLevel.toUpperCase();

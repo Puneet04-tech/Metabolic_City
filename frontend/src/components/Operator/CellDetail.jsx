@@ -18,6 +18,82 @@ const LENS_LABELS = {
   vulnerability: 'Vulnerability',
 };
 
+/** The real sources that can back a cell, and what each one means. */
+const SOURCE_LABELS = {
+  WEATHER_API: { label: 'Weather readings', hint: 'Observed rainfall, visibility, wind and temperature' },
+  GTFS_TRANSIT: { label: 'Road speed readings', hint: 'Measured travel time against free flow' },
+  GIS_STATIC: { label: 'Terrain', hint: 'Elevation, slope and distance to a watercourse' },
+  CITIZEN_311: { label: 'Citizen reports', hint: 'Reports from residents and field crew' },
+  IOT_SENSOR: { label: 'Sensor readings', hint: 'Readings from a device on the ground' },
+};
+
+const DEGRADATION_LABELS = {
+  NO_MOBILITY_DATA: 'No road speed readings for this cell',
+  NO_CLIMATE_DATA: 'No weather readings for this cell',
+  NO_VULNERABILITY_DATA: 'No terrain or survey data for this cell',
+  SPARSE_MOBILITY: 'Only a few road speed readings',
+  SPARSE_CLIMATE: 'Only a few weather readings',
+};
+
+/**
+ * What this cell's score is actually made of.
+ *
+ * A score without its sources is not trustworthy, and the operator has to be
+ * able to see which real readings back the number in front of them.
+ */
+function ProvenancePanel({ cell }) {
+  const stats = cell.telemetryStats || {};
+  const sources = Array.isArray(stats.sources) ? stats.sources : [];
+  const degradation = cell.degradationStatus;
+
+  if (!sources.length && !degradation) return null;
+
+  return (
+    <section className={styles.section} aria-label="Data provenance">
+      <h3 className={styles.sectionTitle}>What this score is made of</h3>
+
+      {degradation && degradation !== 'HEALTHY' ? (
+        <p className={styles.degraded} data-tone={degradation.startsWith('NO_') ? 'missing' : 'sparse'}>
+          {DEGRADATION_LABELS[degradation] || degradation.replace(/_/g, ' ').toLowerCase()}
+        </p>
+      ) : null}
+
+      {sources.length ? (
+        <ul className={styles.sources}>
+          {sources.map((source) => {
+            const count =
+              source === 'WEATHER_API'
+                ? stats.weatherEventsCount
+                : source === 'GTFS_TRANSIT'
+                  ? stats.transitEventsCount
+                  : source === 'CITIZEN_311'
+                    ? stats.citizenEventsCount
+                    : source === 'GIS_STATIC'
+                      ? stats.gisEventsCount
+                      : stats.eventCount;
+            const meta = SOURCE_LABELS[source] || { label: source, hint: '' };
+            return (
+              <li key={source} className={styles.source}>
+                <span className={styles.sourceCount}>{count ?? 0}</span>
+                <span className={styles.sourceText}>
+                  <span className={styles.sourceLabel}>{meta.label}</span>
+                  <span className={styles.sourceHint}>{meta.hint}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {stats.lastObservedAt ? (
+        <p className={styles.observed}>
+          Last observed {new Date(stats.lastObservedAt).toLocaleString()}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 /** A small history chart for the cell's composite risk. */
 function TrendChart({ values }) {
   if (!values || values.length < 2) return null;
@@ -114,6 +190,8 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
           <TrendChart values={history} />
         </section>
       ) : null}
+
+      <ProvenancePanel cell={cell} />
 
       <section className={styles.section} aria-label="Response directive">
         <h3 className={styles.sectionTitle}>Response directive</h3>

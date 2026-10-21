@@ -5,6 +5,7 @@ import { Incident } from '../models/Incident.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { broadcastIncident } from '../engine/stream.js';
 import { ingest } from './telemetry.js';
+import { congestionLevelFor } from '../services/trafficService.js';
 
 const router = express.Router();
 const allowedStatuses = ['ACKNOWLEDGED', 'ARRIVED', 'RESOLVED'];
@@ -119,6 +120,66 @@ router.get('/history', protect, authorize('field', 'admin'), async (req, res, ne
     return next(error);
   }
 });
+
+// POST /api/v1/field/position - A crew's own position and road speed
+//
+// The crew app is already running on a phone in a vehicle on a real road.
+// Reporting the position turns it into a traffic sensor: the speed the crew
+// is doing is a real measurement of that road, and it needs no agreement
+// with anybody.
+router.post(
+  '/position',
+  protect,
+  authorize('field', 'admin'),
+  [
+    body('latitude').isFloat({ min: -90, max: 90 }),
+    body('longitude').isFloat({ min: -180, max: 180 }),
+    body('speedMps').isFloat({ min: 0, max: 60 }).optional(),
+    body('freeFlowSpeedMps').isFloat({ min: 0, max: 60 }).optional(),
+  ],
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ message: errors.array()[0].msg });
+    }
+
+    const speedMps = Number(req.body.speedMps);
+    const freeFlowSpeedMps = Number(req.body.freeFlowSpeedMps);
+    if (!Number.isFinite(speedMps)) {
+      return res.status(422).json({ message: 'speedMps is required to record a road speed.' });
+    }
+
+    const speedReductionPct =
+      Number.isFinite(freeFlowSpeedMps) && freeFlowSpeedMps > 0
+        ? Math.max(0, Math.min(100, ((freeFlowSpeedMps - speedMps) / freeFlowSpeedMps) * 100))
+        : 0;
+
+    try {
+      const result = await ingest('GTFS_TRANSIT', {
+        latitude: req.body.latitude,
+        longitude: req.body.longitude,
+        delayMins: 0,
+        speedReductionPct,
+        congestionLevel: congestionLevelFor(speedReductionPct),
+        cityCode: req.user.cityCode,
+        rawPayload: {
+          source: 'field-crew-gps',
+          senderId: `CREW_${req.user._id}`,
+          speedMps,
+          freeFlowSpeedMps: Number.isFinite(freeFlowSpeedMps) ? freeFlowSpeedMps : null,
+        },
+      });
+
+      return res.status(201).json({
+        message: 'Road speed recorded.',
+        event: result.event,
+        cell: result.cell,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 // POST /api/v1/field/report - Direct on-ground hazard reporting by field crew
 router.post(

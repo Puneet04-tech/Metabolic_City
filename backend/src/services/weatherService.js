@@ -162,6 +162,72 @@ export async function fetchWeatherForAllCities() {
   return results;
 }
 
+/**
+ * Fetches the current weather at one arbitrary point.
+ *
+ * This is the primitive the per-cell interpolation is built on: the pipeline
+ * needs a handful of real observations spread across a city, not one reading
+ * for the whole of it.
+ */
+export async function fetchWeatherAtPoint(latitude, longitude) {
+  const url = new URL(`${OPENMETEO_BASE_URL}/forecast`);
+  url.searchParams.set('latitude', String(latitude));
+  url.searchParams.set('longitude', String(longitude));
+  url.searchParams.set(
+    'current',
+    'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m'
+  );
+  url.searchParams.set('hourly', 'visibility');
+  url.searchParams.set('timezone', 'auto');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENMETEO_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Open-Meteo API returned ${response.status}`);
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Fetches a set of weather observations for one city.
+ *
+ * Every point is a real observation. A point that fails is dropped rather
+ * than replaced, so a partially reachable city still interpolates from the
+ * observations it did get.
+ */
+export async function fetchWeatherObservations(points) {
+  const settled = await Promise.allSettled(
+    points.map(async (point) => {
+      const data = await fetchWeatherAtPoint(point.latitude, point.longitude);
+      return { point, data };
+    })
+  );
+
+  const observations = [];
+  for (const result of settled) {
+    if (result.status === 'fulfilled') {
+      observations.push({
+        key: result.value.point.key,
+        latitude: result.value.point.latitude,
+        longitude: result.value.point.longitude,
+        data: result.value.data,
+        values: getWeatherSnapshot(result.value.data),
+      });
+      continue;
+    }
+    console.warn(
+      `[weather] Observation ${result.reason?.message || 'failed'}; continuing with the remaining points`
+    );
+  }
+
+  return observations;
+}
+
 function firstFinite(...values) {
   for (const value of values) {
     const number = Number(value);
@@ -185,17 +251,22 @@ export function getWeatherSnapshot(weatherData) {
   };
 }
 
-export function weatherToTelemetry(cityName, weatherData) {
+export function weatherToTelemetry(cityName, weatherData, target = {}) {
   const city = getCity(cityName);
   if (!city) {
     throw new Error(`City ${cityName} not found. Available cities: ${getAvailableCityNames().join(', ')}`);
   }
-  const snapshot = getWeatherSnapshot(weatherData);
+  const snapshot = target.values
+    ? target.values
+    : getWeatherSnapshot(weatherData);
+
+  const latitude = Number.isFinite(target.latitude) ? target.latitude : city.lat;
+  const longitude = Number.isFinite(target.longitude) ? target.longitude : city.lon;
 
   return {
-    h3Index: getH3Index(city.lat, city.lon),
-    latitude: city.lat,
-    longitude: city.lon,
+    h3Index: target.h3Index || getH3Index(latitude, longitude),
+    latitude,
+    longitude,
     sourceType: 'WEATHER_API',
     cityCode: city.code,
     observedAt: new Date().toISOString(),
@@ -205,7 +276,11 @@ export function weatherToTelemetry(cityName, weatherData) {
     temperatureC: snapshot.temperatureC ?? 25,
     humidityPct: snapshot.humidityPct ?? 50,
     weatherCondition: getWeatherCondition(snapshot.temperatureC, snapshot.rainMmHr, snapshot.windSpeedMps),
-    rawPayload: weatherData,
+    rawPayload: {
+      ...(target.values ? {} : weatherData),
+      pipelineGenerated: true,
+      ...(target.provenance || {}),
+    },
   };
 }
 

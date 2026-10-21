@@ -1,3 +1,15 @@
+/**
+ * Seeds the synthetic calibration telemetry.
+ *
+ * The survey workbooks these come from say so themselves: the responses are
+ * "populated synthetic calibration/template responses", not real interviews.
+ * They are kept because they are useful for calibrating the scoring while
+ * the real survey is being collected, and they are marked as synthetic on
+ * every event they create.
+ *
+ * This script refuses to run unless it is asked for explicitly, so a
+ * calibration set can never be mistaken for measurement.
+ */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
@@ -8,6 +20,14 @@ import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { normalizeCoordinates, recalculateCell } from '../engine/risk.js';
 
 dotenv.config({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.env') });
+
+if (process.env.ALLOW_SYNTHETIC_SEED !== 'true') {
+  console.error(
+    '[seed] Refusing to run. The survey workbooks hold synthetic calibration responses, not real interviews.\n' +
+      '[seed] Set ALLOW_SYNTHETIC_SEED=true to run this deliberately, for calibration only.'
+  );
+  process.exit(1);
+}
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../');
 const locations = {

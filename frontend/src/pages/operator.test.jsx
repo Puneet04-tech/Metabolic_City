@@ -122,6 +122,46 @@ describe('CellDetail', () => {
     expect(html).toContain('Approve and dispatch');
     expect(html).toContain('Override alert');
   });
+
+  it('says which real readings back the score', () => {
+    const html = render(
+      <CellDetail
+        cell={cell('883d914f17bffff', 6.2, {
+          telemetryStats: {
+            sources: ['WEATHER_API', 'GIS_STATIC'],
+            weatherEventsCount: 4,
+            gisEventsCount: 1,
+            lastObservedAt: new Date().toISOString(),
+          },
+        })}
+        mode="composite"
+        threshold={7}
+        onBack={() => {}}
+        onLock={() => {}}
+        onDecide={() => {}}
+      />
+    );
+    expect(html).toContain('What this score is made of');
+    expect(html).toContain('Weather readings');
+    expect(html).toContain('Terrain');
+  });
+
+  it('says when a cell is missing a measurement instead of hiding it', () => {
+    const html = render(
+      <CellDetail
+        cell={cell('883d914f17bffff', 6.2, {
+          degradationStatus: 'NO_MOBILITY_DATA',
+          telemetryStats: { sources: ['WEATHER_API'], weatherEventsCount: 2 },
+        })}
+        mode="composite"
+        threshold={7}
+        onBack={() => {}}
+        onLock={() => {}}
+        onDecide={() => {}}
+      />
+    );
+    expect(html).toContain('No road speed readings for this cell');
+  });
 });
 
 describe('band counting and ordering', () => {

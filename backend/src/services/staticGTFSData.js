@@ -3,6 +3,8 @@
  * Based on actual transit system information
  */
 
+import { haversineKm } from './spatialInterpolation.js';
+
 const cities = {
   bhopal: {
     code: 'CITY-MP-BPL',
@@ -178,4 +180,56 @@ export function getCityRoutes(cityName) {
 export function getCityStops(cityName) {
   const cityData = getCityGTFSData(cityName);
   return cityData.stops;
+}
+
+/**
+ * Finds a stop by its id in any city.
+ *
+ * The real-time feed names stops but does not say which city they are in.
+ */
+export function findStopById(stopId) {
+  if (!stopId) return null;
+  const needle = String(stopId).trim().toUpperCase();
+  for (const [cityName, city] of Object.entries(cities)) {
+    const stop = city.stops.find((candidate) => candidate.stopId.toUpperCase() === needle);
+    if (stop) {
+      return { ...stop, cityName, cityCode: city.code, lat: city.lat, lon: city.lon };
+    }
+  }
+  return null;
+}
+
+/**
+ * The distance in kilometres from a stop to its closest neighbouring stop.
+ *
+ * This is the only signal the static data gives for how fast a vehicle can
+ * run past a stop: closely spaced stops are dense, slow city segments, and
+ * widely spaced stops are on faster roads.
+ */
+export function nearestStopDistanceKm(cityName, stop) {
+  const stops = getCityStops(cityName);
+  let nearest = Infinity;
+  for (const other of stops) {
+    if (other.stopId === stop.stopId) continue;
+    const distance = haversineKm(
+      { latitude: stop.stopLat, longitude: stop.stopLon },
+      { latitude: other.stopLat, longitude: other.stopLon }
+    );
+    if (distance < nearest) nearest = distance;
+  }
+  return nearest === Infinity ? null : nearest;
+}
+
+/**
+ * The speed a vehicle is expected to run at past a stop.
+ *
+ * Derived from the stop spacing and bounded to a plausible range, so a
+ * segment with dense stops is not judged against a highway speed.
+ */
+export function expectedSpeedMpsFor(stopSpacingKm) {
+  const REFERENCE_SPACING_KM = 1.0;
+  const REFERENCE_SPEED_MPS = 11.1; // ~40 km/h
+  if (!Number.isFinite(stopSpacingKm) || stopSpacingKm <= 0) return REFERENCE_SPEED_MPS;
+  const scaled = REFERENCE_SPEED_MPS * (stopSpacingKm / REFERENCE_SPACING_KM);
+  return Math.max(3, Math.min(20, scaled));
 }
