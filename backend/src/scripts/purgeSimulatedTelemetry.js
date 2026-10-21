@@ -41,10 +41,21 @@ async function purge() {
     'rawPayload.synthetic': true,
   });
 
+  // The weather the old pipeline wrote: one city-centre reading copied into
+  // eleven cells, with no marker on it. The pollers' own readings carry a
+  // source of their own and are left alone.
+  const legacyWeather = await TelemetryEvent.deleteMany({
+    sourceType: 'WEATHER_API',
+    'rawPayload.pipelineGenerated': { $ne: true },
+    'rawPayload.source': { $exists: false },
+    'rawPayload.synthetic': { $ne: true },
+  });
+
   console.log(
     `Removed ${simulatedTransit.deletedCount} modelled transit events, ` +
       `${syntheticWeather.deletedCount} synthetic weather events, ` +
-      `${syntheticGis.deletedCount} synthetic survey events.`
+      `${syntheticGis.deletedCount} synthetic survey events, ` +
+      `${legacyWeather.deletedCount} legacy copied weather events.`
   );
 
   // A cell that no longer has any telemetry is a cell that no longer

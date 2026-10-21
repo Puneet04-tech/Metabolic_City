@@ -17,8 +17,8 @@ in the cell detail. A cell with no readings is not a cell with a low score.
 | **Climate** (Sc) | [Open-Meteo](https://open-meteo.com) forecast: temperature, humidity, precipitation, wind gusts, visibility | Free, no key | 5 real observations per city per cycle, interpolated to every cell |
 | **Terrain** (Sv) | [Open-Meteo elevation](https://open-meteo.com/en/docs/elevation-api) (a real digital elevation model) plus [OpenStreetMap](https://www.openstreetmap.org) watercourses | Free, no key | Cached 30 days; the ground does not change |
 | **Street network** | [OpenStreetMap API 0.6](https://wiki.openstreetmap.org/wiki/API_v0.6) — real roads, real names, real rivers | Free, no key, no key registration | Cached 30 days |
-| **Road speed** (Sm) | [TomTom Traffic Flow](https://developer.tomtom.com/traffic-api/documentation/traffic-flow/flow-segment-data): `currentSpeed` against `freeFlowSpeed`, and `currentTravelTime` against `freeFlowTravelTime` | Free tier: 2,500 non-tile requests a day, no credit card, commercial use allowed. India is covered. | One reading per probed road per cycle |
-| **Road incidents** | [TomTom Traffic Incidents](https://developer.tomtom.com/traffic-api/documentation/traffic-incidents/incident-details) — accidents, roadworks, closures, jams, each with a delay against free-flow | Shares the same free allowance | Per cycle |
+| **Road speed** (Sm) | [TomTom Traffic Flow](https://docs.tomtom.com/traffic-api/documentation/tomtom-maps/traffic-flow/flow-segment-data): `currentSpeed` against `freeFlowSpeed`, and `currentTravelTime` against `freeFlowTravelTime` | Free tier: 2,500 non-tile requests a day, no credit card, commercial use allowed. India is covered. | One reading per probed road every 30 minutes |
+| **Road incidents** | [TomTom Traffic Incidents](https://docs.tomtom.com/traffic-api/documentation/tomtom-maps/traffic-incidents/incident-details) — accidents, roadworks, closures, jams and flooding, each with a delay against free-flow | Shares the same free allowance | Every 30 minutes |
 | **Citizen reports** | The public report form and the field crew app | Free | Live |
 | **Crew road speed** | The field crew app posting its own GPS (`POST /api/v1/field/position`) | Free | Live, wherever a crew is |
 
@@ -48,24 +48,43 @@ critical path — the system is fully operational on road traffic alone.
 
 ## Turning on real traffic
 
-1. Create a TomTom account and take a key from the [developer portal](https://developer.tomtom.com/).
+1. Create a TomTom account at [my.tomtom.com](https://my.tomtom.com) and go
+   to **API & SDK Keys**. TomTom's key is called "My first API key" and is
+   created for you. Make sure **Traffic API** is in the key's product list.
 2. Put it in `backend/.env`:
    ```
    TOMTOM_API_KEY=your-key
    ```
-3. Restart the server. The pipeline starts probing the real roads of every
-   city and the cells pick up real speed and delay readings.
+   The portal key works. If you also have a service key (`sk.…`), put it in
+   `TOMTOM_SERVICE_KEY` and it is tried first.
+3. Restart the server.
 
 Nothing else changes. No API contract changes, no scoring changes, no
 frontend changes.
 
-## How many probes
+### The two endpoints
 
-`TRAFFIC_PROBES_PER_CITY` (default 60) is how many roads are asked about per
-city per cycle. Each probe is one request. At a 10-minute cycle that is 144
-requests per city per day, so two cities fit inside the free allowance and
-three fit with room to spare. The probes are chosen from the roads that carry
-traffic, one per cell, so the budget is spent where the cells are.
+| | |
+| --- | --- |
+| Flow (speed and delay) | `GET https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/16/json?point=<lat>,<lon>&unit=kmph` — one request per road. It answers with `currentSpeed`, `freeFlowSpeed`, `currentTravelTime`, `freeFlowTravelTime` and a `confidence` between 0 and 1. The delay is the difference between the two travel times, so it is measured against free flow rather than against a guess. The response also carries the real geometry of the road it matched, so the reading is placed on the road and not on the point that was asked about. |
+| Incidents | `GET https://api.tomtom.com/traffic/services/5/incidentDetails?bbox=<minLon,minLat,maxLon,maxLat>` — one request for a whole area. It answers with accidents, roadworks, lane closures, road closures, flooding and jams, each with its own delay against free flow. |
+
+### How many probes
+
+The free allowance is 2,500 non-tile requests a day, and each flow probe is
+one request, so the budget is the design constraint.
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `TRAFFIC_POLL_MINUTES` | `30` | How often the traffic is re-read. The roads change far more slowly than the weather, and the score uses a 60-minute window with a 30-minute half-life, so half an hour is the natural cadence. |
+| `TRAFFIC_PROBES_PER_CITY` | `20` | How many roads are measured per city per poll. The selection rotates, so every cell is covered over successive polls rather than the same handful every time. |
+
+At the defaults, two cities use about 2,000 requests a day, which sits inside
+the free allowance. Raising the probes goes onto the paid tier.
+
+To cover every cell on every poll instead, use the **raster flow tiles**,
+which put a whole area of congestion on one tile and come from a separate
+allowance of 50,000 tiles a day.
 
 ## The field crew as a sensor
 

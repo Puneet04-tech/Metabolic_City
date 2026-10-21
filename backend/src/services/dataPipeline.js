@@ -20,6 +20,10 @@ const NETWORK_REFRESH_DAYS = Number(process.env.OSM_NETWORK_REFRESH_DAYS ?? 30);
 let pipelineRunning = false;
 let scheduledPipelineHandle = null;
 
+/** When each city was last asked about its traffic, and which roads come next. */
+const lastTrafficPollAt = new Map();
+const trafficOffset = new Map();
+
 const h3ToLatLng = h3.cellToLatLng || h3.h3ToGeo;
 const h3Disk = h3.gridDisk || h3.kRing;
 const h3IndexOf = h3.latLngToCell || h3.geoToH3;
@@ -196,6 +200,7 @@ export async function runDataPipeline() {
     const allTelemetryEvents = [];
     const successfulCityCodes = [];
     const failedCities = [];
+    const citiesWithFreshTraffic = new Set();
 
     for (const cityName of cities) {
       const weather = weatherData[cityName];
@@ -282,20 +287,39 @@ export async function runDataPipeline() {
       console.log(`  ${cityName}: weather for ${cellWeather.size} cells`);
 
       // Step 2d: the real traffic on those roads, when a provider is set up.
+      // Traffic is polled on its own slower cadence: the road conditions
+      // change far more slowly than the weather, and the free allowance is
+      // a few hundred requests a day, not thousands.
       if (trafficProviderConfigured()) {
-        const traffic = await fetchCityTraffic(cityName, {
-          maxProbes: Number(process.env.TRAFFIC_PROBES_PER_CITY ?? 60),
-        });
-        allTelemetryEvents.push(...traffic.events);
+        const pollMinutes = Number(process.env.TRAFFIC_POLL_MINUTES ?? 30);
+        const lastPoll = lastTrafficPollAt.get(cityName);
+        const due = !lastPoll || Date.now() - lastPoll >= pollMinutes * 60 * 1000;
+        if (!due) {
+          console.log(`  ${cityName}: traffic not due yet, keeping the last readings`);
+        } else {
+          const probes = Number(process.env.TRAFFIC_PROBES_PER_CITY ?? 25);
+          const offset = trafficOffset.get(cityName) || 0;
+          const traffic = await fetchCityTraffic(cityName, { maxProbes: probes, offset });
+          allTelemetryEvents.push(...traffic.events);
 
-        const incidents = await fetchCityIncidents(cityName, {
-          maxProbes: Number(process.env.TRAFFIC_PROBES_PER_CITY ?? 60),
-        });
-        allTelemetryEvents.push(...incidents.events);
+          // A failure in the incident feed must not lose the speed readings.
+          let incidentCount = 0;
+          try {
+            const incidents = await fetchCityIncidents(cityName, { maxProbes: probes, offset });
+            allTelemetryEvents.push(...incidents.events);
+            incidentCount = incidents.events.length;
+          } catch (incidentError) {
+            console.warn(`  ${cityName}: incident feed unavailable: ${incidentError.message}`);
+          }
 
-        console.log(
-          `  ${cityName}: ${traffic.events.length} road speed readings, ${incidents.events.length} incidents`
-        );
+          lastTrafficPollAt.set(cityName, Date.now());
+          trafficOffset.set(cityName, offset + probes);
+          citiesWithFreshTraffic.add(cityName);
+
+          console.log(
+            `  ${cityName}: ${traffic.events.length} real road speed readings and ${incidentCount} real incidents`
+          );
+        }
       } else {
         console.log(
           `  ${cityName}: no traffic provider configured - mobility will be reported as missing rather than invented`
@@ -313,6 +337,7 @@ export async function runDataPipeline() {
           Object.assign(event, normalizeCoordinates(event.latitude, event.longitude));
           allTelemetryEvents.push(event);
         }
+        citiesWithFreshTraffic.add(cityName);
         console.log(`  ${cityName}: ${transitEvents.length} simulated transit events`);
       }
 
@@ -330,10 +355,20 @@ export async function runDataPipeline() {
     // be interpolated from any better.
     console.log('Replacing generated telemetry for successful cities...');
     await TelemetryEvent.deleteMany({
-      sourceType: { $in: ['WEATHER_API', 'GTFS_TRANSIT', 'GIS_STATIC'] },
+      sourceType: { $in: ['WEATHER_API', 'GIS_STATIC'] },
       cityCode: { $in: successfulCityCodes },
       'rawPayload.pipelineGenerated': true,
     });
+
+    // The traffic readings are only replaced when they have been refreshed,
+    // so a cycle that does not poll traffic keeps the last readings.
+    if (citiesWithFreshTraffic.size) {
+      await TelemetryEvent.deleteMany({
+        sourceType: 'GTFS_TRANSIT',
+        cityCode: { $in: [...citiesWithFreshTraffic] },
+        'rawPayload.pipelineGenerated': true,
+      });
+    }
 
     console.log('Inserting new telemetry events...');
     await TelemetryEvent.insertMany(allTelemetryEvents);

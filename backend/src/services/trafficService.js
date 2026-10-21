@@ -4,26 +4,46 @@ import * as h3 from 'h3-js';
 
 const h3IndexOf = h3.latLngToCell || h3.geoToH3;
 
-const FLOW_URL = 'https://api.tomtom.com/traffic/services/5/flowSegmentData';
+const FLOW_URL = 'https://api.tomtom.com/traffic/services/4/flowSegmentData';
 const INCIDENT_URL = 'https://api.tomtom.com/traffic/services/5/incidentDetails';
 
-const FLOW_FIELDS = [
-  'frc',
-  'currentSpeed',
-  'freeFlowSpeed',
-  'currentTravelTime',
-  'freeFlowTravelTime',
-  'confidence',
-  'roadNumbers',
-  'pointIndices',
-].join(',');
+/** The zoom level the road geometry is returned at. */
+const FLOW_ZOOM = 16;
 
-const INCIDENT_FIELDS = [
-  'id',
-  'type',
-  'geometry{type,coordinates}',
-  'properties{congestionLevel,description,delay,roadNumbers,iconCategory,from,to}',
-].join(',');
+const FLOW_PARAMS = {
+  style: 'absolute',
+  format: 'json',
+  unit: 'kmph',
+};
+
+/**
+ * The fields asked for. The service rejects unknown field names, so this
+ * list is exactly the shape the response schema allows.
+ */
+const INCIDENT_FIELDS =
+  '{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,' +
+  'events{description,code,iconCategory},from,to,length,delay,roadNumbers,timeValidity}}}';
+
+/**
+ * What an incident does to the road, by its category.
+ *
+ * The categories are the ones the service reports: 1 accident, 4 rain,
+ * 6 jam, 7 lane closed, 8 road closed, 9 road works, 11 flooding.
+ */
+const INCIDENT_IMPACT = {
+  1: { speedReductionPct: 60, label: 'Accident' },
+  2: { speedReductionPct: 25, label: 'Fog' },
+  3: { speedReductionPct: 30, label: 'Dangerous conditions' },
+  4: { speedReductionPct: 30, label: 'Rain' },
+  5: { speedReductionPct: 25, label: 'Ice' },
+  6: { speedReductionPct: 85, label: 'Jam' },
+  7: { speedReductionPct: 90, label: 'Lane closed' },
+  8: { speedReductionPct: 100, label: 'Road closed' },
+  9: { speedReductionPct: 45, label: 'Road works' },
+  10: { speedReductionPct: 30, label: 'Wind' },
+  11: { speedReductionPct: 70, label: 'Flooding' },
+  14: { speedReductionPct: 55, label: 'Broken down vehicle' },
+};
 
 /** The congestion bands the model already has. */
 export function congestionLevelFor(speedReductionPct) {
@@ -45,44 +65,41 @@ export function trafficProviderConfigured() {
  * The keys to try, most privileged first.
  *
  * A TomTom project shows a portal key, which is meant for calls from a
- * browser, and a service key, which is meant for calls from a server. Some
- * traffic endpoints refuse a portal key off the browser, so both are tried.
+ * browser, and a service key, which is meant for calls from a server. Both
+ * are tried.
  */
 function trafficKeys() {
-  return [
-    process.env.TOMTOM_SERVICE_KEY,
-    process.env.TOMTOM_API_KEY,
-  ].filter(Boolean);
+  return [process.env.TOMTOM_SERVICE_KEY, process.env.TOMTOM_API_KEY].filter(Boolean);
 }
 
-async function postTomTom(url, body, params) {
+async function requestTomTom(url, params, method = 'GET', body = null) {
   const keys = trafficKeys();
   if (!keys.length) throw new Error('No TomTom API key is configured.');
 
   let lastError = null;
   for (const key of keys) {
     const target = new URL(url);
-    target.searchParams.set('key', key);
     for (const [name, value] of Object.entries(params || {})) {
       target.searchParams.set(name, value);
     }
+    target.searchParams.set('key', key);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
       const response = await fetch(target, {
-        method: 'POST',
+        method,
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'MetabolicCity/1.0 (urban risk operations)',
         },
-        body: JSON.stringify(body),
+        ...(body ? { body: JSON.stringify(body) } : {}),
       });
+
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        lastError = new Error(`TomTom returned ${response.status}: ${text.slice(0, 160)}`);
-        // A rejected key is worth trying the other one for.
+        lastError = new Error(`TomTom returned ${response.status}: ${text.slice(0, 200)}`);
         if (response.status === 401 || response.status === 403) continue;
         throw lastError;
       }
@@ -90,7 +107,7 @@ async function postTomTom(url, body, params) {
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       lastError = error;
-      if (response?.status === 401 || response?.status === 403) continue;
+      if (error instanceof Error && /TomTom returned (401|403)/.test(error.message)) continue;
       throw error;
     } finally {
       clearTimeout(timer);
@@ -100,55 +117,161 @@ async function postTomTom(url, body, params) {
 }
 
 /**
- * The real travel time on a set of points, against the free-flow time.
+ * The real travel time on one point, against the free-flow time.
  *
  * This is the whole mobility signal: how much longer the road is taking
- * than it would take with nothing on it.
+ * than it would take with nothing on it. TomTom computes it from fused
+ * real-time measurements.
  */
-export async function fetchFlowSegments(points) {
-  if (!trafficProviderConfigured() || !points.length) return [];
-
-  const body = {
-    points: points.map((point) => ({ latitude: point.latitude, longitude: point.longitude })),
-  };
-
-  const response = await postTomTom(FLOW_URL, body, {
-    fields: FLOW_FIELDS,
-    unit: 'kmh',
-    computeTravelTimeForAllPoints: 'false',
-    geometry: 'true',
-  });
-
-  const segments = response.flowSegmentData;
-  if (!segments) return [];
-  return Array.isArray(segments) ? segments : [segments];
+export async function fetchFlowSegment(point) {
+  const response = await requestTomTom(
+    `${FLOW_URL}/${FLOW_PARAMS.style}/${FLOW_ZOOM}/${FLOW_PARAMS.format}`,
+    {
+      point: `${point.latitude},${point.longitude}`,
+      unit: FLOW_PARAMS.unit,
+    }
+  );
+  return response.flowSegmentData || null;
 }
 
 /**
- * The real incidents on the road: accidents, roadworks, closures, jams.
+ * The real traffic state of a city, as telemetry events.
+ *
+ * Each probe is one request, so the number of probes is kept inside the
+ * free allowance: a few hundred requests a day per city, not thousands.
  */
-export async function fetchIncidents(bbox) {
-  if (!trafficProviderConfigured()) return [];
+export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } = {}) {
+  const city = getCity(cityName);
+  if (!trafficProviderConfigured()) {
+    return { events: [], skipped: 'no TomTom API key configured' };
+  }
 
-  const response = await postTomTom(
-    INCIDENT_URL,
-    {
-      bbox: {
-        minLat: bbox.minLat,
-        maxLat: bbox.maxLat,
-        minLon: bbox.minLon,
-        maxLon: bbox.maxLon,
-      },
-    },
-    {
-      fields: INCIDENT_FIELDS,
-      language: 'en-GB',
-      timeValidityFilter: 'present',
-      maxVersions: 1,
+  const probes = await selectTrafficProbes(cityName, maxProbes, offset);
+  if (!probes.length) {
+    return { events: [], skipped: 'no road network cached for this city' };
+  }
+
+  const events = [];
+  let failures = 0;
+
+  for (const probe of probes) {
+    let segment;
+    try {
+      segment = await fetchFlowSegment(probe);
+    } catch (error) {
+      failures += 1;
+      continue;
     }
-  );
+    if (!segment) continue;
 
-  return response.incidents || [];
+    const mobility = flowToMobility(segment);
+
+    // The reading belongs to the road TomTom matched, not to the point we
+    // asked about, so the cell it lands in is the cell that road is in.
+    const coordinate = segment.coordinates?.coordinate?.[0];
+    const latitude = coordinate?.latitude ?? probe.latitude;
+    const longitude = coordinate?.longitude ?? probe.longitude;
+    const h3Index = h3IndexOf(latitude, longitude, 8) || probe.h3Index;
+
+    events.push({
+      sourceType: 'GTFS_TRANSIT',
+      h3Index,
+      latitude,
+      longitude,
+      cityCode: city.code,
+      observedAt: new Date(),
+      delayMins: mobility.delayMins,
+      speedReductionPct: mobility.speedReductionPct,
+      congestionLevel: segment.roadClosure ? 'STANDSTILL' : mobility.congestionLevel,
+      rawPayload: {
+        source: 'tomtom-traffic-flow',
+        roadName: probe.roadName,
+        highway: probe.highway,
+        frc: segment.frc,
+        currentSpeed: segment.currentSpeed,
+        freeFlowSpeed: segment.freeFlowSpeed,
+        currentTravelTime: segment.currentTravelTime,
+        freeFlowTravelTime: segment.freeFlowTravelTime,
+        confidence: segment.confidence,
+        roadClosure: segment.roadClosure ?? false,
+      },
+    });
+  }
+
+  return { events, probes: probes.length, failures };
+}
+
+/**
+ * The real incidents on the roads of a city, as telemetry events.
+ */
+export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 } = {}) {
+  const city = getCity(cityName);
+  if (!trafficProviderConfigured()) return { events: [] };
+
+  const probes = await selectTrafficProbes(cityName, maxProbes, offset);
+  if (!probes.length) return { events: [] };
+
+  const latitudes = probes.map((probe) => probe.latitude);
+  const longitudes = probes.map((probe) => probe.longitude);
+  // The service wants the corners as minLon,minLat,maxLon,maxLat.
+  const bbox = [
+    Math.min(...longitudes),
+    Math.min(...latitudes),
+    Math.max(...longitudes),
+    Math.max(...latitudes),
+  ].join(',');
+
+  const response = await requestTomTom(INCIDENT_URL, {
+    bbox,
+    fields: INCIDENT_FIELDS,
+    language: 'en-GB',
+    timeValidityFilter: 'present',
+  });
+
+  const events = [];
+  for (const incident of response.incidents || []) {
+    const coordinates = incident.geometry?.coordinates || [];
+    if (!coordinates.length) continue;
+    // A LineString is [lon, lat] pairs; a Point is a single [lon, lat].
+    const first = Array.isArray(coordinates[0]) ? coordinates[0] : coordinates;
+    const [longitude, latitude] = first;
+    const h3Index = h3IndexOf(latitude, longitude, 8);
+    if (!h3Index) continue;
+
+    const properties = incident.properties || {};
+    const impact = INCIDENT_IMPACT[properties.iconCategory] || { speedReductionPct: 20, label: 'Incident' };
+    // The delay is in seconds and is already measured against free-flow.
+    const delayMins = Number(properties.delay || 0) / 60;
+    const description =
+      properties.events?.[0]?.description || impact.label;
+
+    events.push({
+      sourceType: 'GTFS_TRANSIT',
+      h3Index,
+      latitude,
+      longitude,
+      cityCode: city.code,
+      observedAt: new Date(),
+      delayMins: Number(delayMins.toFixed(2)),
+      speedReductionPct: impact.speedReductionPct,
+      congestionLevel: congestionLevelFor(impact.speedReductionPct),
+      rawPayload: {
+        source: 'tomtom-traffic-incidents',
+        incidentId: properties.id,
+        category: impact.label,
+        iconCategory: properties.iconCategory,
+        description,
+        from: properties.from,
+        to: properties.to,
+        lengthM: properties.length,
+        delaySeconds: properties.delay,
+        roadNumbers: properties.roadNumbers,
+        magnitudeOfDelay: properties.magnitudeOfDelay,
+      },
+    });
+  }
+
+  return { events };
 }
 
 /**
@@ -160,9 +283,10 @@ export function flowToMobility(segment) {
   const currentTravelTime = Number(segment.currentTravelTime);
   const freeFlowTravelTime = Number(segment.freeFlowTravelTime);
 
-  const delayMins = Number.isFinite(currentTravelTime) && Number.isFinite(freeFlowTravelTime)
-    ? Math.max(0, (currentTravelTime - freeFlowTravelTime) / 60)
-    : 0;
+  const delayMins =
+    Number.isFinite(currentTravelTime) && Number.isFinite(freeFlowTravelTime)
+      ? Math.max(0, (currentTravelTime - freeFlowTravelTime) / 60)
+      : 0;
 
   const speedReductionPct =
     Number.isFinite(currentSpeed) && Number.isFinite(freeFlowSpeed) && freeFlowSpeed > 0
@@ -177,13 +301,15 @@ export function flowToMobility(segment) {
 }
 
 /**
- * Picks the points worth asking about: the middle of the real roads that
- * carry traffic, one per cell so the traffic budget is spent where the
- * cells are.
+ * The roads worth asking about.
+ *
+ * One road per cell, the one that carries the most traffic, and the
+ * selection rotates between cycles so that every cell is covered over
+ * time rather than the same handful every time.
  */
-export async function selectTrafficProbes(cityName, maxProbes = 60) {
+export async function selectTrafficProbes(cityName, maxProbes = 25, offset = 0) {
   const cells = await getCityNetworkCells(cityName);
-  const probes = [];
+  const candidates = [];
 
   for (const cell of cells) {
     const roads = cell.segments.filter((segment) => TRAFFIC_ROAD_CLASSES.has(segment.highway));
@@ -191,7 +317,7 @@ export async function selectTrafficProbes(cityName, maxProbes = 60) {
 
     // The longest road in the cell is the one that carries the most traffic.
     const road = roads.sort((a, b) => (b.lengthM || 0) - (a.lengthM || 0))[0];
-    probes.push({
+    candidates.push({
       h3Index: cell.h3Index,
       latitude: road.latitude,
       longitude: road.longitude,
@@ -201,122 +327,17 @@ export async function selectTrafficProbes(cityName, maxProbes = 60) {
   }
 
   // Spread the budget over the biggest roads first.
-  probes.sort((a, b) => {
+  candidates.sort((a, b) => {
     const aClass = a.highway === 'primary' || a.highway === 'trunk' ? 0 : 1;
     const bClass = b.highway === 'primary' || b.highway === 'trunk' ? 0 : 1;
-    return aClass - bClass;
+    if (aClass !== bClass) return aClass - bClass;
+    return a.h3Index.localeCompare(b.h3Index);
   });
 
-  return probes.slice(0, maxProbes);
-}
+  if (candidates.length <= maxProbes) return candidates;
 
-/**
- * The real traffic state of a city, as telemetry events.
- *
- * Each probe becomes one event placed on the road it was measured on, so the
- * cell that holds that road carries the measurement.
- */
-export async function fetchCityTraffic(cityName, { maxProbes = 60 } = {}) {
-  const city = getCity(cityName);
-  if (!trafficProviderConfigured()) {
-    return { events: [], skipped: 'no TomTom API key configured' };
-  }
-
-  const probes = await selectTrafficProbes(cityName, maxProbes);
-  if (!probes.length) {
-    return { events: [], skipped: 'no road network cached for this city' };
-  }
-
-  const segments = await fetchFlowSegments(probes);
-  const events = [];
-
-  for (let index = 0; index < segments.length; index += 1) {
-    const segment = segments[index];
-    const pointIndices = segment.pointIndices || [];
-    const probe = probes[pointIndices[0] ?? index] || probes[index];
-    if (!probe) continue;
-
-    const mobility = flowToMobility(segment);
-    events.push({
-      sourceType: 'GTFS_TRANSIT',
-      h3Index: probe.h3Index,
-      latitude: probe.latitude,
-      longitude: probe.longitude,
-      cityCode: city.code,
-      observedAt: new Date(),
-      delayMins: mobility.delayMins,
-      speedReductionPct: mobility.speedReductionPct,
-      congestionLevel: mobility.congestionLevel,
-      rawPayload: {
-        source: 'tomtom-traffic-flow',
-        roadName: probe.roadName,
-        highway: probe.highway,
-        currentSpeed: segment.currentSpeed,
-        freeFlowSpeed: segment.freeFlowSpeed,
-        currentTravelTime: segment.currentTravelTime,
-        freeFlowTravelTime: segment.freeFlowTravelTime,
-        confidence: segment.confidence,
-      },
-    });
-  }
-
-  return { events, probes: probes.length };
-}
-
-/**
- * The real incidents on the roads of a city, as telemetry events.
- */
-export async function fetchCityIncidents(cityName, { maxProbes = 60 } = {}) {
-  const city = getCity(cityName);
-  if (!trafficProviderConfigured()) return { events: [] };
-
-  const probes = await selectTrafficProbes(cityName, maxProbes);
-  if (!probes.length) return { events: [] };
-
-  const latitudes = probes.map((probe) => probe.latitude);
-  const longitudes = probes.map((probe) => probe.longitude);
-  const bbox = {
-    minLat: Math.min(...latitudes),
-    maxLat: Math.max(...latitudes),
-    minLon: Math.min(...longitudes),
-    maxLon: Math.max(...longitudes),
-  };
-
-  const incidents = await fetchIncidents(bbox);
-  const events = [];
-
-  for (const incident of incidents) {
-    const coordinates = incident.geometry?.coordinates || [];
-    if (!coordinates.length) continue;
-    const [longitude, latitude] = coordinates[0];
-    const h3Index = h3IndexOf(latitude, longitude, 8);
-    if (!h3Index) continue;
-
-    const delayMins = Number(incident.properties?.delay) || 0;
-    const congestion = String(incident.properties?.congestionLevel || '').toUpperCase();
-    const speedReductionPct =
-      congestion === 'JAM' ? 85 : congestion === 'CONGESTED' ? 55 : congestion === 'SLOW' ? 30 : 0;
-
-    events.push({
-      sourceType: 'GTFS_TRANSIT',
-      h3Index,
-      latitude,
-      longitude,
-      cityCode: city.code,
-      observedAt: new Date(),
-      delayMins,
-      speedReductionPct,
-      congestionLevel: congestionLevelFor(speedReductionPct),
-      rawPayload: {
-        source: 'tomtom-traffic-incidents',
-        incidentId: incident.id,
-        type: incident.type,
-        congestionLevel: incident.properties?.congestionLevel,
-        description: incident.properties?.description,
-        roadNumbers: incident.properties?.roadNumbers,
-      },
-    });
-  }
-
-  return { events };
+  // Rotate the window so different cells are measured on each cycle.
+  const start = offset % candidates.length;
+  const rotated = [...candidates.slice(start), ...candidates.slice(0, start)];
+  return rotated.slice(0, maxProbes);
 }
