@@ -299,22 +299,24 @@ export async function runDataPipeline() {
           console.log(`  ${cityName}: traffic not due yet, keeping the last readings`);
         } else {
           // The number of roads measured is worked out from what is left of
-          // the day's allowance, so the allowance is spread across the whole
-          // day instead of running out by evening.
+          // the month's allowance, so the allowance is spread across the
+          // whole month instead of running out by the middle of it.
           const configuredProbes = Number(process.env.TRAFFIC_PROBES_PER_CITY ?? 20);
-          const affordable = await affordablePerCity(
-            'tomtom',
-            Number(process.env.TOMTOM_DAILY_LIMIT ?? 2300),
+          const affordable = await affordablePerCity({
+            flowProvider: 'tomtom-flow',
+            flowLimit: Number(process.env.TOMTOM_FLOW_MONTHLY_LIMIT ?? 20000),
+            incidentProvider: 'tomtom-incidents',
+            incidentLimit: Number(process.env.TOMTOM_INCIDENT_MONTHLY_LIMIT ?? 2500),
             pollMinutes,
-            cities.length,
-            configuredProbes
-          );
+            cityCount: cities.length,
+            maximum: configuredProbes,
+          });
           const probes = affordable.probes;
           const offset = trafficOffset.get(cityName) || 0;
 
           if (probes <= 0) {
             console.log(
-              `  ${cityName}: no traffic budget left today, keeping the last readings`
+              `  ${cityName}: no traffic budget left this month, keeping the last readings`
             );
             continue;
           }
@@ -406,13 +408,22 @@ export async function runDataPipeline() {
     console.log(`  Recalculated ${recalculatedCells.length} cells`);
 
     const success = failedCities.length === 0;
-    const trafficUsage = await budgetReport('tomtom', Number(process.env.TOMTOM_DAILY_LIMIT ?? 2300));
-    const weatherUsage = await budgetReport('open-meteo', Number(process.env.OPENMETEO_DAILY_LIMIT ?? 8000));
+    const flowUsage = await budgetReport(
+      'tomtom-flow',
+      Number(process.env.TOMTOM_FLOW_MONTHLY_LIMIT ?? 20000)
+    );
+    const incidentUsage = await budgetReport(
+      'tomtom-incidents',
+      Number(process.env.TOMTOM_INCIDENT_MONTHLY_LIMIT ?? 2500)
+    );
+    const weatherUsage = await budgetReport('open-meteo', Number(process.env.OPENMETEO_MONTHLY_LIMIT ?? 8000));
     console.log(
       `[${new Date().toISOString()}] Pipeline ${success ? 'completed successfully' : 'completed with partial failures'}`
     );
     console.log(
-      `Requests today: traffic ${trafficUsage.used}/${trafficUsage.limit}, weather ${weatherUsage.used}/${weatherUsage.limit}`
+      `This month: traffic ${flowUsage.used}/${flowUsage.limit} readings, ` +
+        `incidents ${incidentUsage.used}/${incidentUsage.limit}, ` +
+        `weather ${weatherUsage.used}/${weatherUsage.limit}`
     );
     console.log(`Summary: ${successfulCityCodes.length}/${cities.length} cities, ${allTelemetryEvents.length} events, ${recalculatedCells.length} cells`);
 

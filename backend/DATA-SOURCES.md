@@ -69,39 +69,49 @@ frontend changes.
 | Flow (speed and delay) | `GET https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/16/json?point=<lat>,<lon>&unit=kmph` — one request per road. It answers with `currentSpeed`, `freeFlowSpeed`, `currentTravelTime`, `freeFlowTravelTime` and a `confidence` between 0 and 1. The delay is the difference between the two travel times, so it is measured against free flow rather than against a guess. The response also carries the real geometry of the road it matched, so the reading is placed on the road and not on the point that was asked about. |
 | Incidents | `GET https://api.tomtom.com/traffic/services/5/incidentDetails?bbox=<minLon,minLat,maxLon,maxLat>` — one request for a whole area. It answers with accidents, roadworks, lane closures, road closures, flooding and jams, each with its own delay against free flow. |
 
-### How many probes, and how the day's allowance is protected
+### How many probes, and how the month's allowance is protected
 
-The free allowance is 2,500 non-tile requests a day, and each flow probe is
-one request, so the budget is the design constraint.
+**The free tier is counted per month**, and the two endpoints have separate
+allowances:
+
+| Endpoint | Monthly allowance |
+| --- | --- |
+| Traffic Flow Segment Data | 20,000 |
+| Traffic Incident Details | 2,500 |
+| Weather (Open-Meteo) | 10,000 |
+
+The incident feed is the scarcer of the two, so it is what sets the pace of
+the poll.
+
+Left alone, three cities at twenty roads an hour would be **43,200 flow
+readings a month — 23,200 over the allowance** — and the provider would
+start refusing requests partway through the first week.
+
+So the system counts what it has spent, works out how many polls are still
+to come this month, and sizes each poll to fit what is left:
+
+```
+polls the incidents can afford = incident calls left ÷ cities
+roads per city per poll        = flow allowance left ÷ (polls × cities)
+```
+
+Over a full month that settles at **8 roads per city per poll** and
+**19,992 of the 20,000 flow allowance and 2,499 of the 2,500 incident
+allowance used** — the whole month, every cycle, with the tier intact. If
+the allowance is generous the ceiling of 20 applies instead, and if it is
+tight the system asks for fewer rather than being refused.
 
 | Setting | Default | Effect |
 | --- | --- | --- |
-| `TRAFFIC_POLL_MINUTES` | `30` | How often the traffic is re-read. The roads change far more slowly than the weather, and the score uses a 60-minute window with a 30-minute half-life, so half an hour is the natural cadence. |
+| `TRAFFIC_POLL_MINUTES` | `60` | How often the traffic is re-read. The score uses a 60-minute window, so this is the shortest interval that keeps a reading inside it. |
 | `TRAFFIC_PROBES_PER_CITY` | `20` | The ceiling on how many roads are measured per city per poll. |
-| `TOMTOM_DAILY_LIMIT` | `2300` | The daily allowance the system is allowed to spend. It sits below the 2,500 the tier allows. |
-| `OPENMETEO_DAILY_LIMIT` | `8000` | The same for the weather API, whose tier allows 10,000 a day. |
+| `TOMTOM_FLOW_MONTHLY_LIMIT` | `20000` | The monthly allowance for speed readings. |
+| `TOMTOM_INCIDENT_MONTHLY_LIMIT` | `2500` | The monthly allowance for incident look-ups. |
+| `OPENMETEO_MONTHLY_LIMIT` | `8000` | The same for the weather API. |
 
-**Why the ceiling is not the real limit.** Three cities, twenty roads each
-and one incident call is 63 requests a poll, and 48 polls a day, which is
-**3,024 a day — 724 over the tier**. Left alone the provider would start
-refusing requests partway through the afternoon.
-
-So the system counts what it has spent, works out how many polls are still
-to come today, and sizes each poll to fit what is left:
-
-```
-affordable = (allowance left − polls left × cities) ÷ (polls left × cities)
-```
-
-Over a full day that works out to **15 roads per city per poll** and
-**2,298 of the 2,300 allowance used** — the whole day, every cycle, with
-the tier intact. If the allowance is generous the ceiling of 20 applies
-instead, and if it is tight the system asks for fewer rather than being
-refused.
-
-The count lives in the database, so a restart does not hand the day a fresh
-allowance, and a second instance sees the same number. The day rolls over at
-midnight UTC, when the provider resets.
+The count lives in the database, so a restart does not hand the month a
+fresh allowance, and a second instance sees the same number. The month rolls
+over at midnight UTC on the first, when the provider resets.
 
 ### When the provider says no
 
@@ -111,9 +121,16 @@ the window, so the cells keep their mobility score until the next poll.
 
 ### To cover every cell on every poll
 
-Use the **raster flow tiles**, which put a whole area of congestion on one
-tile and come from a separate allowance of 50,000 tiles a day. That is the
-way to scale past the free tier without paying for it.
+Eight roads an hour for a city of forty cells means each cell is re-read
+every few hours, so at any moment only a fifth of them have a speed reading
+in the window. The rest say so, rather than showing a score they have no
+reading for.
+
+To close that gap, use the **raster flow tiles**: one tile puts a whole
+area of congestion on the map, and tiles come from their own allowance, so
+they are the way to cover every cell on every poll without paying. The
+allowance for the tile products is in the MyTomTom usage page under
+**Show all usage**.
 
 ## The field crew as a sensor
 

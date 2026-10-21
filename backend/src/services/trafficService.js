@@ -8,17 +8,19 @@ const h3IndexOf = h3.latLngToCell || h3.geoToH3;
 const FLOW_URL = 'https://api.tomtom.com/traffic/services/4/flowSegmentData';
 const INCIDENT_URL = 'https://api.tomtom.com/traffic/services/5/incidentDetails';
 
-/** The provider name the daily allowance is counted against. */
-const PROVIDER = 'tomtom';
+/** The provider names the monthly allowances are counted against. */
+const FLOW_PROVIDER = 'tomtom-flow';
+const INCIDENT_PROVIDER = 'tomtom-incidents';
 
 /**
- * The daily allowance.
+ * The monthly allowances.
  *
- * The free tier is 2,500 non-tile requests a day, shared between the flow
- * and incident endpoints. The limit here is set below that so there is
- * always room for the day's last cycle.
+ * The free tier is counted per month: 20,000 flow segment readings and
+ * 2,500 incident look-ups. The incident feed is the scarcer of the two, so
+ * it is what sets the pace of the poll.
  */
-const DAILY_LIMIT = Number(process.env.TOMTOM_DAILY_LIMIT ?? 2300);
+const FLOW_MONTHLY_LIMIT = Number(process.env.TOMTOM_FLOW_MONTHLY_LIMIT ?? 20000);
+const INCIDENT_MONTHLY_LIMIT = Number(process.env.TOMTOM_INCIDENT_MONTHLY_LIMIT ?? 2500);
 
 /** How long to wait after the provider says it has had enough. */
 let pausedUntil = 0;
@@ -194,11 +196,11 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
     return { events: [], skipped: 'the traffic provider asked us to slow down' };
   }
 
-  // The number of roads measured is bounded by what is left of the day's
+  // The number of roads measured is bounded by what is left of the month's
   // allowance, so the system spends what it has and no more.
-  const left = await remainingBudget(PROVIDER, DAILY_LIMIT);
+  const left = await remainingBudget(FLOW_PROVIDER, FLOW_MONTHLY_LIMIT);
   if (left <= 0) {
-    return { events: [], skipped: "today's traffic allowance is used up" };
+    return { events: [], skipped: "this month's traffic allowance is used up" };
   }
   const probesToUse = Math.min(maxProbes, left);
 
@@ -211,9 +213,9 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
   let failures = 0;
 
   for (const probe of probes) {
-    const budget = await consumeBudget(PROVIDER, 1, DAILY_LIMIT);
+    const budget = await consumeBudget(FLOW_PROVIDER, 1, FLOW_MONTHLY_LIMIT);
     if (!budget.allowed) {
-      return { events, skipped: "today's traffic allowance is used up", exhausted: true };
+      return { events, skipped: "this month's traffic allowance is used up", exhausted: true };
     }
 
     let segment;
@@ -271,10 +273,10 @@ export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 
   if (!trafficProviderConfigured()) return { events: [] };
   if (trafficPaused()) return { events: [] };
 
-  const left = await remainingBudget(PROVIDER, DAILY_LIMIT);
+  const left = await remainingBudget(INCIDENT_PROVIDER, INCIDENT_MONTHLY_LIMIT);
   if (left <= 0) return { events: [] };
 
-  const budget = await consumeBudget(PROVIDER, 1, DAILY_LIMIT);
+  const budget = await consumeBudget(INCIDENT_PROVIDER, 1, INCIDENT_MONTHLY_LIMIT);
   if (!budget.allowed) return { events: [] };
 
   const probes = await selectTrafficProbes(cityName, Math.min(maxProbes, left), offset);

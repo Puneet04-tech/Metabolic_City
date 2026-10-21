@@ -16,7 +16,7 @@ const OPENMETEO_TIMEOUT_MS = Number(process.env.OPENMETEO_TIMEOUT_MS || 10000);
  * hour. The limit here sits below the daily one so the last cycles of the
  * day still fit.
  */
-const DAILY_LIMIT = Number(process.env.OPENMETEO_DAILY_LIMIT ?? 8000);
+const MONTHLY_LIMIT = Number(process.env.OPENMETEO_MONTHLY_LIMIT ?? 8000);
 
 function getH3Index(lat, lon, res = 8) {
   const h3Fn = h3.latLngToCell || h3.geoToH3;
@@ -117,7 +117,7 @@ export async function fetchWeatherForCity(cityName) {
 
   let lastError;
   for (let attempt = 0; attempt <= OPENMETEO_RETRIES; attempt += 1) {
-    const budget = await consumeBudget('open-meteo', 1, DAILY_LIMIT);
+    const budget = await consumeBudget('open-meteo', 1, MONTHLY_LIMIT);
     if (!budget.allowed) {
       console.warn("[weather] Today's Open-Meteo allowance is used up; not asking for more.");
       throw new Error('Open-Meteo daily allowance exhausted');
@@ -205,7 +205,7 @@ export async function fetchWeatherForAllCities() {
  * for the whole of it.
  */
 export async function fetchWeatherAtPoint(latitude, longitude) {
-  const budget = await consumeBudget('open-meteo', 1, DAILY_LIMIT);
+  const budget = await consumeBudget('open-meteo', 1, MONTHLY_LIMIT);
   if (!budget.allowed) {
     throw new Error('Open-Meteo daily allowance exhausted');
   }
