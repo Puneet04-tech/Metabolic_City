@@ -148,17 +148,49 @@ A `429` is honoured rather than retried blindly: the wait the provider asks
 for is taken, and traffic pauses for that long. The last readings stay in
 the window, so the cells keep their mobility score until the next poll.
 
-### To cover every cell on every poll
+### How many cells have a current reading
 
-Eight roads an hour for a city of forty cells means each cell is re-read
-every few hours, so at any moment only a fifth of them have a speed reading
-in the window. The rest say so, rather than showing a score they have no
-reading for.
+A road-speed reading is valid for sixty minutes, and the flow allowance is
+20,000 a month, which works out at 720 polls a month at one an hour. A poll
+measures a fixed number of roads, so:
 
-To close that gap, use the **raster flow tiles**: one tile puts a whole
-area of congestion on the map, and tiles come from their own allowance of
-**200,000 a month** — ten times the allowance of the flow segment data. That
-is the way to cover every cell on every poll without paying.
+```
+flow calls a month = 720 × (cells with a current reading)
+```
+
+So the free allowance caps the number of cells that can have a current
+reading at **20,000 ÷ 720 = 27 cells**, whichever way the poll is set up.
+At the current settings, 24 of the 100 cells across the three cities have a
+road-speed reading at any moment; the other 76 say so rather than showing a
+score they have no reading for.
+
+**Resolution is the lever that does not cost anything.** The cells come from
+the real street network, so the number of them follows from the H3
+resolution:
+
+| Resolution | Bhopal | Indore | Sehore | Total | Cells covered by the free tier |
+| --- | --- | --- | --- | --- | --- |
+| 7 (~1.2 km) | 10 | 10 | 12 | 32 | 24 of 32 — **75%** |
+| 8 (~460 m) | 43 | 32 | 25 | 100 | 24 of 100 — **24%** |
+| 9 (~170 m) | 301 | 224 | 175 | 700 | 24 of 700 — **3%** |
+
+Resolution 7 would give three quarters of the cells a current reading for
+the same money, with no change to the data and nothing modelled. What it
+costs is geographic detail: a cell becomes a neighbourhood rather than a
+street block. The cells still name the real streets inside them, so the
+console still shows the operator where to send a crew.
+
+**The traffic tiles are the other lever, and they are the only one that
+keeps the fine resolution.** They have an allowance of 200,000 a month,
+ten times the flow segment data. What they do not have is travel times: a
+tile carries a speed *band* for each road, so the delay would have to be
+derived from that band and the real length of the road rather than measured
+directly. That would mean a cell's delay is sometimes a measurement and
+sometimes a derivation, and the system would no longer be able to say that
+every number in it is a measurement. That is why the tiles are not in use.
+
+Both are recorded here so the choice is a deliberate one rather than an
+accident of the free tier.
 
 ## The field crew as a sensor
 
