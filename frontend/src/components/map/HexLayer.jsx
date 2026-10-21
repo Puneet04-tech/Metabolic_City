@@ -1,7 +1,7 @@
 import L from 'leaflet';
 import * as h3 from 'h3-js';
 import { getMapTheme } from '../../lib/mapTheme.js';
-import { cellBandFor } from '../../lib/cells/index.js';
+import { allInOneBand, cellBandFor, cellScore, percentileRanks } from '../../lib/cells/index.js';
 import styles from './HexLayer.module.css';
 
 /**
@@ -19,6 +19,7 @@ const HexLayer = L.Layer.extend({
     this._hoverIndex = -1;
     this._selectedIndex = -1;
     this._frame = null;
+    this._relative = false;
 
     this._canvas = L.DomUtil.create('canvas', styles.canvas);
     this._canvas.setAttribute('aria-hidden', 'true');
@@ -38,12 +39,22 @@ const HexLayer = L.Layer.extend({
     if (this._canvas && this._canvas.parentNode) this._canvas.parentNode.removeChild(this._canvas);
   },
 
-  /** Rebuilds the cell set for the active lens. */
-  setCells(cells, mode, threshold) {
+  /**
+   * Rebuilds the cell set for the active lens.
+   *
+   * When every cell is in the same band and the relative view is asked for,
+   * the cells are coloured by where they sit among themselves instead of by
+   * severity, which would be the same colour for all of them.
+   */
+  setCells(cells, mode, threshold, { relative = false } = {}) {
     const theme = getMapTheme();
     const shapes = [];
+    const list = cells || [];
+    const useRelative =
+      relative && allInOneBand(list, mode, threshold);
+    const ranks = useRelative ? percentileRanks(list, mode) : null;
 
-    for (const cell of cells || []) {
+    for (const cell of list) {
       let boundary;
       try {
         boundary = h3.cellToBoundary(cell.h3Index);
@@ -52,10 +63,15 @@ const HexLayer = L.Layer.extend({
       }
       const value = mode === 'composite' ? cell.compositeRisk : Number(cell.scores?.[mode]) || 0;
       const band = cellBandFor(cell, mode, threshold);
-      shapes.push({ cell, latlngs: boundary, value, band, points: null, color: theme.severity[band] });
+      const percentile = ranks ? (ranks.get(cell.h3Index) ?? 0) : null;
+      const color = useRelative
+        ? theme.relative[Math.min(theme.relative.length - 1, Math.floor(percentile * theme.relative.length))]
+        : theme.severity[band];
+      shapes.push({ cell, latlngs: boundary, value, band, percentile, color, relative: useRelative });
     }
 
     this._shapes = shapes;
+    this._relative = useRelative;
     this._hoverIndex = -1;
     this._selectedIndex = -1;
     this._schedule();
@@ -144,10 +160,16 @@ const HexLayer = L.Layer.extend({
       for (let j = 1; j < points.length; j += 1) ctx.lineTo(points[j].x, points[j].y);
       ctx.closePath();
 
-      ctx.fillStyle = hexToRgba(shape.color, selected || hovered ? 0.45 : 0.35);
+      ctx.fillStyle = hexToRgba(shape.color, selected || hovered ? 0.55 : 0.45);
       ctx.fill();
 
-      ctx.lineWidth = selected ? 2 : 1;
+      // A dark line under the colour, so the shape reads against any basemap.
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = selected ? 4 : 3;
+      ctx.strokeStyle = theme.outline;
+      ctx.stroke();
+
+      ctx.lineWidth = selected ? 2 : 1.5;
       ctx.strokeStyle = selected ? theme.accent : shape.color;
       ctx.stroke();
     }

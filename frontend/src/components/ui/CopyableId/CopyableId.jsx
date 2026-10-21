@@ -7,8 +7,20 @@ import styles from './CopyableId.module.css';
 /**
  * A short, copyable identifier.
  * The full value lives in the tooltip; the button copies it to the clipboard.
+ *
+ * `short` overrides the shortened form, so a caller can show the part of the
+ * identifier that actually distinguishes it rather than its ends.
  */
-export default function CopyableId({ id, head = 4, tail = 3, label, className, onCopied, ...rest }) {
+export default function CopyableId({
+  id,
+  head = 4,
+  tail = 3,
+  short: shortOverride,
+  label,
+  className,
+  onCopied,
+  ...rest
+}) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -19,7 +31,8 @@ export default function CopyableId({ id, head = 4, tail = 3, label, className, o
 
   if (!id) return null;
 
-  const short = id.length <= head + tail + 1 ? id : `${id.slice(0, head)}…${id.slice(-tail)}`;
+  const short =
+    shortOverride ?? (id.length <= head + tail + 1 ? id : `${id.slice(0, head)}…${id.slice(-tail)}`);
 
   const handleCopy = async () => {
     try {

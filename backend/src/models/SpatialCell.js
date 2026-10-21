@@ -5,6 +5,8 @@ const spatialCellSchema = new mongoose.Schema(
     h3Index: { type: String, required: true, unique: true, index: true },
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
+    // The city this cell belongs to, taken from the telemetry behind it.
+    cityCode: { type: String, default: null, index: true },
     // PRINCIPLE: Spatial Intelligence - Geospatial Indexing (2dsphere)
     location: {
       type: { type: String, enum: ['Point'], required: true },

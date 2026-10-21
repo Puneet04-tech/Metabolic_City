@@ -518,6 +518,9 @@ export async function recalculateCell(h3Index) {
         history: updatedHistory,
         lastUpdated: new Date(),
         degradationStatus: scored.degradationStatus,
+        // The city the cell belongs to, taken from the telemetry that
+        // produced it, so the console can group the cells by city.
+        cityCode: events.find((event) => event.cityCode)?.cityCode || previousCell?.cityCode || null,
       },
     },
     { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }

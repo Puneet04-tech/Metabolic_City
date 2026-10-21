@@ -26,8 +26,25 @@
   /* Map grid and label strokes. */
   --accent-grid: rgba(76, 141, 255, 0.22);
   --accent-label: rgba(127, 171, 255, 0.75);
-  /* The public tile set is light; one filter keeps the map in the palette. */
-  --map-tile-filter: grayscale(1) brightness(0.62) contrast(1.05) invert(0.92);
+  /*
+   * The public tile set is light. It is turned dark first and darkened
+   * after, so the map sits in the palette without the roads disappearing:
+   * the hue rotation puts the water back to blue and the greyscale keeps
+   * the basemap out of the way of the cells.
+   */
+  --map-tile-filter: invert(0.9) hue-rotate(180deg) grayscale(0.55) brightness(0.62) contrast(1.1);
+
+  /*
+   * The relative ramp: one hue in five steps. It is used only when every
+   * cell sits in the same severity band, where a severity colour would say
+   * nothing, and the interface always labels it as a position rather than
+   * a severity.
+   */
+  --relative-1: #2b3a55;
+  --relative-2: #35608f;
+  --relative-3: #3d74b8;
+  --relative-4: #4488e0;
+  --relative-5: #4c8dff;
 
   /* ---------- Text ---------- */
   --text-primary: #e6eaf2;

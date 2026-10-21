@@ -29,6 +29,7 @@ export default function DataTable({
   isRowHighlighted,
   caption,
   className,
+  fixedLayout = false,
 }) {
   const [page, setPage] = useState(0);
 
@@ -37,7 +38,12 @@ export default function DataTable({
     const column = columns.find((item) => item.key === sort.key);
     if (!column) return rows;
     const direction = sort.direction === 'desc' ? -1 : 1;
+    const directionName = sort.direction === 'desc' ? 'desc' : 'asc';
     return [...rows].sort((a, b) => {
+      // A column can carry its own comparison, which is how a column keeps a
+      // stable order when two rows hold the same value. It is given the
+      // direction by name, so it decides what to do with it.
+      if (typeof column.compare === 'function') return column.compare(a, b, directionName);
       const left = sortValueFor(column, a);
       const right = sortValueFor(column, b);
       if (left === right) return 0;
@@ -84,8 +90,8 @@ export default function DataTable({
 
   return (
     <div className={cn(styles.wrapper, fill && styles.wrapperFill, className)}>
-      <div className={cn(styles.scroll, fill && styles.scrollFill)}>
-        <table className={styles.table}>
+      <div className={cn(styles.scroll, fill && styles.scrollFill, fixedLayout && styles.scrollFixed)}>
+        <table className={cn(styles.table, fixedLayout && styles.tableFixed)}>
           {caption ? <caption className={styles.caption}>{caption}</caption> : null}
           <thead className={styles.head}>
             <tr>

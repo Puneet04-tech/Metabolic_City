@@ -35,41 +35,48 @@ export function latencyMonitor(req, res, next) {
   // Override json to measure latency
   res.json = function(data) {
     const latency = Date.now() - startTime;
-    
+
     // Update stats
     updateLatencyStats(latency, path, method);
-    
+
     // Log slow requests
     if (latency > latencyThresholds.critical) {
       console.error(`[Latency] CRITICAL: ${method} ${path} took ${latency}ms`);
     } else if (latency > latencyThresholds.warning) {
       console.warn(`[Latency] WARNING: ${method} ${path} took ${latency}ms`);
     }
-    
+
     // Add latency header
-    res.setHeader('X-Response-Time', `${latency}ms`);
-    
-    originalJson.call(this, data);
+    if (!this.headersSent) {
+      this.setHeader('X-Response-Time', `${latency}ms`);
+    }
+
+    // The result is returned, so a route that checks it — the usual
+    // `if (result) return result;` idiom for a failed validation — still
+    // stops. Without this the route answers twice and the process dies.
+    return originalJson.call(this, data);
   };
 
   // Override send to measure latency
   res.send = function(data) {
     const latency = Date.now() - startTime;
-    
+
     // Update stats
     updateLatencyStats(latency, path, method);
-    
+
     // Log slow requests
     if (latency > latencyThresholds.critical) {
       console.error(`[Latency] CRITICAL: ${method} ${path} took ${latency}ms`);
     } else if (latency > latencyThresholds.warning) {
       console.warn(`[Latency] WARNING: ${method} ${path} took ${latency}ms`);
     }
-    
+
     // Add latency header
-    res.setHeader('X-Response-Time', `${latency}ms`);
-    
-    originalSend.call(this, data);
+    if (!this.headersSent) {
+      this.setHeader('X-Response-Time', `${latency}ms`);
+    }
+
+    return originalSend.call(this, data);
   };
 
   next();

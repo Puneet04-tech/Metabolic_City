@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   font-weight: var(--weight-medium);
@@ -20,12 +20,27 @@
   text-decoration: none;
 }
 
+/* The icon and the label sit in one row, both centred on the same line. */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+/* The icon and the label sit in one row, both centred on the same line. */
 .label {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  line-height: 1;
 }
 
 .spinner {
   flex: 0 0 auto;
+  display: inline-flex;
+  line-height: 0;
   animation: button-spin 900ms linear infinite;
 }
 
@@ -36,14 +51,14 @@
 }
 
 .button[data-size='md'] {
-  height: 40px;
-  padding: 0 var(--space-5);
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
 }
 
 .button[data-size='sm'] {
-  height: 32px;
-  padding: 0 var(--space-4);
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-xs);
 }
 

@@ -63,6 +63,21 @@ export const shortenCellId = (id, head = 4, tail = 3) => {
 };
 
 /**
+ * The part of an H3 index that actually tells one cell from another.
+ *
+ * A resolution-8 index is fifteen characters. The first four are the
+ * resolution-4 base cell, which is the same for every cell in a city, and
+ * the last five are the reserved bits, which never change. The characters
+ * in between carry the distinction, and the last two of them are the
+ * resolution-8 digit itself.
+ */
+export const cellRef = (id) => {
+  if (!id) return '';
+  if (id.length < 12) return id;
+  return `…${id.slice(5, 10)}`;
+};
+
+/**
  * The one place a cell's display name is produced.
  * Returns a real locality when the data (or a lookup) provides one, and
  * falls back to the shortened H3 id — never an invented name.
@@ -78,12 +93,44 @@ export const getCellLabel = (cell, lookup) => {
 };
 
 /**
- * Ordering used everywhere: risk first, then H3 id so cells with identical
- * risk keep a stable, explainable order.
+ * The score code for each lens, used for the column heading and the legend.
  */
-export const compareCells = (a, b, mode) => {
-  const risk = cellScore(b, mode) - cellScore(a, mode);
+export const LENS_CODES = {
+  composite: 'Rc',
+  mobility: 'Sm',
+  climate: 'Sc',
+  vulnerability: 'Sv',
+};
+
+export const LENS_NAMES = {
+  composite: 'Composite risk',
+  mobility: 'Mobility',
+  climate: 'Climate',
+  vulnerability: 'Vulnerability',
+};
+
+/**
+ * The scale of a lens, so the legend can say what the colours mean.
+ */
+export const lensScale = (mode, threshold) => [
+  { band: 'critical', label: 'Critical', text: `≥ ${threshold}` },
+  { band: 'caution', label: 'Caution', text: `${CAUTION_THRESHOLD}–${threshold}` },
+  { band: 'normal', label: 'Normal', text: `< ${CAUTION_THRESHOLD}` },
+];
+
+/**
+ * Ordering used everywhere: risk first, then the most recently updated, then
+ * the identifier. The last two steps are the tie-break, so two cells with the
+ * same score never swap places between refreshes. They keep their direction
+ * whichever way the risk is sorted.
+ */
+export const compareCells = (a, b, mode, direction = 'desc') => {
+  const sign = direction === 'asc' ? 1 : -1;
+  const risk = (cellScore(a, mode) - cellScore(b, mode)) * sign;
   if (risk) return risk;
+
+  const updated = new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime();
+  if (updated) return updated;
 
   const left = a.h3Index ?? '';
   const right = b.h3Index ?? '';
@@ -91,10 +138,42 @@ export const compareCells = (a, b, mode) => {
   return left.localeCompare(right);
 };
 
-export const sortCells = (cells, mode) => [...(cells ?? [])].sort((a, b) => compareCells(a, b, mode));
+export const sortCells = (cells, mode, direction = 'desc') =>
+  [...(cells ?? [])].sort((a, b) => compareCells(a, b, mode, direction));
 
 export const countByBand = (cells, mode, threshold) => {
   const counts = { critical: 0, caution: 0, normal: 0 };
   for (const cell of cells ?? []) counts[cellBandFor(cell, mode, threshold)] += 1;
   return counts;
+};
+
+/**
+ * Where a cell sits in the ordering of the cells that share its band, as a
+ * percentile between 0 and 1.
+ *
+ * This is only used when every cell is in the same band, where a severity
+ * colour would say nothing. The result is a position, not a severity, and
+ * the interface says so.
+ */
+export const percentileRanks = (cells, mode) => {
+  const list = [...(cells ?? [])];
+  if (!list.length) return new Map();
+
+  const sorted = [...list].sort((a, b) => cellScore(a, mode) - cellScore(b, mode));
+  const ranks = new Map();
+  sorted.forEach((cell, index) => {
+    ranks.set(cell.h3Index, sorted.length === 1 ? 1 : index / (sorted.length - 1));
+  });
+  return ranks;
+};
+
+/**
+ * Whether every cell sits in the same band, which is the only case where a
+ * percentile colouring says anything useful.
+ */
+export const allInOneBand = (cells, mode, threshold) => {
+  const list = cells ?? [];
+  if (list.length < 2) return false;
+  const bands = new Set(list.map((cell) => cellBandFor(cell, mode, threshold)));
+  return bands.size === 1;
 };

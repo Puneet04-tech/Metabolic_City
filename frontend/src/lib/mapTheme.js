@@ -18,7 +18,13 @@ const TOKEN_NAMES = [
   '--surface',
   '--surface-raised',
   '--surface-scrim',
+  '--surface-sunken',
   '--map-tile-filter',
+  '--relative-1',
+  '--relative-2',
+  '--relative-3',
+  '--relative-4',
+  '--relative-5',
   '--bg',
 ];
 
@@ -54,8 +60,21 @@ export const getMapTheme = () => {
       caution: tokens['--caution'],
       normal: tokens['--normal'],
     },
+    /**
+     * The ramp used when every cell is in the same band. It is a position,
+     * never a severity, and the interface says so.
+     */
+    relative: [
+      tokens['--relative-1'],
+      tokens['--relative-2'],
+      tokens['--relative-3'],
+      tokens['--relative-4'],
+      tokens['--relative-5'],
+    ],
     selectedStroke: tokens['--text-primary'],
     accent: tokens['--accent'],
+    /** The dark line drawn under a cell outline so the shape reads. */
+    outline: tokens['--surface-sunken'],
     grid: {
       stroke: tokens['--accent'],
       gridStroke: tokens['--accent-grid'],

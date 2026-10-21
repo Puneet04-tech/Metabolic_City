@@ -1,34 +1,74 @@
-import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import DataTable from '../ui/DataTable/DataTable';
 import EmptyState from '../ui/EmptyState/EmptyState';
-import { cellBandFor, cellScore, getCellLabel, shortenCellId } from '../../lib/cells/index.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/Tooltip/Tooltip';
+import CopyableId from '../ui/CopyableId/CopyableId';
+import {
+  cellBandFor,
+  cellRef,
+  cellScore,
+  compareCells,
+  LENS_CODES,
+  LENS_NAMES,
+} from '../../lib/cells/index.js';
 import styles from './CellList.module.css';
 
-const TREND_DIRECTION = { SURGING: 'up', RISING: 'up', STABLE: 'flat', 'DE-ESCALATING': 'down' };
+const SCORE_PARTS = [
+  { key: 'mobility', short: 'M', name: 'Mobility' },
+  { key: 'climate', short: 'C', name: 'Climate' },
+  { key: 'vulnerability', short: 'V', name: 'Vulnerability' },
+];
 
-const TrendIcon = ({ trend }) => {
-  const direction = TREND_DIRECTION[trend] ?? 'flat';
-  if (direction === 'up') return <ArrowUp size={13} aria-hidden="true" />;
-  if (direction === 'down') return <ArrowDown size={13} aria-hidden="true" />;
-  return <ArrowRight size={13} aria-hidden="true" />;
-};
-
-/** Three mini bars for mobility, climate and vulnerability. */
-function ScoreBars({ cell }) {
-  const values = [
-    { key: 'M', value: Number(cell.scores?.mobility) || 0 },
-    { key: 'C', value: Number(cell.scores?.climate) || 0 },
-    { key: 'V', value: Number(cell.scores?.vulnerability) || 0 },
-  ];
-
+/**
+ * The trend of a cell.
+ *
+ * The arrow follows the number, not the other way round, and a cell with no
+ * movement says so rather than showing a zero.
+ */
+function Trend({ velocity }) {
+  const value = Number(velocity);
+  if (!Number.isFinite(value) || value === 0) {
+    return <span className={styles.trendFlat}>—</span>;
+  }
+  const up = value > 0;
   return (
-    <span className={styles.bars} aria-hidden="true">
-      {values.map((item) => {
-        const ratio = Math.max(0, Math.min(1, item.value / 10));
+    <span className={styles.trend} data-direction={up ? 'up' : 'down'}>
+      {up ? <ArrowUp size={13} aria-hidden="true" /> : <ArrowDown size={13} aria-hidden="true" />}
+      {up ? '+' : ''}
+      {value}/h
+    </span>
+  );
+}
+
+/**
+ * Three labelled mini bars: mobility, climate and vulnerability.
+ *
+ * Each bar has a visible track so the scale is readable, and a tooltip
+ * that names the part and gives the number.
+ */
+function ScoreBars({ cell }) {
+  return (
+    <span className={styles.bars}>
+      {SCORE_PARTS.map((part) => {
+        const value = Number(cell.scores?.[part.key]) || 0;
+        const ratio = Math.max(0, Math.min(1, value / 10));
         return (
-          <span key={item.key} className={styles.bar}>
-            <span className={styles.barFill} style={{ height: `${Math.max(8, ratio * 100)}%` }} />
-          </span>
+          <Tooltip key={part.key}>
+            <TooltipTrigger asChild>
+              <span className={styles.barSlot} tabIndex={0}>
+                <span className={styles.barLabel}>{part.short}</span>
+                <span className={styles.barTrack}>
+                  <span
+                    className={styles.barFill}
+                    style={{ height: `${Math.max(6, ratio * 100)}%` }}
+                  />
+                </span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              {part.name}: {value.toFixed(1)} of 10
+            </TooltipContent>
+          </Tooltip>
         );
       })}
     </span>
@@ -55,21 +95,31 @@ export default function CellList({
     {
       key: 'label',
       header: 'Cell',
+      width: '36%',
       sortable: true,
-      sortValue: (row) => getCellLabel(row),
+      sortValue: (row) => row.h3Index ?? '',
       render: (row) => (
         <span className={styles.cell}>
-          <span className={styles.cellName}>{getCellLabel(row)}</span>
-          <span className={styles.cellId}>{shortenCellId(row.h3Index)}</span>
+          <span className={styles.cellName}>Cell</span>
+          <CopyableId
+            id={row.h3Index}
+            short={cellRef(row.h3Index)}
+            label="cell identifier"
+            className={styles.cellId}
+          />
         </span>
       ),
     },
     {
       key: 'score',
-      header: 'Rc',
+      header: LENS_CODES[mode] ?? 'Rc',
+      width: '16%',
       sortable: true,
       align: 'right',
       sortValue: (row) => cellScore(row, mode),
+      // The tie-break is the same one the list uses, so the order never
+      // changes between two cells with the same score.
+      compare: (a, b, direction) => compareCells(a, b, mode, direction),
       render: (row) => {
         const score = cellScore(row, mode);
         const band = cellBandFor(row, mode, threshold);
@@ -83,18 +133,15 @@ export default function CellList({
     {
       key: 'trend',
       header: 'Trend',
+      width: '20%',
       sortable: true,
-      sortValue: (row) => row.riskVelocity ?? 0,
-      render: (row) => (
-        <span className={styles.trend} data-direction={TREND_DIRECTION[row.trend] ?? 'flat'}>
-          <TrendIcon trend={row.trend} />
-          {row.riskVelocity != null ? `${row.riskVelocity > 0 ? '+' : ''}${row.riskVelocity}/h` : '—'}
-        </span>
-      ),
+      sortValue: (row) => Number(row.riskVelocity) || 0,
+      render: (row) => <Trend velocity={row.riskVelocity} />,
     },
     {
       key: 'scores',
       header: 'M / C / V',
+      width: '28%',
       render: (row) => <ScoreBars cell={row} />,
     },
   ];
@@ -112,6 +159,7 @@ export default function CellList({
 
       <DataTable
         fill
+        fixedLayout
         columns={columns}
         rows={cells}
         sort={sort}
@@ -121,7 +169,7 @@ export default function CellList({
         onRowHover={onHover}
         isRowSelected={(row) => row.h3Index === selectedId}
         isRowHighlighted={(row) => row.h3Index === highlightId}
-        caption="Active cells ordered by risk"
+        caption={`Active cells ordered by ${LENS_NAMES[mode] ?? 'risk'}`}
         empty={
           <EmptyState
             title="No cells match"

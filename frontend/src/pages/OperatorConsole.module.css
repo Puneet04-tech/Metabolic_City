@@ -7,6 +7,40 @@
   padding: var(--space-5) var(--space-6) var(--space-6);
 }
 
+/* The header matches the analytics and field pages. */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  padding: var(--space-5);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.headerText {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 640px;
+}
+
+.title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+  text-wrap: pretty;
+}
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -14,10 +48,51 @@
   flex-wrap: wrap;
   flex: 0 0 auto;
   min-height: 56px;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
+  padding: var(--space-4);
+  border: 1.5px solid var(--border-strong);
   border-radius: var(--radius-card);
   background: var(--surface);
+}
+
+.cityField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.cityLabel {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.relativeField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.relativeField input {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.relativeNote {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
 }
 
 .search {

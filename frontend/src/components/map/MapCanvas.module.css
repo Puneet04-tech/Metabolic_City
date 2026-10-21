@@ -17,20 +17,29 @@
 
 .legend {
   position: absolute;
-  bottom: var(--space-3);
-  left: var(--space-3);
+  bottom: var(--space-4);
+  left: var(--space-4);
   z-index: 500;
   display: grid;
   gap: var(--space-1);
   margin: 0;
   padding: var(--space-2) var(--space-3);
   list-style: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--surface-scrim);
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-secondary);
+  max-width: 220px;
+}
+
+.legendTitle {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
 }
 
 .legendItem {
@@ -42,6 +51,7 @@
 .legendSwatch {
   width: 10px;
   height: 10px;
+  flex: 0 0 auto;
   border-radius: 3px;
 }
 
@@ -57,16 +67,18 @@
   background: var(--normal);
 }
 
+/* The map controls sit inside the map, clear of its edge. */
 .fitButton {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: var(--space-4);
+  right: var(--space-4);
   z-index: 500;
+  background: var(--surface-scrim);
 }
 
 .fitButton:hover {
   color: var(--text-primary);
-  border-color: var(--border-strong);
+  border-color: var(--border-stronger);
 }
 
 .error {

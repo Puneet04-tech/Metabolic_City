@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import AppShell from '../components/shell/AppShell/AppShell';
 import MapCanvas from '../components/map/MapCanvas';
 import CellDetail from '../components/Operator/CellDetail';
@@ -8,16 +9,31 @@ import LensFilter from '../components/Operator/LensFilter';
 import SummaryStrip from '../components/Operator/SummaryStrip';
 import TelemetryStatus from '../components/Operator/TelemetryStatus';
 import SearchInput from '../components/ui/SearchInput/SearchInput';
+import Select from '../components/ui/Select/Select';
 import { apiRequest, clearSession, getStoredUser } from '../api.js';
-import { cellBandFor, countByBand, getCellLabel, sortCells } from '../lib/cells/index.js';
+import {
+  allInOneBand,
+  cellBandFor,
+  countByBand,
+  getCellLabel,
+  sortCells,
+} from '../lib/cells/index.js';
 import { getNavItems } from '../lib/routes.js';
 import useLiveCells from '../lib/useLiveCells.js';
 import styles from './OperatorConsole.module.css';
 
 const THRESHOLD = 7;
 
+/** The municipalities the console can show, by the code the cells carry. */
+const CITY_NAMES = {
+  'CITY-MP-BPL': 'Bhopal',
+  'CITY-MP-SHR': 'Sehore',
+  'CITY-MP-IDR': 'Indore',
+  'CITY-MP-AST': 'Ashta',
+};
+
 export default function OperatorConsole() {
-  const { cells, connection, lastUpdated } = useLiveCells();
+  const { cells, connection, lastUpdated, serverUpdated, cadence } = useLiveCells();
   const navigate = useNavigate();
   const user = getStoredUser();
 
@@ -31,6 +47,8 @@ export default function OperatorConsole() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [hovered, setHovered] = useState(null);
+  const [city, setCity] = useState(null);
+  const [relative, setRelative] = useState(false);
 
   const navItems = useMemo(() => getNavItems(user.role), [user.role]);
 
@@ -38,20 +56,54 @@ export default function OperatorConsole() {
   // threshold, so the band always matches the engine.
   const bandOf = useCallback((cell) => cellBandFor(cell, mode, THRESHOLD), [mode]);
 
+  // The cities that have cells, with the busiest first.
+  const cityOptions = useMemo(() => {
+    const counts = new Map();
+    for (const cell of cells) {
+      if (!cell.cityCode) continue;
+      counts.set(cell.cityCode, (counts.get(cell.cityCode) || 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([code, count]) => ({
+        value: code,
+        label: `${CITY_NAMES[code] || code} (${count})`,
+      }));
+  }, [cells]);
+
+  // The city with the most cells is the one the operator sees first.
+  useEffect(() => {
+    if (city !== null || !cityOptions.length) return;
+    setCity(cityOptions[0].value);
+  }, [cityOptions, city]);
+
+  const cityCells = useMemo(() => {
+    if (city === null) return [];
+    if (city === 'all') return cells;
+    return cells.filter((cell) => cell.cityCode === city);
+  }, [cells, city]);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query && bandFilters.size === 0) return cells;
+    if (!query && bandFilters.size === 0) return cityCells;
 
-    return cells.filter((cell) => {
+    return cityCells.filter((cell) => {
       if (bandFilters.size && !bandFilters.has(bandOf(cell))) return false;
       if (!query) return true;
       return cell.h3Index.toLowerCase().includes(query) || getCellLabel(cell).toLowerCase().includes(query);
     });
-  }, [cells, search, bandFilters, bandOf]);
+  }, [cityCells, search, bandFilters, bandOf]);
 
   const rows = useMemo(() => sortCells(filtered, mode), [filtered, mode]);
-  const counts = useMemo(() => countByBand(cells, mode, THRESHOLD), [cells, mode]);
+  const counts = useMemo(() => countByBand(cityCells, mode, THRESHOLD), [cityCells, mode]);
   const isFiltered = search.trim().length > 0 || bandFilters.size > 0;
+
+  // The relative view only means something when every cell is in the same
+  // band, so it is offered only then.
+  const relativeAvailable = allInOneBand(cityCells, mode, THRESHOLD);
+  useEffect(() => {
+    if (!relativeAvailable && relative) setRelative(false);
+  }, [relativeAvailable, relative]);
 
   const toggleBand = useCallback((band) => {
     setBandFilters((previous) => {
@@ -153,10 +205,53 @@ export default function OperatorConsole() {
       viewport
     >
       <div className={styles.console}>
+        <header className={styles.header}>
+          <div className={styles.headerText}>
+            <h2 className={styles.title}>Operator console</h2>
+            <p className={styles.description}>
+              The cells the city is watching, the risk in each one, and the source of every
+              reading behind them.
+            </p>
+          </div>
+        </header>
+
         <div className={styles.toolbar}>
-          <TelemetryStatus connection={connection} lastUpdated={lastUpdated} />
+          <TelemetryStatus
+            connection={connection}
+            lastUpdated={lastUpdated}
+            serverUpdated={serverUpdated}
+            cadence={cadence}
+          />
 
           <LensFilter mode={mode} onChange={setMode} />
+
+          <label className={styles.cityField}>
+            <MapPin size={13} aria-hidden="true" />
+            <span className={styles.cityLabel}>City</span>
+            <Select
+              value={city ?? 'all'}
+              onChange={(event) => setCity(event.target.value)}
+              aria-label="City"
+            >
+              <option value="all">All cities</option>
+              {cityOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+
+          {relativeAvailable ? (
+            <label className={styles.relativeField}>
+              <input
+                type="checkbox"
+                checked={relative}
+                onChange={(event) => setRelative(event.target.checked)}
+              />
+              <span>Relative</span>
+            </label>
+          ) : null}
 
           <SearchInput
             className={styles.search}
@@ -167,12 +262,21 @@ export default function OperatorConsole() {
           />
         </div>
 
+        {relative && relativeAvailable ? (
+          <p className={styles.relativeNote}>
+            Colours show where each cell sits among these cells, not how severe it is. Every
+            cell here is in the same band.
+          </p>
+        ) : null}
+
         <div className={styles.body}>
           <MapCanvas
             className={styles.map}
-            cells={cells}
+            cells={cityCells}
             mode={mode}
             threshold={THRESHOLD}
+            relative={relative && relativeAvailable}
+            fitKey={city}
             selectedId={selected ? selected.h3Index : null}
             highlightId={hovered ? hovered.h3Index : null}
             onSelect={selectCell}
@@ -182,7 +286,7 @@ export default function OperatorConsole() {
           <aside className={styles.panel} aria-label="Cell details">
             <SummaryStrip
               counts={counts}
-              total={cells.length}
+              total={cityCells.length}
               activeFilters={bandFilters}
               onToggle={toggleBand}
             />
@@ -212,7 +316,7 @@ export default function OperatorConsole() {
                 onSelect={selectCell}
                 onHover={setHovered}
                 filtered={isFiltered}
-                total={cells.length}
+                total={cityCells.length}
               />
             )}
           </aside>

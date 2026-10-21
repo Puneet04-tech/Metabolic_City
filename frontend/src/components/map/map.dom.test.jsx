@@ -36,6 +36,28 @@ describe('MapCanvas', () => {
     );
 
     expect(container.querySelector('.leaflet-container')).toBeTruthy();
-    expect(getByLabelText('Fit the map to the active cells')).toBeTruthy();
+    expect(getByLabelText('Fit the map to the cells on screen')).toBeTruthy();
+  });
+
+  it('names the lens the legend is showing', () => {
+    const { getByText } = render(
+      <MemoryRouter>
+        <MapCanvas cells={[]} mode="vulnerability" threshold={7} />
+      </MemoryRouter>
+    );
+
+    expect(getByText('Sv — Vulnerability')).toBeTruthy();
+    expect(getByText('Critical ≥ 7')).toBeTruthy();
+    expect(getByText('Caution 5–7')).toBeTruthy();
+  });
+
+  it('shows the relative ramp when the relative view is on', () => {
+    const { getByText } = render(
+      <MemoryRouter>
+        <MapCanvas cells={[]} mode="composite" threshold={7} relative />
+      </MemoryRouter>
+    );
+
+    expect(getByText('Relative — position within the band')).toBeTruthy();
   });
 });

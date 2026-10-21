@@ -62,9 +62,22 @@ describe('CellList', () => {
     const html = render(
       <CellList cells={cells} mode="composite" threshold={7} sort={{ key: 'score', direction: 'desc' }} onSortChange={() => {}} onSelect={() => {}} />
     );
-    expect(html).toContain('883d…fff');
+
+    // The identifier is shown once, as the part of it that tells one cell
+    // from another, and the full identifier is in its tooltip.
+    expect(html).toContain('Cell');
+    expect(html).toContain('…14f17');
+    expect(html).not.toContain('883d…fff');
     expect(html).toContain('7.40');
     expect(html).toContain('0.60');
+  });
+
+  it('labels the score column with the active lens', () => {
+    const html = render(
+      <CellList cells={cells} mode="vulnerability" threshold={7} sort={{ key: 'score', direction: 'desc' }} onSortChange={() => {}} onSelect={() => {}} />
+    );
+
+    expect(html).toContain('Sv');
   });
 
   it('shows the filtered count only when a filter is applied', () => {

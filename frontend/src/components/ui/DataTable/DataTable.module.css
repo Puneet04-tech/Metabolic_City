@@ -10,6 +10,19 @@
   background: var(--surface);
 }
 
+/*
+ * A table that has to fit a fixed panel: the columns are sized to the
+ * width and the content is clipped with an ellipsis, so the table never
+ * grows a horizontal scrollbar.
+ */
+.scrollFixed {
+  overflow-x: hidden;
+}
+
+.tableFixed {
+  table-layout: fixed;
+}
+
 /* The table fills its parent and becomes the only vertical scroller. */
 .wrapperFill {
   height: 100%;
@@ -45,7 +58,7 @@
 }
 
 .head th {
-  padding: 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
   height: 36px;
   border-bottom: 1px solid var(--border);
   text-align: left;
@@ -53,6 +66,8 @@
   font-weight: var(--weight-semibold);
   color: var(--text-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sortButton {
@@ -71,11 +86,14 @@
 }
 
 .row td {
-  padding: 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
   height: 40px;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row:last-child td {
