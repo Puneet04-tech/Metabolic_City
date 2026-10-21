@@ -38,36 +38,65 @@ export function congestionLevelFor(speedReductionPct) {
  * reports that it has no mobility signal rather than inventing one.
  */
 export function trafficProviderConfigured() {
-  return Boolean(process.env.TOMTOM_API_KEY);
+  return Boolean(process.env.TOMTOM_API_KEY || process.env.TOMTOM_SERVICE_KEY);
 }
 
-async function postTomTom(url, key, body, params) {
-  const target = new URL(url);
-  target.searchParams.set('key', key);
-  for (const [name, value] of Object.entries(params || {})) {
-    target.searchParams.set(name, value);
-  }
+/**
+ * The keys to try, most privileged first.
+ *
+ * A TomTom project shows a portal key, which is meant for calls from a
+ * browser, and a service key, which is meant for calls from a server. Some
+ * traffic endpoints refuse a portal key off the browser, so both are tried.
+ */
+function trafficKeys() {
+  return [
+    process.env.TOMTOM_SERVICE_KEY,
+    process.env.TOMTOM_API_KEY,
+  ].filter(Boolean);
+}
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
-  try {
-    const response = await fetch(target, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'MetabolicCity/1.0 (urban risk operations)',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(`TomTom returned ${response.status}: ${text.slice(0, 160)}`);
+async function postTomTom(url, body, params) {
+  const keys = trafficKeys();
+  if (!keys.length) throw new Error('No TomTom API key is configured.');
+
+  let lastError = null;
+  for (const key of keys) {
+    const target = new URL(url);
+    target.searchParams.set('key', key);
+    for (const [name, value] of Object.entries(params || {})) {
+      target.searchParams.set(name, value);
     }
-    return await response.json();
-  } finally {
-    clearTimeout(timer);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(target, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'MetabolicCity/1.0 (urban risk operations)',
+        },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        lastError = new Error(`TomTom returned ${response.status}: ${text.slice(0, 160)}`);
+        // A rejected key is worth trying the other one for.
+        if (response.status === 401 || response.status === 403) continue;
+        throw lastError;
+      }
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      lastError = error;
+      if (response?.status === 401 || response?.status === 403) continue;
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  throw lastError || new Error('TomTom rejected every configured key.');
 }
 
 /**
@@ -77,14 +106,13 @@ async function postTomTom(url, key, body, params) {
  * than it would take with nothing on it.
  */
 export async function fetchFlowSegments(points) {
-  const key = process.env.TOMTOM_API_KEY;
-  if (!key || !points.length) return [];
+  if (!trafficProviderConfigured() || !points.length) return [];
 
   const body = {
     points: points.map((point) => ({ latitude: point.latitude, longitude: point.longitude })),
   };
 
-  const response = await postTomTom(FLOW_URL, key, body, {
+  const response = await postTomTom(FLOW_URL, body, {
     fields: FLOW_FIELDS,
     unit: 'kmh',
     computeTravelTimeForAllPoints: 'false',
@@ -100,12 +128,10 @@ export async function fetchFlowSegments(points) {
  * The real incidents on the road: accidents, roadworks, closures, jams.
  */
 export async function fetchIncidents(bbox) {
-  const key = process.env.TOMTOM_API_KEY;
-  if (!key) return [];
+  if (!trafficProviderConfigured()) return [];
 
   const response = await postTomTom(
     INCIDENT_URL,
-    key,
     {
       bbox: {
         minLat: bbox.minLat,
