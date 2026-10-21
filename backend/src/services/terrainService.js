@@ -1,6 +1,7 @@
 import { TerrainCell } from '../models/TerrainCell.js';
 import { getCity } from './cityConfig.js';
 import { getCityNetworkCells, metresBetween } from './osmService.js';
+import { consumeBudget } from './requestBudget.js';
 import * as h3 from 'h3-js';
 
 const h3IndexOf = h3.latLngToCell || h3.geoToH3;
@@ -19,6 +20,11 @@ const ELEVATION_URL = 'https://api.open-meteo.com/v1/elevation';
  */
 export async function fetchElevations(points) {
   if (!points.length) return [];
+
+  const budget = await consumeBudget('open-meteo', 1, 8000);
+  if (!budget.allowed) {
+    throw new Error('Open-Meteo daily allowance exhausted');
+  }
 
   const url = new URL(ELEVATION_URL);
   url.searchParams.set('latitude', points.map((point) => point.latitude).join(','));

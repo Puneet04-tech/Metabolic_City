@@ -1,12 +1,22 @@
 import dotenv from 'dotenv';
 import * as h3 from 'h3-js';
 import { getAvailableCityNames, getCity, getConfiguredCityNames } from './cityConfig.js';
+import { consumeBudget } from './requestBudget.js';
 
 dotenv.config();
 
 const OPENMETEO_BASE_URL = process.env.OPENMETEO_BASE_URL || 'https://api.open-meteo.com/v1';
 const OPENMETEO_RETRIES = Number(process.env.OPENMETEO_RETRIES || 2);
 const OPENMETEO_TIMEOUT_MS = Number(process.env.OPENMETEO_TIMEOUT_MS || 10000);
+
+/**
+ * The daily allowance.
+ *
+ * The free tier of the weather API is 10,000 requests a day and 5,000 an
+ * hour. The limit here sits below the daily one so the last cycles of the
+ * day still fit.
+ */
+const DAILY_LIMIT = Number(process.env.OPENMETEO_DAILY_LIMIT ?? 8000);
 
 function getH3Index(lat, lon, res = 8) {
   const h3Fn = h3.latLngToCell || h3.geoToH3;
@@ -107,12 +117,30 @@ export async function fetchWeatherForCity(cityName) {
 
   let lastError;
   for (let attempt = 0; attempt <= OPENMETEO_RETRIES; attempt += 1) {
+    const budget = await consumeBudget('open-meteo', 1, DAILY_LIMIT);
+    if (!budget.allowed) {
+      console.warn("[weather] Today's Open-Meteo allowance is used up; not asking for more.");
+      throw new Error('Open-Meteo daily allowance exhausted');
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), OPENMETEO_TIMEOUT_MS);
     try {
       const response = await fetch(url, { signal: controller.signal });
       if (!response.ok) {
         console.warn(`[weather] Open-Meteo API returned ${response.status} for ${cityName} (attempt ${attempt + 1}/${OPENMETEO_RETRIES + 1})`);
+        if (response.status === 429) {
+          // The provider is asking us to slow down, so the wait is longer
+          // than a normal retry.
+          const retryAfter = Number(response.headers.get('retry-after'));
+          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter * 1000
+            : 60 * 1000;
+          if (attempt < OPENMETEO_RETRIES) {
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+            continue;
+          }
+        }
         if (attempt === OPENMETEO_RETRIES) {
           if (isSyntheticFallbackEnabled()) {
             console.warn(`[weather] All retries exhausted for ${cityName}, using synthetic fallback`);
@@ -155,6 +183,13 @@ export async function fetchWeatherForAllCities() {
       results[cityName] = await fetchWeatherForCity(cityName);
     } catch (error) {
       console.error(`Failed to fetch weather for ${cityName}:`, error.message);
+      // The same gate as everywhere else: when synthetic data is not
+      // allowed, the city simply has no weather rather than a made-up one.
+      if (!isSyntheticFallbackEnabled()) {
+        console.error(`[weather] Not using synthetic fallback for ${cityName} (disabled in config)`);
+        results[cityName] = null;
+        continue;
+      }
       console.warn(`[weather] Using synthetic fallback for ${cityName} due to error`);
       results[cityName] = generateSyntheticWeather(cityName);
     }
@@ -170,6 +205,11 @@ export async function fetchWeatherForAllCities() {
  * for the whole of it.
  */
 export async function fetchWeatherAtPoint(latitude, longitude) {
+  const budget = await consumeBudget('open-meteo', 1, DAILY_LIMIT);
+  if (!budget.allowed) {
+    throw new Error('Open-Meteo daily allowance exhausted');
+  }
+
   const url = new URL(`${OPENMETEO_BASE_URL}/forecast`);
   url.searchParams.set('latitude', String(latitude));
   url.searchParams.set('longitude', String(longitude));

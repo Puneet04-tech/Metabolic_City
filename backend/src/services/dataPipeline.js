@@ -8,6 +8,7 @@ import { buildAnchorPoints, interpolateSnapshot } from './spatialInterpolation.j
 import { fetchCityNetwork, saveCityNetwork, getCityNetworkCells } from './osmService.js';
 import { buildCityTerrain, getCityTerrain, terrainToTelemetry } from './terrainService.js';
 import { fetchCityTraffic, fetchCityIncidents, trafficProviderConfigured } from './trafficService.js';
+import { budgetReport, affordablePerCity } from './requestBudget.js';
 import * as h3 from 'h3-js';
 import dotenv from 'dotenv';
 
@@ -297,8 +298,27 @@ export async function runDataPipeline() {
         if (!due) {
           console.log(`  ${cityName}: traffic not due yet, keeping the last readings`);
         } else {
-          const probes = Number(process.env.TRAFFIC_PROBES_PER_CITY ?? 25);
+          // The number of roads measured is worked out from what is left of
+          // the day's allowance, so the allowance is spread across the whole
+          // day instead of running out by evening.
+          const configuredProbes = Number(process.env.TRAFFIC_PROBES_PER_CITY ?? 20);
+          const affordable = await affordablePerCity(
+            'tomtom',
+            Number(process.env.TOMTOM_DAILY_LIMIT ?? 2300),
+            pollMinutes,
+            cities.length,
+            configuredProbes
+          );
+          const probes = affordable.probes;
           const offset = trafficOffset.get(cityName) || 0;
+
+          if (probes <= 0) {
+            console.log(
+              `  ${cityName}: no traffic budget left today, keeping the last readings`
+            );
+            continue;
+          }
+
           const traffic = await fetchCityTraffic(cityName, { maxProbes: probes, offset });
           allTelemetryEvents.push(...traffic.events);
 
@@ -386,8 +406,13 @@ export async function runDataPipeline() {
     console.log(`  Recalculated ${recalculatedCells.length} cells`);
 
     const success = failedCities.length === 0;
+    const trafficUsage = await budgetReport('tomtom', Number(process.env.TOMTOM_DAILY_LIMIT ?? 2300));
+    const weatherUsage = await budgetReport('open-meteo', Number(process.env.OPENMETEO_DAILY_LIMIT ?? 8000));
     console.log(
       `[${new Date().toISOString()}] Pipeline ${success ? 'completed successfully' : 'completed with partial failures'}`
+    );
+    console.log(
+      `Requests today: traffic ${trafficUsage.used}/${trafficUsage.limit}, weather ${weatherUsage.used}/${weatherUsage.limit}`
     );
     console.log(`Summary: ${successfulCityCodes.length}/${cities.length} cities, ${allTelemetryEvents.length} events, ${recalculatedCells.length} cells`);
 

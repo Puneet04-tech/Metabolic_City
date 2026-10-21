@@ -1,11 +1,27 @@
 import { getCity } from './cityConfig.js';
 import { getCityNetworkCells, TRAFFIC_ROAD_CLASSES } from './osmService.js';
+import { consumeBudget, remainingBudget } from './requestBudget.js';
 import * as h3 from 'h3-js';
 
 const h3IndexOf = h3.latLngToCell || h3.geoToH3;
 
 const FLOW_URL = 'https://api.tomtom.com/traffic/services/4/flowSegmentData';
 const INCIDENT_URL = 'https://api.tomtom.com/traffic/services/5/incidentDetails';
+
+/** The provider name the daily allowance is counted against. */
+const PROVIDER = 'tomtom';
+
+/**
+ * The daily allowance.
+ *
+ * The free tier is 2,500 non-tile requests a day, shared between the flow
+ * and incident endpoints. The limit here is set below that so there is
+ * always room for the day's last cycle.
+ */
+const DAILY_LIMIT = Number(process.env.TOMTOM_DAILY_LIMIT ?? 2300);
+
+/** How long to wait after the provider says it has had enough. */
+let pausedUntil = 0;
 
 /** The zoom level the road geometry is returned at. */
 const FLOW_ZOOM = 16;
@@ -62,6 +78,20 @@ export function trafficProviderConfigured() {
 }
 
 /**
+ * Whether the provider is asking us to slow down.
+ */
+export function trafficPaused() {
+  return Date.now() < pausedUntil;
+}
+
+/**
+ * How long the provider asked us to wait, in milliseconds.
+ */
+export function trafficPauseRemaining() {
+  return Math.max(0, pausedUntil - Date.now());
+}
+
+/**
  * The keys to try, most privileged first.
  *
  * A TomTom project shows a portal key, which is meant for calls from a
@@ -99,6 +129,21 @@ async function requestTomTom(url, params, method = 'GET', body = null) {
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
+
+        if (response.status === 429) {
+          // The provider has had enough. Stop for as long as it asks, and
+          // do not spend the rest of the day's allowance.
+          const retryAfter = Number(response.headers.get('retry-after'));
+          const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter * 1000
+            : 15 * 60 * 1000;
+          pausedUntil = Date.now() + waitMs;
+          lastError = new Error(
+            `TomTom rate limit reached; pausing for ${Math.round(waitMs / 60000)} minutes.`
+          );
+          continue;
+        }
+
         lastError = new Error(`TomTom returned ${response.status}: ${text.slice(0, 200)}`);
         if (response.status === 401 || response.status === 403) continue;
         throw lastError;
@@ -145,8 +190,19 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
   if (!trafficProviderConfigured()) {
     return { events: [], skipped: 'no TomTom API key configured' };
   }
+  if (trafficPaused()) {
+    return { events: [], skipped: 'the traffic provider asked us to slow down' };
+  }
 
-  const probes = await selectTrafficProbes(cityName, maxProbes, offset);
+  // The number of roads measured is bounded by what is left of the day's
+  // allowance, so the system spends what it has and no more.
+  const left = await remainingBudget(PROVIDER, DAILY_LIMIT);
+  if (left <= 0) {
+    return { events: [], skipped: "today's traffic allowance is used up" };
+  }
+  const probesToUse = Math.min(maxProbes, left);
+
+  const probes = await selectTrafficProbes(cityName, probesToUse, offset);
   if (!probes.length) {
     return { events: [], skipped: 'no road network cached for this city' };
   }
@@ -155,11 +211,17 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
   let failures = 0;
 
   for (const probe of probes) {
+    const budget = await consumeBudget(PROVIDER, 1, DAILY_LIMIT);
+    if (!budget.allowed) {
+      return { events, skipped: "today's traffic allowance is used up", exhausted: true };
+    }
+
     let segment;
     try {
       segment = await fetchFlowSegment(probe);
     } catch (error) {
       failures += 1;
+      if (error instanceof Error && /rate limit/.test(error.message)) break;
       continue;
     }
     if (!segment) continue;
@@ -207,8 +269,15 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
 export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 } = {}) {
   const city = getCity(cityName);
   if (!trafficProviderConfigured()) return { events: [] };
+  if (trafficPaused()) return { events: [] };
 
-  const probes = await selectTrafficProbes(cityName, maxProbes, offset);
+  const left = await remainingBudget(PROVIDER, DAILY_LIMIT);
+  if (left <= 0) return { events: [] };
+
+  const budget = await consumeBudget(PROVIDER, 1, DAILY_LIMIT);
+  if (!budget.allowed) return { events: [] };
+
+  const probes = await selectTrafficProbes(cityName, Math.min(maxProbes, left), offset);
   if (!probes.length) return { events: [] };
 
   const latitudes = probes.map((probe) => probe.latitude);
