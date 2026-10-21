@@ -14,8 +14,23 @@ import styles from './AppShell.module.css';
  * Authenticated shell: sticky header, optional underline tab bar and a main
  * landmark. The tab bar is driven by the same route table that guards the
  * routes, so it can only ever show pages this role can open.
+ *
+ * `titleAs` decides whether the header name is the page's level-one heading.
+ * Routes that render their own `<h1>` pass `titleAs="span"` so the document
+ * keeps exactly one level-one heading.
  */
-export default function AppShell({ title, cityCode, user, navItems = [], activeId, onSignOut, viewport = false, children }) {
+export default function AppShell({
+  title,
+  titleAs = 'h1',
+  cityCode,
+  user,
+  navItems = [],
+  onSignOut,
+  viewport = false,
+  children,
+}) {
+  const Title = titleAs;
+
   return (
     <div className={cn(styles.shell, viewport && styles.viewport)}>
       <a className={styles.skipLink} href="#main-content">
@@ -28,7 +43,7 @@ export default function AppShell({ title, cityCode, user, navItems = [], activeI
             MC
           </span>
           <span className={styles.brandText}>
-            <span className={styles.brandName}>{title}</span>
+            <Title className={styles.brandName}>{title}</Title>
             {cityCode ? <span className={styles.cityCode}>{cityCode}</span> : null}
           </span>
         </div>

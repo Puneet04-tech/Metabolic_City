@@ -1,6 +1,7 @@
 import L from 'leaflet';
 import * as h3 from 'h3-js';
 import { getMapTheme } from '../../lib/mapTheme.js';
+import { cellBandFor } from '../../lib/cells/index.js';
 import styles from './HexLayer.module.css';
 
 /**
@@ -50,7 +51,7 @@ const HexLayer = L.Layer.extend({
         continue;
       }
       const value = mode === 'composite' ? cell.compositeRisk : Number(cell.scores?.[mode]) || 0;
-      const band = value >= threshold ? 'critical' : value >= 4 ? 'caution' : 'normal';
+      const band = cellBandFor(cell, mode, threshold);
       shapes.push({ cell, latlngs: boundary, value, band, points: null, color: theme.severity[band] });
     }
 

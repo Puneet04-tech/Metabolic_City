@@ -2,17 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/shell/AppShell/AppShell';
 import MapCanvas from '../components/map/MapCanvas';
-import CellDetail from '../components/operator/CellDetail';
-import CellList from '../components/operator/CellList';
-import LensFilter from '../components/operator/LensFilter';
-import SummaryStrip from '../components/operator/SummaryStrip';
-import TelemetryStatus from '../components/operator/TelemetryStatus';
-import Button from '../components/ui/Button/Button';
-import Notice from '../components/ui/Notice/Notice';
+import CellDetail from '../components/Operator/CellDetail';
+import CellList from '../components/Operator/CellList';
+import LensFilter from '../components/Operator/LensFilter';
+import SummaryStrip from '../components/Operator/SummaryStrip';
+import TelemetryStatus from '../components/Operator/TelemetryStatus';
 import SearchInput from '../components/ui/SearchInput/SearchInput';
-import Spinner from '../components/ui/Spinner/Spinner';
 import { apiRequest, clearSession, getStoredUser } from '../api.js';
-import { cellScore, countByBand, getCellLabel, sortCells } from '../lib/cells/index.js';
+import { cellBandFor, countByBand, getCellLabel, sortCells } from '../lib/cells/index.js';
 import { getNavItems } from '../lib/routes.js';
 import useLiveCells from '../lib/useLiveCells.js';
 import styles from './OperatorConsole.module.css';
@@ -37,13 +34,9 @@ export default function OperatorConsole() {
 
   const navItems = useMemo(() => getNavItems(user.role), [user.role]);
 
-  const bandOf = useCallback(
-    (cell) => {
-      const score = cellScore(cell, mode);
-      return score >= THRESHOLD ? 'critical' : score >= 4 ? 'caution' : 'normal';
-    },
-    [mode]
-  );
+  // The server classifies each cell with the municipality's configured
+  // threshold, so the band always matches the engine.
+  const bandOf = useCallback((cell) => cellBandFor(cell, mode, THRESHOLD), [mode]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -156,7 +149,6 @@ export default function OperatorConsole() {
       cityCode={user.cityCode}
       user={user}
       navItems={navItems}
-      activeId="operator"
       onSignOut={handleSignOut}
       viewport
     >

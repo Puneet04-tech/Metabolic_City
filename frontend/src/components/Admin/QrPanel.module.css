@@ -13,7 +13,7 @@
 .title {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: var(--text-strong);
+  color: var(--text-primary);
   letter-spacing: -0.015em;
 }
 
@@ -31,12 +31,6 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
-}
-
-.label {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--text-secondary);
 }
 
 .locations {
@@ -82,7 +76,7 @@
 
 .codeImage {
   border-radius: var(--radius-control);
-  background: #ffffff;
+  background: var(--qr-surface);
   padding: var(--space-1);
 }
 
@@ -94,7 +88,7 @@
 .codeId {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
 }
 
 .codeLink {

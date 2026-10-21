@@ -6,7 +6,8 @@ import SeverityBadge from '../ui/SeverityBadge/SeverityBadge';
 import Skeleton from '../ui/Skeleton/Skeleton';
 import { Dialog, DialogContent } from '../ui/Dialog/Dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/Tooltip/Tooltip';
-import { cellScore, getCellLabel } from '../../lib/cells/index.js';
+import { CAUTION_THRESHOLD, cellBandFor, cellScore, getCellLabel } from '../../lib/cells/index.js';
+import { priorityLabel } from '../../lib/taskStatus.js';
 import { useState } from 'react';
 import styles from './CellDetail.module.css';
 
@@ -39,22 +40,26 @@ function TrendChart({ values }) {
   );
 }
 
-function ScoreRow({ label, code, value, max = 10 }) {
+function ScoreRow({ label, code, value, threshold, max = 10 }) {
   return (
     <div className={styles.scoreRow}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={styles.scoreLabel}>
+          <button type="button" className={styles.scoreLabel}>
             {label}
             <span className={styles.scoreCode}>{code}</span>
-          </span>
+          </button>
         </TooltipTrigger>
         <TooltipContent>
           {label} score, {value.toFixed(1)} of {max}
         </TooltipContent>
       </Tooltip>
       <span className={styles.scoreTrack} aria-hidden="true">
-        <span className={styles.scoreFill} data-level={value >= 7 ? 'high' : value >= 4 ? 'medium' : 'low'} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
+        <span
+          className={styles.scoreFill}
+          data-level={value >= threshold ? 'high' : value >= CAUTION_THRESHOLD ? 'medium' : 'low'}
+          style={{ width: `${Math.min(100, (value / max) * 100)}%` }}
+        />
       </span>
       <span className={styles.scoreValue}>{value.toFixed(1)}</span>
     </div>
@@ -71,7 +76,7 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
   if (!cell) return null;
 
   const score = cellScore(cell, mode);
-  const band = score >= threshold ? 'critical' : score >= 4 ? 'caution' : 'normal';
+  const band = cellBandFor(cell, mode, threshold);
   const history = Array.isArray(cell.history) ? cell.history.slice(-12).map((entry) => Number(entry.compositeRisk) || 0) : [];
 
   return (
@@ -97,10 +102,10 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
       ) : null}
 
       <section className={styles.section} aria-label="Risk breakdown">
-        <ScoreRow label="Composite risk" code="Rc" value={cell.compositeRisk ?? 0} />
-        <ScoreRow label="Mobility" code="Sm" value={Number(cell.scores?.mobility) || 0} />
-        <ScoreRow label="Climate" code="Sc" value={Number(cell.scores?.climate) || 0} />
-        <ScoreRow label="Vulnerability" code="Sv" value={Number(cell.scores?.vulnerability) || 0} />
+        <ScoreRow label="Composite risk" code="Rc" value={cell.compositeRisk ?? 0} threshold={threshold} />
+        <ScoreRow label="Mobility" code="Sm" value={Number(cell.scores?.mobility) || 0} threshold={threshold} />
+        <ScoreRow label="Climate" code="Sc" value={Number(cell.scores?.climate) || 0} threshold={threshold} />
+        <ScoreRow label="Vulnerability" code="Sv" value={Number(cell.scores?.vulnerability) || 0} threshold={threshold} />
       </section>
 
       {history.length ? (
@@ -124,7 +129,7 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
             <dl className={styles.facts}>
               <div className={styles.fact}>
                 <dt>Priority</dt>
-                <dd>{action.action?.priority}</dd>
+                <dd>{priorityLabel(action.action?.priority)}</dd>
               </div>
               <div className={styles.fact}>
                 <dt>Resources</dt>

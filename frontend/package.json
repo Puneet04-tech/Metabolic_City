@@ -9,7 +9,9 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint:css": "stylelint \"src/**/*.{css,module.css}\""
+    "lint:css": "stylelint \"src/**/*.{css,module.css}\"",
+    "lint:style": "node scripts/check-style.cjs",
+    "lint": "npm run lint:css && npm run lint:style"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.3.1",
@@ -23,8 +25,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "recharts": "^3.10.1",
-    "three": "^0.186.1"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
@@ -32,7 +33,6 @@
     "@vitejs/plugin-react": "^4.3.2",
     "axe-core": "^4.14.0",
     "jsdom": "^30.1.3",
-    "postcss-styled-syntax": "^0.7.4",
     "stylelint": "^17.16.0",
     "vite": "^5.4.10",
     "vitest": "^2.1.9"

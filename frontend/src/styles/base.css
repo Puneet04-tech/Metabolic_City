@@ -83,6 +83,20 @@ a:hover {
   text-decoration: underline;
 }
 
+/*
+ * A link inside running text must not rely on colour alone to be told apart
+ * from the words around it, so those links keep an underline.
+ */
+p a,
+li a,
+dd a,
+dt a,
+figcaption a,
+label a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 table {
   border-collapse: collapse;
   border-spacing: 0;

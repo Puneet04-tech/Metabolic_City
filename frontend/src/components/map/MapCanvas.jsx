@@ -5,6 +5,7 @@ import { Crosshair } from 'lucide-react';
 import HexLayer from './HexLayer';
 import { getMapTheme } from '../../lib/mapTheme.js';
 import { cn } from '../ui/cn';
+import Button from '../ui/Button/Button';
 import styles from './MapCanvas.module.css';
 
 const LEGEND_ITEMS = [
@@ -210,10 +211,16 @@ export default function MapCanvas({
         ))}
       </ul>
 
-      <button type="button" className={styles.fitButton} onClick={fitToCells} aria-label="Fit the map to the active cells">
+      <Button
+        variant="secondary"
+        size="sm"
+        className={styles.fitButton}
+        onClick={fitToCells}
+        aria-label="Fit the map to the active cells"
+      >
         <Crosshair size={14} aria-hidden="true" />
         Fit to cells
-      </button>
+      </Button>
     </div>
   );
 }

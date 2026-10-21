@@ -1,6 +1,6 @@
 import { MapPin } from 'lucide-react';
 import SeverityBadge from '../ui/SeverityBadge/SeverityBadge';
-import { prioritySeverity, TASK_STATUSES } from '../../lib/taskStatus.js';
+import { priorityLabel, prioritySeverity, TASK_STATUSES } from '../../lib/taskStatus.js';
 import { absoluteTime, relativeTime } from '../../lib/useRelativeTime.js';
 import { cn } from '../ui/cn';
 import styles from './TaskCard.module.css';
@@ -16,7 +16,7 @@ export default function TaskCard({ task, distance, onOpen, className, ...rest })
   return (
     <button type="button" className={cn(styles.card, className)} onClick={() => onOpen(task)} {...rest}>
       <div className={styles.top}>
-        <SeverityBadge severity={severity} label={task.priority || 'Unset'} />
+        <SeverityBadge severity={severity} label={priorityLabel(task.priority)} />
         <span className={styles.status} data-status={task.status}>
           {status.label}
         </span>

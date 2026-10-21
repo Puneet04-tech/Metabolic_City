@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
 import OperatorConsole from './pages/OperatorConsole.jsx';
@@ -13,6 +13,24 @@ vi.mock('./api.js', () => ({
     if (path.includes('audit-logs')) return { count: 0, logs: [] };
     if (path.includes('/users')) return { users: [] };
     if (path.includes('field/tasks')) return { count: 0, incidents: [] };
+    if (path.includes('/v1/incidents/')) {
+      return {
+        incident: {
+          _id: 'inc-1',
+          h3Index: '883d914f17bffff',
+          status: 'ACKNOWLEDGED',
+          priority: 'HIGH',
+          riskScore: 6.4,
+          detectedAt: new Date().toISOString(),
+          action: {
+            actionNarrative: 'Water is backing up on the main road.',
+            priority: 'HIGH',
+            recommendedResources: ['Pump crew', 'Sandbags'],
+            dispatchText: 'Attend the junction and clear the drain.',
+          },
+        },
+      };
+    }
     if (path.includes('analytics/summary')) {
       return { threshold: 7, statusCounts: [], incidents: [], auditLogs: [], metrics: {} };
     }
@@ -30,9 +48,13 @@ vi.mock('./lib/fieldOutbox.js', () => ({
 }));
 
 const { default: FieldTasks } = await import('./pages/FieldTasks.jsx');
+const { default: FieldTaskDetail } = await import('./pages/FieldTaskDetail.jsx');
 const { default: CitizenReport } = await import('./pages/CitizenReport.jsx');
 const { default: Analytics } = await import('./pages/Analytics.jsx');
 const { default: Admin } = await import('./pages/Admin.jsx');
+const { default: SignUp } = await import('./pages/SignUp.jsx');
+const { default: NotFound } = await import('./pages/NotFound.jsx');
+const { default: Unauthorized } = await import('./pages/Unauthorized.jsx');
 
 /**
  * Automated accessibility check of the migrated surfaces.
@@ -114,6 +136,46 @@ describe('accessibility', () => {
           <Admin />
         </MemoryRouter>
       </ToastProvider>
+    );
+    expect(await check(container)).toEqual([]);
+  });
+
+  it('has no serious or critical violations on the field task detail', async () => {
+    const { container } = render(
+      <ToastProvider>
+        <MemoryRouter initialEntries={['/field/tasks/inc-1']}>
+          <Routes>
+            <Route path="/field/tasks/:id" element={<FieldTaskDetail />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    );
+    expect(await check(container)).toEqual([]);
+  });
+
+  it('has no serious or critical violations on the sign-up page', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <SignUp />
+      </MemoryRouter>
+    );
+    expect(await check(container)).toEqual([]);
+  });
+
+  it('has no serious or critical violations on the not-found page', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <NotFound />
+      </MemoryRouter>
+    );
+    expect(await check(container)).toEqual([]);
+  });
+
+  it('has no serious or critical violations on the unauthorized page', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <Unauthorized />
+      </MemoryRouter>
     );
     expect(await check(container)).toEqual([]);
   });

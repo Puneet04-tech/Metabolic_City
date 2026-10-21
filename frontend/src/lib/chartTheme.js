@@ -17,6 +17,7 @@ const TOKEN_NAMES = [
   '--border-strong',
   '--surface',
   '--surface-raised',
+  '--shadow-overlay',
 ];
 
 /**
@@ -69,7 +70,7 @@ export const getChartTheme = () => {
         borderRadius: '8px',
         color: tokens['--text-primary'],
         fontSize: 13,
-        boxShadow: '0 12px 32px rgba(0, 0, 0, 0.55)',
+        boxShadow: tokens['--shadow-overlay'],
       },
       itemStyle: { color: tokens['--text-primary'] },
       labelStyle: { color: tokens['--text-secondary'] },

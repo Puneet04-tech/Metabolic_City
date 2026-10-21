@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, RotateCcw, Save } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, RotateCcw, Save } from 'lucide-react';
 import Button from '../ui/Button/Button';
 import Notice from '../ui/Notice/Notice';
 import NumberInput from '../ui/NumberInput/NumberInput';
 import { Dialog, DialogContent } from '../ui/Dialog/Dialog';
 import { useToast } from '../ui/Toast/Toast';
 import { apiRequest } from '../../api.js';
+import { CAUTION_THRESHOLD, riskLevelLabel } from '../../lib/cells/index.js';
 import styles from './ThresholdForm.module.css';
 
 const WEIGHT_FIELDS = [
@@ -15,7 +16,6 @@ const WEIGHT_FIELDS = [
 ];
 
 /** The caution band is fixed by the risk engine, so the critical band must sit above it. */
-const CAUTION_THRESHOLD = 5;
 
 export default function ThresholdForm() {
   const { push } = useToast();
@@ -235,9 +235,9 @@ export default function ThresholdForm() {
               {changed.slice(0, 8).map((entry) => (
                 <li key={entry.h3Index}>
                   <span className={styles.changedCell}>{entry.h3Index}</span>
-                  <span className={styles.changedFrom}>{entry.currentRiskLevel}</span>
-                  <span aria-hidden="true">→</span>
-                  <span className={styles.changedTo}>{entry.projectedRiskLevel}</span>
+                  <span className={styles.changedFrom}>{riskLevelLabel(entry.currentRiskLevel)}</span>
+                  <ArrowRight size={13} aria-hidden="true" className={styles.changedArrow} />
+                  <span className={styles.changedTo}>{riskLevelLabel(entry.projectedRiskLevel)}</span>
                 </li>
               ))}
               {changed.length > 8 ? <li className={styles.more}>and {changed.length - 8} more</li> : null}

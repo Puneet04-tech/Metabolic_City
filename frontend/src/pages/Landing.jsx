@@ -25,10 +25,6 @@ const CAPABILITIES = [
 
 const ROLES = [
   {
-    title: 'Municipality',
-    body: 'Runs the platform for the city and decides what counts as risky by setting the weights and the thresholds.',
-  },
-  {
     title: 'Operator',
     body: 'Watches the live cell list and the map, and approves or overrides each alert before a crew is sent.',
   },
@@ -52,8 +48,8 @@ const SCORING = [
     body: 'Composite risk is the weighted sum of the mobility, climate and vulnerability scores. The weights are set per municipality.',
   },
   {
-    title: 'Critical at 7, caution at 4',
-    body: 'A cell at 7 or above is critical, 4 or above is caution, and below that it is normal. The thresholds are configurable.',
+    title: 'Critical at 7, caution at 5',
+    body: 'A cell at or above the critical threshold is critical, 5 or above is caution, and below that it is normal. The threshold is set per municipality.',
   },
   {
     title: 'A 60-minute window, 30-minute half-life',
@@ -72,25 +68,25 @@ function ConsolePreview() {
         </div>
         <div className={styles.previewBody}>
           <div className={styles.previewMap}>
-            <svg viewBox="0 0 120 90" className={styles.previewSvg} aria-hidden="true">
-              <polygon points="30,20 44,28 44,44 30,52 16,44 16,28" className={styles.hexCaution} />
-              <polygon points="60,30 74,38 74,54 60,62 46,54 46,38" className={styles.hexCritical} />
-              <polygon points="88,20 102,28 102,44 88,52 74,44 74,28" className={styles.hexNormal} />
-              <polygon points="44,60 58,68 58,84 44,92 30,84 30,68" className={styles.hexNormal} />
-            </svg>
+            <div className={styles.previewHexes}>
+              <Hexagon className={styles.hexNormal} size={40} aria-hidden="true" />
+              <Hexagon className={styles.hexCaution} size={40} aria-hidden="true" />
+              <Hexagon className={styles.hexCritical} size={40} aria-hidden="true" />
+              <Hexagon className={styles.hexNormal} size={40} aria-hidden="true" />
+            </div>
           </div>
           <div className={styles.previewList}>
             <span className={styles.previewRow} data-tone="critical">
               <span className={styles.previewId} />
-              <span className={styles.previewScore}>7.4</span>
+              <span className={styles.previewScore}>Critical</span>
             </span>
             <span className={styles.previewRow} data-tone="caution">
               <span className={styles.previewId} />
-              <span className={styles.previewScore}>4.2</span>
+              <span className={styles.previewScore}>Caution</span>
             </span>
             <span className={styles.previewRow} data-tone="normal">
               <span className={styles.previewId} />
-              <span className={styles.previewScore}>1.1</span>
+              <span className={styles.previewScore}>Normal</span>
             </span>
           </div>
         </div>
@@ -166,7 +162,7 @@ export default function Landing() {
       <section className={styles.section} id="roles">
         <div className={styles.sectionHeading}>
           <h2 className={styles.sectionTitle}>Who uses it</h2>
-          <p className={styles.sectionIntro}>Four roles share one record of what the city is doing right now.</p>
+            <p className={styles.sectionIntro}>Three roles share one record of what the city is doing right now.</p>
         </div>
         <div className={styles.roleGrid}>
           {ROLES.map((role) => (

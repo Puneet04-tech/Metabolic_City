@@ -102,7 +102,7 @@ describe('StatusStepper', () => {
 describe('TaskCard', () => {
   it('shows the severity, the cell, the instruction and the age', () => {
     render(<TaskCard task={tasks[0]} onOpen={() => {}} />);
-    expect(screen.getByText('CRITICAL')).toBeTruthy();
+    expect(screen.getByText('Critical')).toBeTruthy();
     expect(screen.getByText('Cell 883d914f17bffff')).toBeTruthy();
     expect(screen.getByText('Water is backing up on the main road.')).toBeTruthy();
     expect(screen.getByText(/Reported/)).toBeTruthy();

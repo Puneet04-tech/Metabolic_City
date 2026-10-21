@@ -27,7 +27,7 @@
   font-size: var(--text-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
   margin-bottom: var(--space-1);
 }
 
@@ -35,7 +35,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-lg);
   font-weight: 600;
-  color: var(--text-strong);
+  color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 
@@ -78,7 +78,7 @@
   font-size: var(--text-2xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
 }
 
 .location {
@@ -145,33 +145,7 @@
 }
 
 .checklist li[data-done='true'] {
-  color: var(--text-muted-secondary);
-}
-
-.label {
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   color: var(--text-secondary);
-}
-
-.textarea {
-  width: 100%;
-  min-height: 96px;
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-  resize: vertical;
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: var(--accent);
 }
 
 .photoPicker {
@@ -180,25 +154,12 @@
   justify-items: start;
 }
 
-.photoButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-4);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  color: var(--text-primary);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.photoPicker input[type='file'] {
+.hiddenFile {
   position: absolute;
   width: 1px;
   height: 1px;
   opacity: 0;
+  pointer-events: none;
 }
 
 .preview {
@@ -220,7 +181,7 @@
 
 .statusNote {
   font-size: var(--text-xs);
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
 }
 
 .confirmText {

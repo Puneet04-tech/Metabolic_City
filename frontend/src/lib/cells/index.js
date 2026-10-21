@@ -12,11 +12,48 @@ export const SEVERITY = {
   NORMAL: 'normal',
 };
 
+/**
+ * The risk engine fixes the caution band at 5. The critical threshold above
+ * it is configurable per municipality, so it is never hard-coded here.
+ */
+export const CAUTION_THRESHOLD = 5;
+
+/** The server's risk levels, mapped onto the product's three bands. */
+const LEVEL_BAND = {
+  CRITICAL: SEVERITY.CRITICAL,
+  HIGH: SEVERITY.CAUTION,
+  MODERATE: SEVERITY.NORMAL,
+  LOW: SEVERITY.NORMAL,
+};
+
+/** The server's risk levels, as the labels an operator reads. */
+const LEVEL_LABEL = {
+  CRITICAL: 'Critical',
+  HIGH: 'Caution',
+  MODERATE: 'Normal',
+  LOW: 'Normal',
+};
+
+export const riskLevelLabel = (level) => LEVEL_LABEL[String(level || '').toUpperCase()] ?? 'Normal';
+
 export const cellScore = (cell, mode) =>
   mode === 'composite' ? cell.compositeRisk : Number(cell.scores?.[mode]) || 0;
 
 export const cellBand = (value, threshold) =>
-  value >= threshold ? SEVERITY.CRITICAL : value >= 4 ? SEVERITY.CAUTION : SEVERITY.NORMAL;
+  value >= threshold ? SEVERITY.CRITICAL : value >= CAUTION_THRESHOLD ? SEVERITY.CAUTION : SEVERITY.NORMAL;
+
+/**
+ * The band of a cell.
+ *
+ * The server already classifies every cell with the municipality's configured
+ * threshold, so that classification wins. The numeric fallback is only used
+ * for payloads that carry no risk level.
+ */
+export const cellBandFor = (cell, mode, threshold) => {
+  const level = String(cell?.riskLevel || '').toUpperCase();
+  if (LEVEL_BAND[level]) return LEVEL_BAND[level];
+  return cellBand(cellScore(cell, mode), threshold);
+};
 
 /** `883d914f17bffff` -> `883d…fff` */
 export const shortenCellId = (id, head = 4, tail = 3) => {
@@ -58,6 +95,6 @@ export const sortCells = (cells, mode) => [...(cells ?? [])].sort((a, b) => comp
 
 export const countByBand = (cells, mode, threshold) => {
   const counts = { critical: 0, caution: 0, normal: 0 };
-  for (const cell of cells ?? []) counts[cellBand(cellScore(cell, mode), threshold)] += 1;
+  for (const cell of cells ?? []) counts[cellBandFor(cell, mode, threshold)] += 1;
   return counts;
 };

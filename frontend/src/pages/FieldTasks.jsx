@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, RefreshCw } from 'lucide-react';
 import AppShell from '../components/shell/AppShell/AppShell';
-import MobileNav from '../components/field/MobileNav';
-import OfflineBanner from '../components/field/OfflineBanner';
-import TaskCard from '../components/field/TaskCard';
+import MobileNav from '../components/Field/MobileNav';
+import OfflineBanner from '../components/Field/OfflineBanner';
+import TaskCard from '../components/Field/TaskCard';
 import Button from '../components/ui/Button/Button';
 import EmptyState from '../components/ui/EmptyState/EmptyState';
 import ErrorState from '../components/ui/ErrorState/ErrorState';
@@ -136,7 +136,6 @@ export default function FieldTasks() {
       cityCode={user.cityCode}
       user={user}
       navItems={navItems}
-      activeId="field"
       onSignOut={handleSignOut}
     >
       <div className={styles.page}>

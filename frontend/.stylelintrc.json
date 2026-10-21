@@ -1,11 +1,9 @@
 {
-  "customSyntax": "postcss-styled-syntax",
+  "customSyntax": "postcss",
   "ignoreFiles": [
     "node_modules/**",
     "dist/**",
-    "src/styles/tokens.css",
-    "src/styles.css",
-    "src/components/HomePage/**"
+    "src/styles/tokens.css"
   ],
   "rules": {
     "color-no-hex": true,
@@ -28,7 +26,51 @@
       },
       {
         "text-shadow": ["/.*/"]
+      },
+      {
+        "color": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "background-color": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "border-color": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "border": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "border-top": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "border-right": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "border-bottom": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "border-left": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "outline-color": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "box-shadow": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "fill": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
+      },
+      {
+        "stroke": ["/\\brgba?\\(/i", "/\\bhsla?\\(/i"]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/styles/base.css"],
+      "rules": {
+        "declaration-no-important": null
+      }
+    }
+  ]
 }

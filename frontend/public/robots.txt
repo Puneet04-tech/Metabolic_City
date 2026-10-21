@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /citizen-report
+Disallow: /operator
+Disallow: /field
+Disallow: /admin
+Disallow: /analytics

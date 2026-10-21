@@ -34,8 +34,8 @@ describe('cellBand', () => {
   it('classifies against the critical threshold', () => {
     expect(cellBand(7, 7)).toBe('critical');
     expect(cellBand(6.99, 7)).toBe('caution');
-    expect(cellBand(4, 7)).toBe('caution');
-    expect(cellBand(3.99, 7)).toBe('normal');
+    expect(cellBand(5, 7)).toBe('caution');
+    expect(cellBand(4.99, 7)).toBe('normal');
   });
 });
 

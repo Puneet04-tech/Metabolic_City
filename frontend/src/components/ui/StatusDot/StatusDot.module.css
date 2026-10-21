@@ -18,7 +18,6 @@
 
 .status[data-status='healthy'] .dot {
   background: var(--normal);
-  box-shadow: 0 0 8px rgba(47, 191, 143, 0.7);
 }
 
 .status[data-status='healthy'] .label {
@@ -27,7 +26,6 @@
 
 .status[data-status='attention'] .dot {
   background: var(--caution);
-  box-shadow: 0 0 8px rgba(242, 169, 59, 0.7);
 }
 
 .status[data-status='attention'] .label {
@@ -36,7 +34,6 @@
 
 .status[data-status='critical'] .dot {
   background: var(--critical);
-  box-shadow: 0 0 8px rgba(240, 82, 79, 0.7);
 }
 
 .status[data-status='critical'] .label {

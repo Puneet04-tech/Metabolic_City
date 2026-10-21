@@ -1,21 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, ExternalLink, MapPin } from 'lucide-react';
 import AppShell from '../components/shell/AppShell/AppShell';
-import MapSnippet from '../components/field/MapSnippet';
-import MobileNav from '../components/field/MobileNav';
-import OfflineBanner from '../components/field/OfflineBanner';
-import StatusStepper from '../components/field/StatusStepper';
+import MapSnippet from '../components/Field/MapSnippet';
+import MobileNav from '../components/Field/MobileNav';
+import OfflineBanner from '../components/Field/OfflineBanner';
+import StatusStepper from '../components/Field/StatusStepper';
 import Button from '../components/ui/Button/Button';
 import ErrorState from '../components/ui/ErrorState/ErrorState';
+import FormField from '../components/ui/FormField/FormField';
 import Notice from '../components/ui/Notice/Notice';
 import SeverityBadge from '../components/ui/SeverityBadge/SeverityBadge';
 import Skeleton from '../components/ui/Skeleton/Skeleton';
+import Textarea from '../components/ui/Textarea/Textarea';
 import { Dialog, DialogContent } from '../components/ui/Dialog/Dialog';
 import { useToast } from '../components/ui/Toast/Toast';
 import { apiRequest, clearSession, getStoredUser } from '../api.js';
 import { cellCenter, mapsUrl } from '../lib/geo.js';
-import { actionLabelFor, nextStatusFor, prioritySeverity, TASK_STATUSES } from '../lib/taskStatus.js';
+import { actionLabelFor, nextStatusFor, priorityLabel, prioritySeverity, TASK_STATUSES } from '../lib/taskStatus.js';
 import { getNavItems } from '../lib/routes.js';
 import { enqueueFieldUpdate, flushFieldOutbox, getPendingFieldUpdates } from '../lib/fieldOutbox.js';
 import styles from './FieldTaskDetail.module.css';
@@ -67,6 +69,7 @@ export default function FieldTaskDetail() {
   const [offline, setOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
   const [pending, setPending] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const photoInputRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,10 +199,10 @@ export default function FieldTaskDetail() {
   return (
     <AppShell
       title="Field task"
+      titleAs="span"
       cityCode={user.cityCode}
       user={user}
       navItems={navItems}
-      activeId="field"
       onSignOut={handleSignOut}
     >
       <div className={styles.page}>
@@ -224,10 +227,10 @@ export default function FieldTaskDetail() {
           <article className={styles.task}>
             <header className={styles.header}>
               <div>
-                <p className={styles.eyebrow}>Incident {task.incidentType || 'Task'}</p>
+                <p className={styles.eyebrow}>Incident</p>
                 <h1 className={styles.title}>Cell {task.h3Index}</h1>
               </div>
-              <SeverityBadge severity={prioritySeverity(task.priority)} label={task.priority || 'Unset'} />
+              <SeverityBadge severity={prioritySeverity(task.priority)} label={priorityLabel(task.priority)} />
             </header>
 
             <StatusStepper status={task.status} />
@@ -274,25 +277,43 @@ export default function FieldTaskDetail() {
                   <li data-done="false">The app records where you were when you resolved it</li>
                 </ul>
 
-                <label className={styles.label} htmlFor="resolution-note">
-                  Resolution note
-                </label>
-                <textarea
-                  id="resolution-note"
-                  className={styles.textarea}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="What did you find, and what did you do?"
-                  rows={4}
-                />
+                <FormField label="Resolution note" hint="What did you find, and what did you do?">
+                  {(props) => (
+                    <Textarea
+                      {...props}
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                      placeholder="What did you find, and what did you do?"
+                      rows={4}
+                    />
+                  )}
+                </FormField>
 
                 <div className={styles.photoPicker}>
-                  <label className={styles.photoButton} htmlFor="resolution-photo">
+                  <input
+                    ref={photoInputRef}
+                    id="resolution-photo"
+                    className={styles.hiddenFile}
+                    type="file"
+                    accept="image/*"
+                    onChange={attachPhoto}
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => photoInputRef.current?.click()}
+                    aria-describedby={photo ? 'resolution-photo-preview' : undefined}
+                  >
                     <Camera size={14} aria-hidden="true" />
                     {photo ? 'Change photo' : 'Attach photo'}
-                  </label>
-                  <input id="resolution-photo" type="file" accept="image/*" onChange={attachPhoto} />
-                  {photo ? <img className={styles.preview} src={photo} alt="Attached site photo" /> : null}
+                  </Button>
+                  {photo ? (
+                    <img
+                      id="resolution-photo-preview"
+                      className={styles.preview}
+                      src={photo}
+                      alt="Attached site photo"
+                    />
+                  ) : null}
                 </div>
               </section>
             ) : (

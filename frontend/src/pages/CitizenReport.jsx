@@ -36,6 +36,8 @@ export default function CitizenReport() {
   const [category, setCategory] = useState('infrastructure');
   const [urgency, setUrgency] = useState('medium');
   const [location, setLocation] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -54,17 +56,27 @@ export default function CitizenReport() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+  // The device position is only requested when the citizen asks for it. The
+  // QR code already carries the location of the report.
+  const useMyPosition = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocateError('This device cannot report a position.');
+      return;
+    }
+    setLocating(true);
+    setLocateError('');
     navigator.geolocation.getCurrentPosition(
-      (position) =>
-        setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      (position) => {
+        setLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        setLocating(false);
+      },
       () => {
-        /* the location is optional */
+        setLocateError('Your position could not be read. The report will use the place on the code.');
+        setLocating(false);
       },
       { enableHighAccuracy: false, timeout: 10000 }
     );
-  }, []);
+  };
 
   useEffect(() => {
     const goOnline = () => setOffline(false);
@@ -180,6 +192,18 @@ export default function CitizenReport() {
               </div>
             ) : null}
           </dl>
+
+          <div className={styles.position}>
+            <Button variant="secondary" size="sm" onClick={useMyPosition} loading={locating}>
+              <MapPin size={13} aria-hidden="true" />
+              {location ? 'Update my position' : 'Use my current position'}
+            </Button>
+            {locateError ? (
+              <p className={styles.positionError} role="status">
+                {locateError}
+              </p>
+            ) : null}
+          </div>
         </section>
       ) : null}
 

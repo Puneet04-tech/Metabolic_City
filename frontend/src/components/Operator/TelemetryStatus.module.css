@@ -31,12 +31,10 @@
 
 .status[data-state='live'] .dot {
   background: var(--normal);
-  box-shadow: 0 0 8px rgba(47, 191, 143, 0.9);
 }
 
 .status[data-state='stale'] .dot {
   background: var(--caution);
-  box-shadow: 0 0 8px rgba(242, 169, 59, 0.9);
 }
 
 .status[data-state='stale'] .label {
@@ -45,7 +43,6 @@
 
 .status[data-state='degraded'] .dot {
   background: var(--critical);
-  box-shadow: 0 0 8px rgba(240, 82, 79, 0.9);
 }
 
 .status[data-state='degraded'] .label {

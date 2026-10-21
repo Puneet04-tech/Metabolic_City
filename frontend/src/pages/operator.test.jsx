@@ -2,10 +2,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import OperatorConsole from './OperatorConsole.jsx';
-import SummaryStrip from '../components/operator/SummaryStrip';
-import CellList from '../components/operator/CellList';
-import CellDetail from '../components/operator/CellDetail';
-import { cellBand, cellScore, countByBand, sortCells } from '../lib/cells/index.js';
+import SummaryStrip from '../components/Operator/SummaryStrip';
+import CellList from '../components/Operator/CellList';
+import CellDetail from '../components/Operator/CellDetail';
+import { cellBand, cellBandFor, cellScore, countByBand, sortCells } from '../lib/cells/index.js';
 
 const render = (element) => renderToStaticMarkup(<MemoryRouter>{element}</MemoryRouter>);
 
@@ -137,8 +137,15 @@ describe('band counting and ordering', () => {
 
   it('classifies with the same thresholds as the API', () => {
     expect(cellBand(7, 7)).toBe('critical');
-    expect(cellBand(4, 7)).toBe('caution');
-    expect(cellBand(3.9, 7)).toBe('normal');
+    expect(cellBand(5, 7)).toBe('caution');
+    expect(cellBand(4.9, 7)).toBe('normal');
+  });
+
+  it('uses the risk level the server already classified', () => {
+    const classified = { h3Index: 'a', compositeRisk: 6.2, riskLevel: 'CRITICAL' };
+    expect(cellBandFor(classified, 'composite', 7)).toBe('critical');
+    expect(cellBandFor({ h3Index: 'b', compositeRisk: 4.2, riskLevel: 'HIGH' }, 'composite', 7)).toBe('caution');
+    expect(cellBandFor({ h3Index: 'c', compositeRisk: 4.2, riskLevel: 'LOW' }, 'composite', 7)).toBe('normal');
   });
 
   it('reads the composite score in composite mode', () => {

@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './styles/tokens.css';
 import './styles/base.css';
-import './styles.css';
 import { ToastProvider, TooltipProvider } from './components/ui/index.js';
 import App from './App';
 

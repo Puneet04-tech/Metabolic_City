@@ -14,7 +14,7 @@
   height: 100%;
   object-fit: cover;
   /* the public tile set is light; invert it to match the product */
-  filter: grayscale(1) brightness(0.62) contrast(1.05) invert(0.92);
+  filter: var(--map-tile-filter);
 }
 
 .marker {
@@ -25,7 +25,6 @@
   border-radius: 50%;
   border: 2px solid var(--accent);
   background: var(--accent);
-  box-shadow: 0 0 12px rgba(76, 141, 255, 0.9);
 }
 
 .placeholder {
@@ -41,5 +40,5 @@
 
 .placeholderText {
   font-size: var(--text-2xs);
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
 }

@@ -6,10 +6,9 @@
   padding: var(--space-4);
   text-align: left;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--normal);
   border-radius: var(--radius-card);
   background: var(--surface);
-  color: var(--text);
+  color: var(--text-primary);
   cursor: pointer;
   transition: border-color var(--motion-duration) var(--ease-out), transform var(--motion-duration) var(--ease-out);
 }
@@ -79,5 +78,5 @@
   align-items: center;
   gap: var(--space-1);
   font-size: var(--text-2xs);
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
 }

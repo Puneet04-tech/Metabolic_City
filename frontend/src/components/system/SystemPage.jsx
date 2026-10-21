@@ -7,12 +7,12 @@ import styles from './SystemPage.module.css';
  */
 export default function SystemPage({ icon: Icon, title, description, action, secondaryAction, className, ...rest }) {
   return (
-    <div className={cn(styles.page, className)} {...rest}>
+    <main className={cn(styles.page, className)} id="main-content" {...rest}>
       {Icon ? <Icon className={styles.icon} size={24} aria-hidden="true" /> : null}
       <h1 className={styles.title}>{title}</h1>
       {description ? <p className={styles.description}>{description}</p> : null}
       {action ? <div className={styles.actions}>{action}</div> : null}
       {secondaryAction ? <div className={styles.secondary}>{secondaryAction}</div> : null}
-    </div>
+    </main>
   );
 }

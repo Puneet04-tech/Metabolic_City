@@ -53,7 +53,7 @@ vi.mock('../api.js', () => ({
 }));
 
 const { default: Analytics } = await import('./Analytics.jsx');
-const { default: ChartFrame } = await import('../components/analytics/ChartFrame');
+const { default: ChartFrame } = await import('../components/Analytics/ChartFrame');
 
 const renderAt = (ui, path = '/analytics') =>
   render(
@@ -102,15 +102,16 @@ describe('Analytics', () => {
   it('shows the table alternative for a chart', async () => {
     renderAt(<Analytics />);
 
-    await waitFor(() => expect(screen.getByText('View as table')).toBeTruthy());
-    const buttons = screen.getAllByText('View as table');
-    expect(buttons.length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText('View as table').length).toBeGreaterThan(0));
   });
 
   it('shows an empty state when a chart has no data', async () => {
     renderAt(<Analytics />);
 
-    await waitFor(() => expect(screen.getByText('No critical incidents in this range')).toBeTruthy());
+    // The telemetry and cell feeds are empty in this fixture, so those two
+    // charts fall back to their empty state. The incident charts have data.
+    await waitFor(() => expect(screen.getByText('No telemetry in the last 24 hours')).toBeTruthy());
+    expect(screen.getByText('No cells reported in the last day')).toBeTruthy();
   });
 
   it('surfaces an error with a retry', async () => {

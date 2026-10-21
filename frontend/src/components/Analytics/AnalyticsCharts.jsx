@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import ChartFrame from './ChartFrame';
 import { getChartTheme } from '../../lib/chartTheme.js';
+import { incidentStatusLabel } from '../../lib/taskStatus.js';
 import styles from './AnalyticsCharts.module.css';
 
 const DAY_FORMAT = { day: '2-digit', month: 'short' };
@@ -124,13 +125,6 @@ export const CriticalIncidentsPerDayChart = memo(function CriticalIncidentsPerDa
 });
 
 const PIPELINE_ORDER = ['APPROVED', 'DISPATCHED', 'ACKNOWLEDGED', 'ARRIVED', 'RESOLVED'];
-const PIPELINE_LABELS = {
-  APPROVED: 'Approved',
-  DISPATCHED: 'Dispatched',
-  ACKNOWLEDGED: 'Accepted',
-  ARRIVED: 'On site',
-  RESOLVED: 'Resolved',
-};
 
 /** Where the incidents sit in the response pipeline — a stacked proportion bar. */
 export const ResponsePipelineChart = memo(function ResponsePipelineChart({ statusCounts }) {
@@ -139,7 +133,7 @@ export const ResponsePipelineChart = memo(function ResponsePipelineChart({ statu
     const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
     return PIPELINE_ORDER.filter((status) => counts.get(status)).map((status) => ({
       status,
-      label: PIPELINE_LABELS[status],
+      label: incidentStatusLabel(status),
       count: counts.get(status),
       share: total ? Math.round((counts.get(status) / total) * 100) : 0,
     }));

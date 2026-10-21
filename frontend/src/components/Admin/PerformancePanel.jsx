@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { IncidentsPerDayChart, ResponsePipelineChart } from '../analytics/AnalyticsCharts';
+import { IncidentsPerDayChart, ResponsePipelineChart } from '../Analytics/AnalyticsCharts';
 import ErrorState from '../ui/ErrorState/ErrorState';
 import Skeleton from '../ui/Skeleton/Skeleton';
 import StatBlock from '../ui/StatBlock/StatBlock';

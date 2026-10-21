@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import AuthShell from '../components/shell/AuthShell/AuthShell';
-import AuthForm from '../components/auth/AuthForm';
+import AuthForm from '../components/Auth/AuthForm';
 
 /** Sign in. */
 export default function SignIn() {
@@ -9,9 +9,14 @@ export default function SignIn() {
       title="Sign in"
       description="Access the console with the city code and the credentials issued by your municipality."
       footer={
-        <p>
-          No account yet? <Link to="/signup">Create an account</Link>
-        </p>
+        <>
+          <p>
+            No account yet? <Link to="/signup">Create an account</Link>
+          </p>
+          <p>
+            Reporting an issue in your area? <Link to="/citizen-report">Use the citizen report form</Link>
+          </p>
+        </>
       }
     >
       <AuthForm mode="signin" />

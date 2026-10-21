@@ -7,6 +7,18 @@ export const TASK_STATUSES = {
   RESOLVED: { label: 'Resolved', step: 3 },
 };
 
+/** The same lifecycle, as an operator reads it in the console and analytics. */
+export const INCIDENT_STATUS_LABELS = {
+  APPROVED: 'Approved',
+  DISPATCHED: 'Dispatched',
+  ACKNOWLEDGED: 'Accepted',
+  ARRIVED: 'On site',
+  RESOLVED: 'Resolved',
+};
+
+export const incidentStatusLabel = (status) =>
+  INCIDENT_STATUS_LABELS[String(status || '').toUpperCase()] ?? 'Other';
+
 export const TASK_STEPS = [
   { key: 'assigned', label: 'Assigned', status: 'APPROVED' },
   { key: 'accepted', label: 'Accepted', status: 'ACKNOWLEDGED' },
@@ -31,6 +43,16 @@ export const actionLabelFor = (status) => {
 };
 
 /** The incident priority mapped onto the product's severity scale. */
+export const PRIORITY_LABELS = {
+  CRITICAL: 'Critical',
+  HIGH: 'High',
+  MODERATE: 'Moderate',
+  LOW: 'Low',
+};
+
+export const priorityLabel = (priority) =>
+  PRIORITY_LABELS[String(priority || '').toUpperCase()] ?? 'Unset';
+
 export const prioritySeverity = (priority) => {
   const value = (priority || '').toUpperCase();
   if (value === 'CRITICAL') return 'critical';

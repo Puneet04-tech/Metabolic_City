@@ -9,12 +9,16 @@ const TOKEN_NAMES = [
   '--normal',
   '--accent',
   '--accent-soft',
+  '--accent-grid',
+  '--accent-label',
   '--text-primary',
   '--text-secondary',
   '--border',
   '--border-strong',
   '--surface',
   '--surface-raised',
+  '--surface-scrim',
+  '--map-tile-filter',
   '--bg',
 ];
 
@@ -54,11 +58,11 @@ export const getMapTheme = () => {
     accent: tokens['--accent'],
     grid: {
       stroke: tokens['--accent'],
-      gridStroke: 'rgba(76, 141, 255, 0.22)',
-      label: 'rgba(127, 171, 255, 0.75)',
+      gridStroke: tokens['--accent-grid'],
+      label: tokens['--accent-label'],
     },
     attribution: {
-      background: 'rgba(11, 15, 23, 0.85)',
+      background: tokens['--surface-scrim'],
       color: tokens['--text-secondary'],
     },
     tile: {
@@ -66,7 +70,7 @@ export const getMapTheme = () => {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       // The public tile set is light; a single filter on the tile layer keeps
       // the map inside the dark palette without touching the tile source.
-      filter: 'grayscale(1) brightness(0.62) contrast(1.05) invert(0.92)',
+      filter: tokens['--map-tile-filter'],
     },
   };
 

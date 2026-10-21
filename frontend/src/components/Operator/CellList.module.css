@@ -91,17 +91,21 @@
   display: inline-flex;
   align-items: flex-end;
   gap: 3px;
+  height: 18px;
 }
 
 .bar {
   display: block;
-}
-
-.barTrack {
-  fill: var(--surface-raised);
+  width: 8px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--surface-raised);
+  overflow: hidden;
 }
 
 .barFill {
-  fill: var(--accent);
+  display: block;
+  width: 100%;
+  background: var(--accent);
   opacity: 0.85;
 }

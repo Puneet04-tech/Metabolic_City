@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Copy, Plus, QrCode, Trash2 } from 'lucide-react';
 import Button from '../ui/Button/Button';
+import FormField from '../ui/FormField/FormField';
 import Input from '../ui/Input/Input';
 import Notice from '../ui/Notice/Notice';
 import Select from '../ui/Select/Select';
@@ -23,6 +24,13 @@ export default function QrPanel({ cityCode: defaultCityCode = CITY_CODES[0].valu
   const [codes, setCodes] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+
+  // A municipality outside the built-in list still needs to be selectable,
+  // otherwise the select would show no matching option.
+  const cityOptions = useMemo(() => {
+    if (CITY_CODES.some((option) => option.value === cityCode)) return CITY_CODES;
+    return [...CITY_CODES, { value: cityCode, label: cityCode }];
+  }, [cityCode]);
 
   const update = useCallback((index, field, value) => {
     setLocations((current) => current.map((location, i) => (i === index ? { ...location, [field]: value } : location)));
@@ -94,16 +102,17 @@ export default function QrPanel({ cityCode: defaultCityCode = CITY_CODES[0].valu
       ) : null}
 
       <div className={styles.form}>
-        <label className={styles.label} htmlFor="qr-city">
-          Municipality
-        </label>
-        <Select id="qr-city" value={cityCode} onChange={(event) => setCityCode(event.target.value)}>
-          {CITY_CODES.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        <FormField label="Municipality">
+          {(props) => (
+            <Select {...props} value={cityCode} onChange={(event) => setCityCode(event.target.value)}>
+              {cityOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          )}
+        </FormField>
 
         <ul className={styles.locations}>
           {locations.map((location, index) => (

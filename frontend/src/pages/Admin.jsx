@@ -1,11 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/shell/AppShell/AppShell';
-import AdminNav from '../components/admin/AdminNav';
-import PerformancePanel from '../components/admin/PerformancePanel';
-import QrPanel from '../components/admin/QrPanel';
-import ThresholdForm from '../components/admin/ThresholdForm';
-import UsersPanel from '../components/admin/UsersPanel';
+import AdminNav from '../components/Admin/AdminNav';
+import PerformancePanel from '../components/Admin/PerformancePanel';
+import QrPanel from '../components/Admin/QrPanel';
+import ThresholdForm from '../components/Admin/ThresholdForm';
+import UsersPanel from '../components/Admin/UsersPanel';
 import { apiRequest, clearSession, getStoredUser } from '../api.js';
 import { getNavItems } from '../lib/routes.js';
 import styles from './Admin.module.css';
@@ -44,17 +44,12 @@ export default function Admin() {
     window.location.assign('/');
   }, []);
 
-  useEffect(() => {
-    document.title = 'Administration | Metabolic City';
-  }, []);
-
   return (
     <AppShell
       title="Administration"
       cityCode={user.cityCode}
       user={user}
       navItems={navItems}
-      activeId="admin"
       onSignOut={handleSignOut}
     >
       <div className={styles.page}>

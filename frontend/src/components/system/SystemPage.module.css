@@ -1,7 +1,9 @@
 .page {
   display: grid;
   justify-items: center;
+  align-content: start;
   gap: var(--space-3);
+  min-height: 100dvh;
   max-width: 520px;
   margin: 0 auto;
   padding: var(--space-16) var(--space-6);

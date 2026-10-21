@@ -9,6 +9,7 @@ import NotFound from './pages/NotFound.jsx';
 import Unauthorized from './pages/Unauthorized.jsx';
 import SessionGuard from './components/session/SessionGuard.jsx';
 import RouteFallback from './components/system/RouteFallback.jsx';
+import RouteError from './components/system/RouteError.jsx';
 
 // Route-level code splitting: each surface is fetched when it is first opened.
 const SignIn = lazy(() => import('./pages/SignIn.jsx'));
@@ -27,7 +28,11 @@ const Gallery = import.meta.env.DEV ? lazy(() => import('./components/gallery/Ga
  */
 function RouteFrame({ routeId, children }) {
   const route = getRoute(routeId);
-  useDocumentMeta(route?.title, { noindex: route ? !route.public : false });
+  useDocumentMeta(route?.title, {
+    noindex: route ? !route.public : false,
+    description: route?.description,
+    canonical: route?.canonical,
+  });
   return children;
 }
 
@@ -39,7 +44,7 @@ export default function App() {
       <Suspense
         fallback={<RouteFallback />}
       >
-        <Routes>
+        <Routes errorElement={<RouteError />}>
         <Route path="/" element={withFrame('home', <Landing />)} />
         <Route path="/login" element={withFrame('login', <SignIn />)} />
         <Route path="/signup" element={withFrame('signup', <SignUp />)} />

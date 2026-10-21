@@ -14,7 +14,7 @@
 .title {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: var(--text-strong);
+  color: var(--text-primary);
   letter-spacing: -0.015em;
 }
 

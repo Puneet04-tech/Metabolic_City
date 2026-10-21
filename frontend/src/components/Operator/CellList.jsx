@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import DataTable from '../ui/DataTable/DataTable';
 import EmptyState from '../ui/EmptyState/EmptyState';
-import { cellScore, getCellLabel, shortenCellId } from '../../lib/cells/index.js';
+import { cellBandFor, cellScore, getCellLabel, shortenCellId } from '../../lib/cells/index.js';
 import styles from './CellList.module.css';
 
 const TREND_DIRECTION = { SURGING: 'up', RISING: 'up', STABLE: 'flat', 'DE-ESCALATING': 'down' };
@@ -23,19 +23,14 @@ function ScoreBars({ cell }) {
 
   return (
     <span className={styles.bars} aria-hidden="true">
-      {values.map((item) => (
-        <svg key={item.key} width={8} height={18} viewBox="0 0 8 18" className={styles.bar}>
-          <rect x="0" y="0" width="8" height="18" rx="2" className={styles.barTrack} />
-          <rect
-            x="0"
-            y={18 - Math.min(1, item.value / 10) * 18}
-            width="8"
-            height={Math.max(1, Math.min(1, item.value / 10) * 18)}
-            rx="2"
-            className={styles.barFill}
-          />
-        </svg>
-      ))}
+      {values.map((item) => {
+        const ratio = Math.max(0, Math.min(1, item.value / 10));
+        return (
+          <span key={item.key} className={styles.bar}>
+            <span className={styles.barFill} style={{ height: `${Math.max(8, ratio * 100)}%` }} />
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -77,7 +72,7 @@ export default function CellList({
       sortValue: (row) => cellScore(row, mode),
       render: (row) => {
         const score = cellScore(row, mode);
-        const band = score >= threshold ? 'critical' : score >= 4 ? 'caution' : 'normal';
+        const band = cellBandFor(row, mode, threshold);
         return (
           <span className={styles.score} data-band={band}>
             {score.toFixed(2)}

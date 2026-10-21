@@ -14,6 +14,19 @@
   --surface-sunken: #0e1420;
   --border: #1f2a3d;
   --border-strong: #2b3a55;
+  /* QR codes are read by scanners and must stay black on white. */
+  --qr-surface: #ffffff;
+
+  /* ---------- Scrims ---------- */
+  /* Modal backdrop. */
+  --overlay: rgba(3, 6, 12, 0.72);
+  /* Control backgrounds that sit on top of map tiles. */
+  --surface-scrim: rgba(11, 15, 23, 0.86);
+  /* Map grid and label strokes. */
+  --accent-grid: rgba(76, 141, 255, 0.22);
+  --accent-label: rgba(127, 171, 255, 0.75);
+  /* The public tile set is light; one filter keeps the map in the palette. */
+  --map-tile-filter: grayscale(1) brightness(0.62) contrast(1.05) invert(0.92);
 
   /* ---------- Text ---------- */
   --text-primary: #e6eaf2;

@@ -13,7 +13,7 @@
 .title {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
-  color: var(--text-strong);
+  color: var(--text-primary);
   letter-spacing: -0.015em;
 }
 
@@ -51,7 +51,7 @@
 .nameMeta {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-muted-secondary);
+  color: var(--text-secondary);
 }
 
 .confirmText {

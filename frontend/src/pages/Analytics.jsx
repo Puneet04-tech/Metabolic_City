@@ -8,7 +8,7 @@ import {
   IncidentsPerDayChart,
   ResponsePipelineChart,
   TelemetryByHourChart,
-} from '../components/analytics/AnalyticsCharts';
+} from '../components/Analytics/AnalyticsCharts';
 import Button from '../components/ui/Button/Button';
 import DataTable from '../components/ui/DataTable/DataTable';
 import ErrorState from '../components/ui/ErrorState/ErrorState';
@@ -21,6 +21,7 @@ import StatBlock from '../components/ui/StatBlock/StatBlock';
 import { apiRequest, clearSession, getStoredUser } from '../api.js';
 import { downloadCsv } from '../lib/csv.js';
 import { getNavItems } from '../lib/routes.js';
+import { incidentStatusLabel } from '../lib/taskStatus.js';
 import styles from './Analytics.module.css';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -200,7 +201,7 @@ export default function Analytics() {
       render: (row) => (
         <SeverityBadge
           severity={row.status === 'RESOLVED' ? 'normal' : row.status === 'ARRIVED' ? 'info' : 'caution'}
-          label={row.status}
+          label={incidentStatusLabel(row.status)}
         />
       ),
     },
@@ -226,13 +227,12 @@ export default function Analytics() {
       cityCode={user.cityCode}
       user={user}
       navItems={navItems}
-      activeId="analytics"
       onSignOut={handleSignOut}
     >
       <div className={styles.page}>
         <header className={styles.header}>
           <div className={styles.headerText}>
-            <h1 className={styles.title}>Analytics</h1>
+            <h2 className={styles.title}>Analytics</h2>
             <p className={styles.description}>
               What the city did in the selected range. The filters are part of the address, so a view can be shared.
             </p>
@@ -342,7 +342,7 @@ export default function Analytics() {
             <section className={styles.tables} aria-label="Tables">
               <div className={styles.tableCard}>
                 <header className={styles.tableHeader}>
-                  <h2 className={styles.tableTitle}>Incidents in range</h2>
+                  <h3 className={styles.tableTitle}>Incidents in range</h3>
                   <Button variant="ghost" size="sm" onClick={exportIncidents} disabled={!incidents.length}>
                     <Download size={13} aria-hidden="true" />
                     Export CSV
@@ -360,7 +360,7 @@ export default function Analytics() {
 
               <div className={styles.tableCard}>
                 <header className={styles.tableHeader}>
-                  <h2 className={styles.tableTitle}>Audit trail</h2>
+                  <h3 className={styles.tableTitle}>Audit trail</h3>
                   <Button variant="ghost" size="sm" onClick={exportAudits} disabled={!auditLogs.length}>
                     <Download size={13} aria-hidden="true" />
                     Export CSV

@@ -28,7 +28,7 @@ describe('Landing', () => {
 
   it('explains the scoring with the real formula and thresholds', () => {
     expect(html).toContain('Rc = Wm·Sm + Wc·Sc + Wv·Sv');
-    expect(html).toContain('Critical at 7, caution at 4');
+    expect(html).toContain('Critical at 7, caution at 5');
     expect(html).toContain('60-minute window');
   });
 

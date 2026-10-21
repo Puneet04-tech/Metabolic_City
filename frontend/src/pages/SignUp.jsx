@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import AuthShell from '../components/shell/AuthShell/AuthShell';
-import AuthForm from '../components/auth/AuthForm';
+import AuthForm from '../components/Auth/AuthForm';
 
 /** Create an account. */
 export default function SignUp() {
