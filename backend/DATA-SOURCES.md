@@ -69,6 +69,35 @@ frontend changes.
 | Flow (speed and delay) | `GET https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/16/json?point=<lat>,<lon>&unit=kmph` — one request per road. It answers with `currentSpeed`, `freeFlowSpeed`, `currentTravelTime`, `freeFlowTravelTime` and a `confidence` between 0 and 1. The delay is the difference between the two travel times, so it is measured against free flow rather than against a guess. The response also carries the real geometry of the road it matched, so the reading is placed on the road and not on the point that was asked about. |
 | Incidents | `GET https://api.tomtom.com/traffic/services/5/incidentDetails?bbox=<minLon,minLat,maxLon,maxLat>` — one request for a whole area. It answers with accidents, roadworks, lane closures, road closures, flooding and jams, each with its own delay against free flow. |
 
+### The free tier, as TomTom publishes it
+
+Counted **per month, per API, per project**. Not per key.
+
+| API | Free per month |
+| --- | --- |
+| Traffic Flow API Segment Data | 20,000 |
+| Traffic Incidents API Details | 2,500 |
+| **Traffic Flow & Incidents API Raster Tiles** | **200,000** |
+| **Traffic Flow & Incidents API Vector Tiles** | **200,000** |
+| Routing API | 20,000 |
+| Geocoding / Reverse Geocoding | 20,000 |
+
+When the allowance is exceeded, requests return **429**.
+
+**Key rotation is a security feature, not a way to get more quota.** It
+regenerates a key that may have leaked, and the old key keeps working for up
+to 48 hours so the code can be changed over. The allowance is counted
+against the project, so a second key in the same project draws on the same
+monthly allowance. The free tier is also a single-user tier, so it cannot
+be shared with a team.
+
+The two keys the system holds are tried in order, the service key first and
+the portal key second. That is for key *validity* — some endpoints refuse a
+portal key when the call comes from a server — not for quota.
+
+**The traffic tiles have ten times the allowance of the flow segment data**,
+which is the way to cover every cell on every poll for free.
+
 ### How many probes, and how the month's allowance is protected
 
 **The free tier is counted per month**, and the two endpoints have separate
@@ -127,10 +156,9 @@ in the window. The rest say so, rather than showing a score they have no
 reading for.
 
 To close that gap, use the **raster flow tiles**: one tile puts a whole
-area of congestion on the map, and tiles come from their own allowance, so
-they are the way to cover every cell on every poll without paying. The
-allowance for the tile products is in the MyTomTom usage page under
-**Show all usage**.
+area of congestion on the map, and tiles come from their own allowance of
+**200,000 a month** — ten times the allowance of the flow segment data. That
+is the way to cover every cell on every poll without paying.
 
 ## The field crew as a sensor
 
