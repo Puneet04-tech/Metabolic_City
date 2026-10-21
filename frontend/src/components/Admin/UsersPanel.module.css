@@ -1,13 +1,17 @@
 .panel {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-6);
   align-content: start;
   max-width: 672px;
 }
 
 .header {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
 }
 
 .title {

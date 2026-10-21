@@ -1,14 +1,14 @@
 .page {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-6);
+  gap: var(--space-8);
   align-content: start;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--space-6) var(--space-6) var(--space-10);
+  padding: var(--space-8) var(--space-8) var(--space-12);
 }
 
 .content {

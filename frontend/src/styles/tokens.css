@@ -14,6 +14,7 @@
   --surface-sunken: #0e1420;
   --border: #1f2a3d;
   --border-strong: #2b3a55;
+  --border-stronger: #3a4a6a;
   /* QR codes are read by scanners and must stay black on white. */
   --qr-surface: #ffffff;
 
