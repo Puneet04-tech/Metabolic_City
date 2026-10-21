@@ -87,8 +87,7 @@
   flex: 0 0 auto;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-left-width: 3px;
+  border: 1px solid var(--border-stronger);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
   font-size: var(--text-xs);

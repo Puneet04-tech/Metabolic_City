@@ -29,7 +29,6 @@
   line-height: 0;
 }
 
-/* The icon and the label sit in one row, both centred on the same line. */
 .label {
   display: inline-flex;
   align-items: center;
