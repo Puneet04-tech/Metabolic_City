@@ -51,6 +51,23 @@ export async function fetchElevations(points) {
 }
 
 /**
+ * How much a road class matters when choosing the street that names a cell.
+ */
+const ROAD_IMPORTANCE = {
+  motorway: 6,
+  trunk: 5,
+  primary: 4,
+  secondary: 3,
+  tertiary: 2,
+  unclassified: 1,
+  residential: 1,
+  living_street: 1,
+  service: 0,
+};
+
+const roadImportance = (highway) => ROAD_IMPORTANCE[highway] ?? 0;
+
+/**
  * How far a cell is from the lowest ground in the city, and how steep the
  * ground around it is.
  */
@@ -129,6 +146,17 @@ export async function buildCityTerrain(cityName) {
       .filter((segment) => Number.isFinite(segment.waterwayDistanceM))
       .sort((a, b) => a.waterwayDistanceM - b.waterwayDistanceM)[0];
 
+    // The named streets in this cell, most important first. This is what
+    // tells an operator which real place the cell is.
+    const roadNames = [
+      ...new Set(
+        cell.segments
+          .filter((segment) => segment.name)
+          .sort((a, b) => roadImportance(b.highway) - roadImportance(a.highway))
+          .map((segment) => segment.name)
+      ),
+    ].slice(0, 3);
+
     return {
       cityCode: city.code,
       h3Index: cell.h3Index,
@@ -139,6 +167,7 @@ export async function buildCityTerrain(cityName) {
       waterwayName: nearestWater ? nearestWater.waterwayName : '',
       roadCount: cell.roadCount,
       roadClasses: cell.roadClasses,
+      roadNames,
     };
   });
 
@@ -197,6 +226,7 @@ export function terrainToTelemetry(terrain) {
       waterwayName: terrain.waterwayName,
       roadCount: terrain.roadCount,
       roadClasses: terrain.roadClasses,
+      roadNames: terrain.roadNames || [],
       floodSusceptibility: terrain.floodSusceptibility,
     },
   };

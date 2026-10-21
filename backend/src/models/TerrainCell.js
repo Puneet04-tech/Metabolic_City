@@ -27,6 +27,8 @@ const TerrainCellSchema = new mongoose.Schema(
     roadCount: { type: Number, default: 0 },
     /** The classes of the real streets this cell holds. */
     roadClasses: { type: [String], default: [] },
+    /** The names of the real streets this cell holds. */
+    roadNames: { type: [String], default: [] },
     fetchedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

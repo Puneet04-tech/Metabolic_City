@@ -401,6 +401,19 @@ export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0
   const anomaly = detectAnomalies({ mobility: mobility.score, climate: climate.score, vulnerability: vulnerability.score }, directRisk, previousCompositeRisk);
 
   const sources = [...new Set(events.map((e) => e.sourceType))];
+  // The real place this cell is: the streets it holds and the watercourse
+  // it sits near. Taken from the terrain reading, never invented.
+  const terrainEvent = gis.find((event) => event.rawPayload?.elevationM !== undefined) || gis[0];
+  const context = terrainEvent?.rawPayload
+    ? {
+        streets: Array.isArray(terrainEvent.rawPayload.roadNames)
+          ? terrainEvent.rawPayload.roadNames.filter(Boolean)
+          : [],
+        waterway: terrainEvent.rawPayload.waterwayName || '',
+        waterDistanceM: terrainEvent.rawPayload.waterDistanceM ?? null,
+        elevationM: terrainEvent.rawPayload.elevationM ?? null,
+      }
+    : null;
   // The last time something was actually observed here. When nothing has been
   // observed inside the window, this keeps the last real observation rather
   // than the last time the cell was written, so a cell that has gone quiet
@@ -427,6 +440,7 @@ export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0
     degradationStatus,
     anomalyDetected: anomaly.detected,
     anomalyReason: anomaly.reason,
+    context,
     telemetryStats: {
       eventCount: events.length,
       sources,

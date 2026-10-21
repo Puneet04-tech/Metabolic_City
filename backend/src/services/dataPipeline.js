@@ -108,10 +108,13 @@ async function ensureNetwork(cityName) {
 
 /**
  * Builds the terrain of a city if it is not already known.
+ *
+ * The terrain is rebuilt whenever the street network underneath it has
+ * changed, because new streets mean new cells that need their own ground.
  */
-async function ensureTerrain(cityName) {
+async function ensureTerrain(cityName, { force = false } = {}) {
   const existing = await getCityTerrain(cityName);
-  if (existing.length) return { cells: existing, rebuilt: false };
+  if (existing.length && !force) return { cells: existing, rebuilt: false };
 
   console.log(`  ${cityName}: building the real terrain...`);
   const terrain = await buildCityTerrain(cityName);
@@ -212,14 +215,17 @@ export async function runDataPipeline() {
 
       // Step 2a: the real street network of the city. This decides which
       // cells exist: a cell exists because there is a real street in it.
-      await ensureNetwork(cityName);
+      const network = await ensureNetwork(cityName);
       const { cells: coverageCells, source: coverageSource } =
         await resolveCoverageCells(cityName);
       console.log(`  ${cityName}: ${coverageCells.length} cells (${coverageSource})`);
 
       // Step 2b: the real terrain of those cells: elevation, slope and how
-      // close each one is to a real watercourse.
-      const { cells: terrainCells } = await ensureTerrain(cityName);
+      // close each one is to a real watercourse. It is rebuilt when the
+      // street network underneath it has changed.
+      const { cells: terrainCells } = await ensureTerrain(cityName, {
+        force: network.downloaded,
+      });
       for (const terrain of terrainCells) {
         allTelemetryEvents.push(terrainToTelemetry(terrain));
       }

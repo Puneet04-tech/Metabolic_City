@@ -50,6 +50,14 @@ const spatialCellSchema = new mongoose.Schema(
     },
     anomalyDetected: { type: Boolean, default: false },
     anomalyReason: { type: String, default: null },
+    // The real place this cell is: the streets it holds and the watercourse
+    // it sits near, taken from the map and the elevation model.
+    context: {
+      streets: [String],
+      waterway: { type: String, default: '' },
+      waterDistanceM: { type: Number, default: null },
+      elevationM: { type: Number, default: null },
+    },
     isDegraded: { type: Boolean, default: true },
     degradationReasons: [String],
     degradationStatus: {

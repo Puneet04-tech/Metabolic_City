@@ -162,7 +162,12 @@ export async function fetchCityNetwork(cityName, { radiusDeg = 0.09, onProgress 
   const workers = Array.from({ length: 2 }, async () => {
     while (queue.length) {
       const [latitude, longitude] = queue.shift();
-      const tile = await fetchOsmTile(latitude, longitude, TILE_SPAN_DEG);
+      // One retry: a dropped tile would otherwise shrink the cell set.
+      let tile = await fetchOsmTile(latitude, longitude, TILE_SPAN_DEG);
+      if (!tile.ok) {
+        await sleep(1200);
+        tile = await fetchOsmTile(latitude, longitude, TILE_SPAN_DEG);
+      }
       if (!tile.ok) {
         failed += 1;
         continue;
@@ -231,6 +236,7 @@ export async function saveCityNetwork(cityName, network) {
     }
 
     let nearest = null;
+    let nearestNamed = null;
     for (const point of waterPoints) {
       const distance = metresBetween(
         { latitude: mid[0], longitude: mid[1] },
@@ -239,7 +245,13 @@ export async function saveCityNetwork(cityName, network) {
       if (!nearest || distance < nearest.distanceM) {
         nearest = { distanceM: distance, name: point.name };
       }
+      // A named watercourse is more useful than an unnamed one even when it
+      // is a little further away.
+      if (point.name && (!nearestNamed || distance < nearestNamed.distanceM)) {
+        nearestNamed = { distanceM: distance, name: point.name };
+      }
     }
+    const waterway = nearestNamed || nearest;
 
     documents.push({
       cityCode: city.code,
@@ -254,8 +266,8 @@ export async function saveCityNetwork(cityName, network) {
       latitude: mid[0],
       longitude: mid[1],
       lengthM: Math.round(lengthM),
-      waterwayName: nearest?.name || '',
-      waterwayDistanceM: nearest ? Math.round(nearest.distanceM) : null,
+      waterwayName: waterway?.name || '',
+      waterwayDistanceM: waterway ? Math.round(waterway.distanceM) : null,
     });
   }
 

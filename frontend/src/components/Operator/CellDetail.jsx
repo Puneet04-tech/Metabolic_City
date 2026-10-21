@@ -143,6 +143,35 @@ function ScoreRow({ label, code, value, threshold, max = 10 }) {
 }
 
 /**
+ * Where this cell actually is.
+ *
+ * The streets it holds and the watercourse it sits near come from the real
+ * map, so an operator can see that the cell is a real place and not a
+ * grid square.
+ */
+function CellContext({ cell }) {
+  const context = cell.context;
+  if (!context) return null;
+
+  const streets = Array.isArray(context.streets) ? context.streets.filter(Boolean) : [];
+  const hasWater = Boolean(context.waterway) || Number.isFinite(context.waterDistanceM);
+  if (!streets.length && !hasWater) return null;
+
+  return (
+    <p className={styles.context}>
+      {streets.length ? <span className={styles.contextStreet}>{streets.join(' · ')}</span> : null}
+      {streets.length && hasWater ? <span className={styles.contextDivider}>—</span> : null}
+      {hasWater ? (
+        <span className={styles.contextWater}>
+          {context.waterway || 'Watercourse'}
+          {Number.isFinite(context.waterDistanceM) ? ` ${context.waterDistanceM} m away` : ''}
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
+/**
  * The cell detail view. It replaces the list in the panel when a cell is
  * selected, and it is where the response directive and the actions live.
  */
@@ -169,6 +198,8 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
         <h2 className={styles.cellName}>{getCellLabel(cell)}</h2>
         <SeverityBadge severity={band} label={`${score.toFixed(2)} ${LENS_LABELS[mode] ?? ''}`} />
       </div>
+
+      <CellContext cell={cell} />
 
       {notice ? (
         <Notice tone="success">{notice}</Notice>
