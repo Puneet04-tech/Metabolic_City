@@ -2,6 +2,8 @@
 
 A software-first urban intelligence command system for municipal operations, field survey management, and real-time incident response. Built for Bhopal, Sehore, and Ashta municipalities in Madhya Pradesh, India.
 
+**Latest Commit:** `9c263d4 preparation for deployment` (2026-10-22)
+
 ## 🎯 Project Overview
 
 Metabolic City AI is an integrated platform that enables:
@@ -11,6 +13,9 @@ Metabolic City AI is an integrated platform that enables:
 - **Cross-jurisdiction Data Sharing** - Coordinated operations across municipal boundaries
 - **AI-powered Risk Assessment** - Dynamic risk weights and guardrails for urban infrastructure
 - **Live H3 Telemetry** - Transit, weather, and citizen events mapped to resolution-8 cells
+- **Distributed WebSocket Streaming** - Multi-pod real-time updates across all connected server instances
+- **Async Telemetry Ingestion** - O(1) API response with background job processing
+- **Citizen QR Code Reporting** - Public QR code reporting system for community engagement
 
 ## 🏗️ Architecture
 
@@ -20,17 +25,20 @@ Metabolic City AI is an integrated platform that enables:
 - Node.js + Express.js
 - MongoDB Atlas (with TLS encryption)
 - JWT Authentication
-- Rate limiting & security middleware (Helmet, CORS)
+- Redis Pub/Sub for distributed WebSocket
+- BullMQ for async job processing
+- Helmet, CORS, rate limiting middleware
 - bcryptjs for password hashing
 
 **Frontend:**
-- React 18
-- Vite (build tool)
+- React 18 + Vite
 - React Router DOM
-- Custom CSS styling
+- H3-js for geospatial processing
+- Custom CSS styling with design tokens
 
 **Development:**
 - Concurrently for multi-process management
+- Jest for testing
 - ES Modules throughout
 
 ### Project Structure
@@ -42,40 +50,68 @@ Metabolic_City/
 │   │   ├── config/
 │   │   │   └── db.js              # MongoDB connection with retry logic
 │   │   ├── middleware/
-│   │   │   └── auth.js            # JWT auth & role-based authorization
+│   │   │   ├── auth.js            # JWT auth & role-based authorization
+│   │   │   ├── auditLog.js        # Comprehensive audit logging
+│   │   │   ├── idempotency.js     # Idempotency middleware
+│   │   │   ├── latencyMonitor.js  # Performance monitoring
+│   │   │   └── circuitBreaker.js  # External API circuit breaker
 │   │   ├── models/
 │   │   │   ├── User.js            # User schema with role-specific fields
 │   │   │   ├── TelemetryEvent.js  # Raw telemetry time-series events
-│   │   │   ├── SpatialCell.js     # H3 risk grid state
+│   │   │   ├── SpatialCell.js     # H3 risk grid state with cityCode
 │   │   │   └── DeadLetterMessage.js # Invalid telemetry retention
 │   │   ├── engine/
 │   │   │   ├── risk.js            # H3 normalization and deterministic scoring
-│   │   │   └── stream.js           # Server-Sent Events broadcaster
+│   │   │   └── stream.js           # SSE broadcaster
 │   │   ├── routes/
+│   │   │   ├── auth.js            # Authentication endpoints
 │   │   │   ├── telemetry.js       # Transit, weather, citizen ingestion
+│   │   │   ├── stream.js          # H3 SSE stream
 │   │   │   ├── spatialCells.js    # Live risk-cell snapshots
-│   │   │   └── stream.js          # H3 SSE stream
+│   │   │   └── spatialAnalysis.js # Multi-resolution spatial analysis
 │   │   ├── services/
-│   │   │   └── pollers.js         # Optional OpenWeather and GTFS-RT polling
-│   │   ├── routes/
-│   │   │   └── auth.js            # Authentication endpoints
-│   │   ├── data/
-│   │   │   └── users.json         # Local development data
-│   │   └── server.js              # Express server setup
+│   │   │   ├── cacheService.js     # Redis caching service
+│   │   │   ├── dataPipeline.js     # Open-Meteo + Simulated Transit pipeline
+│   │   │   ├── streamManager.js    # Distributed WebSocket server
+│   │   │   └── spatialAnalysis.js # Spatial intelligence service
+│   │   ├── queues/
+│   │   │   ├── jobQueue.js        # BullMQ job queue
+│   │   │   └── telemetryQueue.js  # Telemetry processing queue
+│   │   ├── workers/
+│   │   │   └── telemetryWorker.js # Background telemetry processor
+│   │   ├── utils/
+│   │   │   ├── transactions.js    # ACID transaction utilities
+│   │   │   └── dataConsistency.js # Event sourcing, Saga, CQRS
+│   │   └── scripts/
+│   │       ├── seedSyntheticTelemetry.js
+│   │       └── purgeSimulatedTelemetry.js
 │   ├── .env                       # Environment variables
 │   └── package.json
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx                # Main React application
+│   │   ├── App.jsx                # Main React application with route guards
 │   │   ├── RequireAuth.jsx        # Route protection component
 │   │   ├── api.js                 # API client with session management
 │   │   ├── main.jsx               # React entry point
-│   │   └── styles.css             # Application styles
+│   │   ├── lib/
+│   │   │   ├── useOptimisticUpdate.js # Optimistic UI updates
+│   │   │   ├── useLiveCells.js    # Live cell data management
+│   │   │   └── routes.js          # Route configuration
+│   │   ├── components/
+│   │   │   ├── system/           # System components
+│   │   │   ├── shared/           # Shared components
+│   │   │   ├── Operator/         # Operator console components
+│   │   │   ├── Field/            # Field crew components
+│   │   │   └── Admin/            # Admin components
+│   │   ├── pages/                # Page components
+│   │   └── styles/              # CSS styles
 │   ├── index.html
 │   └── package.json
 ├── metabolic_city_documents/     # Project documentation
 ├── *.xlsx                         # Survey data files
 ├── package.json                   # Root package.json
+├── render.yaml                    # Render deployment configuration
+├── DEPLOYMENT.md                  # Detailed deployment guide
 └── .env.example                   # Environment template
 ```
 
@@ -98,16 +134,23 @@ Metabolic_City/
    - Authenticated via Admin ID + Hardware Token
    - Full system access and configuration
 
-### Security Features
+### Security Features (7-Layer Defense)
 
-- **JWT-based authentication** with configurable expiration
-- **Token revocation** for logout sessions
-- **Role-based access control** (RBAC)
-- **Rate limiting** (30 requests/15min for auth endpoints)
-- **Password requirements**: 8+ chars, 1 letter, 1 number
-- **TLS-only MongoDB connections** (enforced)
-- **CORS whitelist** for allowed origins
-- **Helmet security headers**
+- **Layer 1: HTTP Headers (Helmet.js)** - CSP, HSTS, X-Frame-Options
+- **Layer 2: CORS Configuration** - Strict origin allow-list
+- **Layer 3: Rate Limiting** - Global API protection
+- **Layer 4: JWT Authentication** - Token-based auth with refresh tokens
+- **Layer 5: Role-Based Authorization** - Role-specific access control
+- **Layer 6: Input Validation** - Express-validator middleware
+- **Layer 7: Error Handling** - Centralized error handler with sanitization
+
+### Additional Security
+
+- **Audit Logging** - Comprehensive API call logging
+- **Idempotency** - Safe retry of operations
+- **Circuit Breakers** - External API failure protection
+- **Secrets Management** - Environment variable-based configuration
+- **Sanitization** - Sensitive data redaction in logs
 
 ## 📊 Survey Data Structure
 
@@ -142,14 +185,13 @@ Metabolic_City/
 - **Public Survey Insights** - Aggregated metrics by location
 - **Location Summary** - City-specific averages and focus areas
 
-**Note:** Current data is synthetic calibration/template data. Replace with actual Google Form or field responses before production use.
-
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
-- MongoDB Atlas account (or local MongoDB with TLS)
+- Node.js 18+
+- MongoDB Atlas account (with TLS enabled)
+- Redis 6+ (for distributed WebSocket)
 - Git
 
 ### Installation
@@ -163,9 +205,8 @@ cd Metabolic_City
 2. **Install dependencies**
 ```bash
 npm install
+npm run build --prefix frontend
 cd backend && npm install
-cd ../frontend && npm install
-cd ..
 ```
 
 3. **Configure environment variables**
@@ -178,7 +219,7 @@ PORT=5000
 NODE_ENV=development
 
 # MongoDB (Required - must use TLS)
-MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?tls=true&ssl=true&retryWrites=true
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>/metabolic_city?retryWrites=true&w=majority
 MONGODB_DB_NAME=metabolic_city
 MONGODB_MAX_POOL_SIZE=10
 MONGODB_SERVER_SELECTION_TIMEOUT_MS=30000
@@ -189,12 +230,25 @@ MONGODB_CONNECT_TIMEOUT_MS=20000
 JWT_SECRET=<generate-with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
 JWT_EXPIRES_IN=7d
 
-# CORS
+# CORS (Update after deployment)
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=300
+
+# Redis (Required for distributed WebSocket)
+REDIS_ENABLED=true
+REDIS_URL=redis://localhost:6379
+
+# Security
+TWILIO_ACCOUNT_SID=your-twilio-account-sid
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+TWILIO_FROM_NUMBER=your-twilio-phone-number
+
+# Optional integrations
+OPENWEATHER_API_KEY=your-openweather-key
+GTFS_RT_URL=https://your-transit-feed.com/gtfs-rt
 ```
 
 4. **Generate JWT Secret**
@@ -215,10 +269,15 @@ This starts both backend (port 5000) and frontend (port 5173) concurrently.
 - `npm run build` - Build frontend for production
 - `npm start` - Start backend server only
 - `npm run seed:synthetic --prefix backend` - Seed the permitted survey workbooks as marked calibration telemetry
+- `npm run test` - Run all tests
+- `npm run test:unit` - Run unit tests only
+- `npm run test:integration` - Run integration tests only
+- `npm run test:watch` - Watch mode for tests
+- `npm run test:coverage` - Generate test coverage report
 
 ## 📡 API Endpoints
 
-### Phase 2 Telemetry
+### Core Telemetry API
 
 #### POST `/api/v1/telemetry/citizen`
 Public citizen report ingestion. Requires `latitude`, `longitude`, and an ISO timestamp. Optional fields include `reportText`, `senderId`, and `imageUrls`.
@@ -229,15 +288,31 @@ Authenticated weather ingestion. Accepts rainfall in `rainMmHr`, visibility, and
 #### POST `/api/v1/telemetry/transit`
 Authenticated transit ingestion. Accepts vehicle coordinates, route/vehicle IDs, and delay minutes or seconds.
 
+#### POST `/api/v1/telemetry/ingest`
+Async telemetry ingestion endpoint (O(1) response time for high-throughput scenarios).
+
 #### GET `/api/v1/spatial-cells`
 Returns current resolution-8 H3 cells and their Mobility, Climate, Vulnerability, and composite risk scores.
 
 #### GET `/api/v1/stream/h3`
 Authenticated Server-Sent Events stream. Sends an initial snapshot and cell updates whenever telemetry changes a cell.
 
-Invalid telemetry is written to the MongoDB `deadlettermessages` collection with a 30-day TTL. Raw telemetry is retained for seven days. Risk scoring uses `$R_c = 0.4S_m + 0.4S_c + 0.2S_v$` by default and marks missing inputs as `DEGRADED_DATA`.
+#### GET `/api/v1/spatial/multi-resolution/:h3Index`
+Multi-resolution risk analysis (street-level res 8, neighborhood res 6, city res 4).
 
-### Phase 3 Critical Response
+#### GET `/api/v1/spatial/neighbor-aware/:h3Index`
+Neighbor-aware risk analysis with cascade detection from neighboring cells.
+
+#### GET `/api/v1/spatial/temporal-pattern/:h3Index`
+Temporal-spatial pattern analysis (trends, volatility, seasonality, recommendations).
+
+#### GET `/api/v1/spatial/nearby/:h3Index`
+Find nearby cells within specified radius (geospatial search with 2dsphere index).
+
+#### GET `/api/v1/spatial/autocorrelation/:h3Index`
+Spatial autocorrelation analysis (Moran's I).
+
+### Critical Response API
 
 Critical cells (`R_c >= 7`) expose action synthesis and operator decision APIs:
 
@@ -250,7 +325,7 @@ GET  /api/v1/incidents
 
 Locks are stored in MongoDB with a 60-second TTL and prevent duplicate operator decisions. Action narratives, priorities, recommended resources, and dispatch text are generated by the deterministic municipal playbook from the three risk scores. Operators must claim the cell lock before approving or overriding an alert; every decision is persisted as an incident audit record.
 
-### Phase 4 Field and Administration
+### Field and Administration API
 
 Field crew endpoints:
 
@@ -258,8 +333,6 @@ Field crew endpoints:
 GET  /api/v1/field/tasks
 POST /api/v1/field/sync
 ```
-
-The browser field console stores failed or offline status updates in IndexedDB (`field_outbox`) and flushes them when the browser becomes online. Supported statuses are `ACKNOWLEDGED`, `ARRIVED`, and `RESOLVED`; resolution updates may include a note, photo URL, and GPS coordinates.
 
 Administrator weight endpoints:
 
@@ -269,39 +342,13 @@ POST /api/v1/admin/weights/dry-run
 PUT  /api/v1/admin/weights
 ```
 
-Weights must be between `0` and `1` and sum exactly to `1.0`. Dry-run returns projected risk scores for existing cells before committing. A background monitor checks unacknowledged critical incidents every 60 seconds and escalates incidents older than 15 minutes. Configure Twilio variables to send SMS; without them, the incident remains persisted and the missing SMS configuration is logged explicitly.
-
-### Authentication
+### Authentication API
 
 #### POST `/api/auth/signup`
 Register a new user account.
 
-**Request Body:**
-```json
-{
-  "name": "Full Name",
-  "email": "email@example.com",
-  "cityCode": "CITY-IND-BPL8",
-  "role": "operator|field_crew|administrator",
-  "password": "password123",
-  "staffId": "OP-8842",        // For operator
-  "phone": "+91 9876543210",   // For field_crew
-  "adminId": "ADM-SYS-01"      // For administrator
-}
-```
-
 #### POST `/api/auth/login`
 Authenticate existing user.
-
-**Request Body:**
-```json
-{
-  "cityCode": "CITY-IND-BPL8",
-  "role": "operator",
-  "staffId": "OP-8842",        // Role-specific identifier
-  "password": "password123"
-}
-```
 
 #### GET `/api/auth/me`
 Get current user profile (requires authentication).
@@ -310,25 +357,25 @@ Get current user profile (requires authentication).
 Logout and revoke token (requires authentication).
 
 #### GET `/api/auth/admin/status`
-Administrator-only endpoint example.
+Administrator-only endpoint for system status.
 
 ### Health Check
 
-#### GET `/api/health`
-Check API status.
+#### GET `/health`
+System health check with performance metrics and circuit breaker status.
 
-**Response:**
-```json
-{
-  "status": "ok",
-  "message": "Metabolic City API is running."
-}
-```
+#### GET `/api/health`
+API health check with MongoDB, Redis, and service status.
 
 ## 🎨 Frontend Routes
 
 - `/` - Authentication page (login/signup)
 - `/dashboard` - Protected dashboard (requires authentication)
+- `/operator` - Operator console with H3 map and live telemetry
+- `/field` - Field crew task management and offline sync
+- `/admin` - Administrative controls and risk weight management
+- `/analytics` - Analytics dashboard with real-time charts
+- `/citizen-report` - Citizen QR code reporting interface
 
 ## 🔧 Development Workflow
 
@@ -338,24 +385,35 @@ Check API status.
    - Add models in `backend/src/models/`
    - Create routes in `backend/src/routes/`
    - Register routes in `backend/src/server.js`
+   - Implement services in `backend/src/services/`
+   - Add middleware in `backend/src/middleware/`
 
 2. **Frontend:**
-   - Add components in `frontend/src/`
+   - Add components in `frontend/src/components/`
    - Update routing in `frontend/src/App.jsx`
    - Add API calls in `frontend/src/api.js`
+   - Create hooks in `frontend/src/lib/`
 
 ### Database Schema
 
-Current schema includes User model with:
+Current schema includes:
+
+**User Model:**
 - Basic fields: name, email, cityCode, role, password
 - Role-specific fields: staffId (operator), phone (field_crew), adminId (administrator)
 - Timestamps: createdAt, updatedAt
+- Active status and jurisdiction support
 
-Future schemas will include:
-- Municipal Survey responses
-- Public Survey responses
-- Incident reports
-- Risk assessments
+**SpatialCell Model:**
+- H3 index, coordinates, risk scores (Mobility, Climate, Vulnerability, composite)
+- CityCode field for organizing cells by municipality
+- Geospatial 2dsphere index for efficient spatial queries
+- History tracking and temporal-spatial correlation
+
+**TelemetryEvent Model:**
+- Raw telemetry time-series data
+- H3 cell updates and risk scoring
+- Dead Letter Queue integration for failed processing
 
 ## 📝 Project Documentation
 
@@ -370,48 +428,90 @@ Detailed documentation available in `metabolic_city_documents/`:
 
 ## 🌐 Deployment
 
-### Production Build
+### Production Deployment
 
-1. **Build frontend:**
+#### Render (Backend)
+
+Create a **Web Service** using `render.yaml`. Render reads the configuration, runs `npm ci` in `backend/`, starts `npm start`, and checks `/health`.
+
+**Environment Variables to Set in Render Dashboard:**
+
+| Key | Value | Notes |
+|-----|-------|-------|
+| `NODE_ENV` | `production` | Already set in `render.yaml` |
+| `MONGO_URI` | Your MongoDB Atlas connection string | Must include TLS/SSL and auth source |
+| `MONGODB_DB_NAME` | `metabolic_city` | Database name |
+| `JWT_SECRET` | 32+ character random string | Generate with Node.js crypto |
+| `CORS_ORIGINS` | `https://your-vercel-domain.vercel.app` | Update after Vercel deployment |
+| `REDIS_ENABLED` | `true` | Required for distributed WebSocket |
+| `REDIS_URL` | Your Redis connection URL | e.g., `redis://your-redis-url` |
+
+**Optional:** Twilio, OpenWeather, GTFS-RT keys
+
+#### Vercel (Frontend)
+
+Create a Vercel project with `frontend/` as the Root Directory. Vercel auto-detects Vite.
+
+**Environment Variable:**
+
+| Key | Value |
+|-----|-------|
+| `VITE_API_URL` | `https://your-render-service.onrender.com/api` |
+
+### Deployment Checklist
+
+1. ✅ Deploy backend to Render first
+2. ✅ Set required environment variables in Render dashboard
+3. ✅ Deploy frontend to Vercel
+4. ✅ Set `VITE_API_URL` in Vercel dashboard
+5. ✅ Update Render's `CORS_ORIGINS` to Vercel URL
+6. ✅ Configure Redis for distributed WebSocket
+7. ✅ Test health endpoints
+8. ✅ Create initial admin and operator accounts
+9. ✅ Run synthetic seed in non-production database
+10. ✅ Configure monitoring and alerts
+
+### Running Locally
+
 ```bash
-npm run build
+cd backend
+npm install
+npm run seed:synthetic  # for synthetic data (development only)
 ```
 
-2. **Set production environment:**
 ```bash
-NODE_ENV=production
+cd ../frontend
+npm install
 ```
 
-3. **Start backend:**
 ```bash
-npm start
+npm run dev  # Starts both backend and frontend
 ```
-
-### MongoDB Atlas Setup
-
-1. Create MongoDB Atlas cluster
-2. Configure IP whitelist
-3. Create database user with read/write permissions
-4. Copy connection string with TLS enabled
-5. Set `MONGO_URI` in environment variables
 
 ## 🔒 Security Considerations
 
-- Never commit `.env` files or sensitive credentials
-- Use strong, unique JWT secrets (min 32 characters)
-- Enable TLS for all database connections
-- Configure CORS origins appropriately
-- Use rate limiting to prevent abuse
-- Implement proper input validation
-- Keep dependencies updated
+- **Secrets Management:** All secrets in environment variables, never commit `.env` files
+- **Authentication:** JWT with refresh tokens and session management
+- **Authorization:** Role-based access control (RBAC)
+- **Encryption:** TLS for all database connections
+- **CORS:** Strict origin allow-list
+- **Rate Limiting:** Global and auth endpoint protection
+- **Input Validation:** Express-validator middleware
+- **Audit Logging:** Comprehensive API call logging
+- **Idempotency:** Safe retry of operations
+- **Circuit Breakers:** External API failure protection
+- **Error Handling:** Centralized error handler without internal leakage
+- **Dependency Management:** Regular security updates
 
 ## 🤝 Contributing
 
-1. Follow existing code style and patterns
-2. Add appropriate error handling
-3. Include security validation for user inputs
+1. Follow existing code style and SOLID principles
+2. Add appropriate error handling with try-catch blocks
+3. Include security validation for all user inputs
 4. Test authentication flows thoroughly
-5. Document new API endpoints
+5. Document new API endpoints with examples
+6. Add unit tests for critical functions
+7. Include JSDoc documentation
 
 ## 📄 License
 
@@ -423,9 +523,13 @@ For technical support or questions:
 - Review project documentation in `metabolic_city_documents/`
 - Check API endpoint documentation
 - Verify environment configuration
+- Review deployment guide in `DEPLOYMENT.md`
+- Check `CITIZEN_QR_REPORTING.md` for QR code reporting system
 
 ---
 
-**Metabolic City AI v1.0.4**  
+**Metabolic City AI v2.0.0**  
 System Engine - MongoDB Atlas Session Cluster  
-Deterministic Safety Logic & Audit Log Enabled
+Distributed WebSocket - BullMQ Background Processing  
+Optimized for Production Deployment  
+**Latest Update:** 2026-10-22
