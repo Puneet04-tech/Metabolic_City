@@ -10,27 +10,85 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 5000
       - key: MONGO_URI
         sync: false
       - key: MONGODB_DB_NAME
         value: metabolic_city
       - key: JWT_SECRET
         sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
       - key: CORS_ORIGINS
         sync: false
+        defaultValue: http://localhost:5173,https://your-vercel-app.vercel.app
+      - key: FRONTEND_URL
+        sync: false
+        defaultValue: https://your-vercel-app.vercel.app
       - key: REDIS_ENABLED
         value: "false"
       - key: REDIS_URL
         sync: false
-      - key: TWILIO_ACCOUNT_SID
+      - key: WEATHER_API_PROVIDER
+        value: openmeteo
+      - key: OPENMETEO_BASE_URL
+        value: https://api.open-meteo.com/v1
+      - key: WEATHER_SYNTHETIC_FALLBACK_ENABLED
+        value: "false"
+      - key: PRIMARY_CITY
+        value: bhopal
+      - key: CITIES
+        value: bhopal,indore,sehore
+      - key: BHOPAL_LAT
+        value: 23.2599
+      - key: BHOPAL_LON
+        value: 77.4126
+      - key: INDORE_LAT
+        value: 22.7196
+      - key: INDORE_LON
+        value: 75.8577
+      - key: SEHORE_LAT
+        value: 23.2080
+      - key: SEHORE_LON
+        value: 77.0816
+      - key: TRANSIT_SIMULATION_ENABLED
+        value: "false"
+      - key: TOMTOM_API_KEY
         sync: false
-      - key: TWILIO_AUTH_TOKEN
+      - key: TOMTOM_SERVICE_KEY
         sync: false
-      - key: TWILIO_FROM_NUMBER
-        sync: false
-      - key: OPENWEATHER_API_KEY
-        sync: false
-      - key: OPENWEATHER_POINTS
-        sync: false
-      - key: GTFS_RT_URL
-        sync: false
+      - key: TOMTOM_FLOW_MONTHLY_LIMIT
+        value: 20000
+      - key: TOMTOM_INCIDENT_MONTHLY_LIMIT
+        value: 2500
+      - key: TRAFFIC_PROBES_PER_CITY
+        value: 20
+      - key: TRAFFIC_POLL_MINUTES
+        value: 60
+      - key: OPENMETEO_MONTHLY_LIMIT
+        value: 8000
+      - key: OSM_USER_AGENT
+        value: MetabolicCity/1.0 (urban risk operations; contact you@example.org)
+      - key: OSM_NETWORK_RADIUS_DEG
+        value: 0.08
+      - key: OSM_NETWORK_REFRESH_DAYS
+        value: 30
+      - key: PIPELINE_CYCLE_MINUTES
+        value: 10
+      - key: PIPELINE_ENABLED
+        value: "true"
+      - key: H3_RESOLUTION
+        value: 8
+      - key: WEIGHT_MOBILITY
+        value: 0.4
+      - key: WEIGHT_CLIMATE
+        value: 0.3
+      - key: WEIGHT_VULNERABILITY
+        value: 0.3
+      - key: DEFAULT_RISK_THRESHOLD
+        value: 7.0
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX
+        value: 300
