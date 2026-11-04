@@ -1,4 +1,4 @@
-import { fetchWeatherForAllCities, fetchWeatherObservations, getWeatherSnapshot, weatherToTelemetry } from './weatherService.js';
+import { fetchWeatherForAllCities, fetchWeatherObservations, getWeatherSnapshot, weatherToTelemetry } from './weatherServiceMultiProvider.js';
 import { generateTransitTelemetryEvents } from './transitService.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { processTelemetryToCells, recalculateAllActiveCells, normalizeCoordinates, H3_RESOLUTION } from '../engine/risk.js';

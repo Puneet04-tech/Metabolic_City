@@ -36,6 +36,7 @@ export const TRAFFIC_ROAD_CLASSES = new Set([
   'unclassified',
   'residential',
   'living_street',
+  'service',  // Service roads near highways - common in Indian cities
 ]);
 
 const WATER_CLASSES = new Set(['river', 'stream', 'canal', 'drain', 'ditch', 'weir']);

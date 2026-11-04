@@ -382,6 +382,15 @@ export async function selectTrafficProbes(cityName, maxProbes = 25, offset = 0) 
   const cells = await getCityNetworkCells(cityName);
   const candidates = [];
 
+  // Debug: Log all highway types found in the city
+  const allHighwayTypes = new Set();
+  for (const cell of cells) {
+    for (const segment of cell.segments) {
+      if (segment.highway) allHighwayTypes.add(segment.highway);
+    }
+  }
+  console.log(`[traffic] Highway types found in ${cityName}:`, Array.from(allHighwayTypes).join(', '));
+
   for (const cell of cells) {
     const roads = cell.segments.filter((segment) => TRAFFIC_ROAD_CLASSES.has(segment.highway));
     if (!roads.length) continue;
