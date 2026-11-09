@@ -1,10 +1,17 @@
 import { deriveVerification, fallbackAlertKey } from '../../src/services/alertService.js';
+import { SpatialCell } from '../../src/models/SpatialCell.js';
 
 const observation = (overrides = {}) => ({
   sourceType: 'CITIZEN_311',
   senderId: 'resident-1',
   category: 'WATERLOGGING',
   ...overrides,
+});
+
+describe('cell alert persistence', () => {
+  it('keeps the report category needed for verification', () => {
+    expect(SpatialCell.schema.path('alerts').schema.path('category')).toBeDefined();
+  });
 });
 
 describe('alert evidence', () => {

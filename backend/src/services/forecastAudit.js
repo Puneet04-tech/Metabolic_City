@@ -31,7 +31,7 @@ export async function recordForecastSnapshot(cell) {
     bucket,
     generatedAt,
     source: cell.forecast.source || 'trend+weather',
-    modelVersion: process.env.FORECAST_MODEL_VERSION || 'trend-weather-v1',
+    modelVersion: cell.forecast.model || process.env.FORECAST_MODEL_VERSION || 'trend-weather-v1',
     points: points.map((point) => ({
       minutes: Number(point.minutes),
       at: new Date(point.at),
@@ -39,6 +39,9 @@ export async function recordForecastSnapshot(cell) {
       mobility: Number(point.mobility),
       climate: Number(point.climate),
       rainMmHr: Number(point.rainMmHr) || 0,
+      floodRisk: Number(point.floodRisk) || 0,
+      floodProbability: Number(point.floodProbability) || 0,
+      floodDepthM: Number(point.floodDepthM) || 0,
       actualRisk: null,
       error: null,
       verifiedAt: null,
@@ -110,6 +113,70 @@ export async function verifyDueForecasts({ now = new Date(), limit = 250 } = {})
   return { verified, unverifiable, checked: due.length };
 }
 
+/**
+ * A historical benchmark that exists before the first live forecast matures.
+ *
+ * It is persistence, not the live model: the previous observed risk is used as
+ * the prediction for the next stored observation. Calling it a model score
+ * would be dishonest, so it is returned separately as a baseline.
+ */
+export function summarizeHistoryBaseline(cells) {
+  const errors = [];
+  const leads = [];
+
+  for (const cell of cells || []) {
+    const history = (Array.isArray(cell.history) ? cell.history : [])
+      .filter((entry) => Number.isFinite(Number(entry?.compositeRisk)) && entry?.calculatedAt)
+      .sort((left, right) => new Date(left.calculatedAt) - new Date(right.calculatedAt));
+
+    for (let index = 1; index < history.length; index += 1) {
+      const previous = history[index - 1];
+      const actual = history[index];
+      const leadMinutes =
+        (new Date(actual.calculatedAt).getTime() - new Date(previous.calculatedAt).getTime()) /
+        60000;
+      if (!(leadMinutes > 0) || leadMinutes > 180) continue;
+      errors.push(Number(previous.compositeRisk) - Number(actual.compositeRisk));
+      leads.push(leadMinutes);
+    }
+  }
+
+  if (!errors.length) {
+    return {
+      method: 'persistence',
+      samples: 0,
+      mae: null,
+      rmse: null,
+      bias: null,
+      medianLeadMinutes: null,
+      changedPairs: 0,
+      changedShare: null,
+    };
+  }
+
+  const absolute = errors.map(Math.abs);
+  const changedPairs = errors.filter((value) => Math.abs(value) > 0.01).length;
+  leads.sort((left, right) => left - right);
+  return {
+    method: 'persistence-on-stored-cell-history',
+    samples: errors.length,
+    mae: round(absolute.reduce((sum, value) => sum + value, 0) / errors.length),
+    rmse: round(Math.sqrt(errors.reduce((sum, value) => sum + value * value, 0) / errors.length)),
+    bias: round(errors.reduce((sum, value) => sum + value, 0) / errors.length),
+    medianLeadMinutes: round(leads[Math.floor(leads.length / 2)], 1),
+    changedPairs,
+    changedShare: round(changedPairs / errors.length, 3),
+  };
+}
+
+export async function getHistoricalBaseline({ hours = 24, cityCode = null } = {}) {
+  const since = new Date(Date.now() - Math.max(1, Number(hours)) * 60 * 60 * 1000);
+  const query = { lastUpdated: { $gte: since } };
+  if (cityCode) query.cityCode = cityCode;
+  const cells = await SpatialCell.find(query, { history: 1, cityCode: 1 }).lean();
+  return summarizeHistoryBaseline(cells);
+}
+
 export function summarizeForecastPoints(points) {
   const scored = (points || []).filter(
     (point) => point?.verification === 'VERIFIED' && Number.isFinite(Number(point.error))
@@ -152,7 +219,14 @@ export async function getForecastAccuracy({ hours = 24, cityCode = null } = {}) 
   };
   if (cityCode) query.cityCode = cityCode;
 
-  const snapshots = await ForecastSnapshot.find(query).lean();
+  const latestQuery = cityCode ? { cityCode } : {};
+  const [snapshots, latestSnapshot, historicalBaseline] = await Promise.all([
+    ForecastSnapshot.find(query).sort({ generatedAt: -1 }).lean(),
+    ForecastSnapshot.findOne(latestQuery, { modelVersion: 1, generatedAt: 1 })
+      .sort({ generatedAt: -1 })
+      .lean(),
+    getHistoricalBaseline({ hours, cityCode }),
+  ]);
   const points = snapshots.flatMap((snapshot) => snapshot.points || []);
   const scheduled = points.filter((point) => point.at && point.at <= new Date()).length;
   const summary = summarizeForecastPoints(points);
@@ -160,14 +234,20 @@ export async function getForecastAccuracy({ hours = 24, cityCode = null } = {}) 
   return {
     periodHours: Number(hours),
     generatedAt: new Date().toISOString(),
-    modelVersion: process.env.FORECAST_MODEL_VERSION || 'trend-weather-v1',
+    modelVersion:
+      latestSnapshot?.modelVersion ||
+      snapshots.find((snapshot) => snapshot.modelVersion)?.modelVersion ||
+      process.env.FORECAST_MODEL_VERSION ||
+      'trend-weather-v1',
     scheduledPoints: scheduled,
     scoredPoints: summary.samples,
     coverage: scheduled ? round(summary.samples / scheduled, 3) : 0,
     ...summary,
+    historicalBaseline,
     note:
-      'Retrospective comparison of published forecast risk with the next cell snapshot near the target time. ' +
-      'It measures consistency with this model, not yet whether a disaster occurred.',
+      'Live points compare the published forecast with the next cell snapshot near the target time. ' +
+      'The historical baseline is persistence on stored cell history, not the live model. ' +
+      'Neither measures whether a disaster occurred.',
   };
 }
 

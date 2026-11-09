@@ -6,6 +6,7 @@ import MapCanvas from '../components/map/MapCanvas';
 import CellDetail from '../components/Operator/CellDetail';
 import CellList from '../components/Operator/CellList';
 import LensFilter from '../components/Operator/LensFilter';
+import ForecastModelPanel from '../components/Operator/ForecastModelPanel';
 import LiveAlerts from '../components/Operator/LiveAlerts';
 import SummaryStrip from '../components/Operator/SummaryStrip';
 import TelemetryStatus from '../components/Operator/TelemetryStatus';
@@ -63,6 +64,7 @@ export default function OperatorConsole() {
   const [city, setCity] = useState(null);
   const [relative, setRelative] = useState(false);
   const [threshold, setThreshold] = useState(7);
+  const [forecastAccuracy, setForecastAccuracy] = useState(null);
 
   const navItems = useMemo(() => getNavItems(user.role), [user.role]);
 
@@ -77,6 +79,20 @@ export default function OperatorConsole() {
       })
       .catch(() => {
         /* the engine default is 7; the console still works without the summary */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiRequest('/v1/system/forecast-accuracy?hours=24')
+      .then((accuracy) => {
+        if (!cancelled) setForecastAccuracy(accuracy);
+      })
+      .catch(() => {
+        /* the forecast panel still works without a model score */
       });
     return () => {
       cancelled = true;
@@ -328,6 +344,7 @@ export default function OperatorConsole() {
         </div>
 
         <LiveAlerts alerts={alerts} threshold={threshold} onSelect={selectAlert} />
+        <ForecastModelPanel accuracy={forecastAccuracy} />
 
         {relative && relativeAvailable ? (
           <p className={styles.relativeNote}>

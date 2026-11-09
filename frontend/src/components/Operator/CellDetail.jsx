@@ -124,8 +124,8 @@ function TrendChart({ values }) {
 /**
  * The risk projected for the next three hours.
  *
- * Each point applies the cell's recent trend and the hourly weather forecast
- * to its measured baseline. It is labelled as a projection everywhere.
+ * Each point combines the cell's recent trend with a screening rainfall-runoff
+ * flood calculation. It is labelled as a projection everywhere.
  */
 function ForecastPanel({ cell, threshold }) {
   const forecast = cell.forecast;
@@ -139,6 +139,8 @@ function ForecastPanel({ cell, threshold }) {
         {points.map((point) => {
           const band = cellBandFor({ forecastRisk: point.risk }, 'forecast', threshold);
           const rain = Number(point.rainMmHr) || 0;
+          const floodProbability = Number(point.floodProbability) || 0;
+          const floodDepth = Number(point.floodDepthM) || 0;
           return (
             <li key={point.minutes} className={styles.forecastRow}>
               <span className={styles.forecastTime}>+{Math.round(point.minutes / 60)}h</span>
@@ -146,17 +148,20 @@ function ForecastPanel({ cell, threshold }) {
                 {Number(point.risk).toFixed(1)}
               </span>
               <span className={styles.forecastDetail}>
-                {rain > 0
-                  ? `${rain.toFixed(1)} mm/h rain`
-                  : `Mobility ${Number(point.mobility).toFixed(1)} · Climate ${Number(point.climate).toFixed(1)}`}
+                {floodProbability > 0
+                  ? `${Math.round(floodProbability * 100)}% flood · ${floodDepth.toFixed(2)} m ponding`
+                  : rain > 0
+                    ? `${rain.toFixed(1)} mm/h rain`
+                    : `Mobility ${Number(point.mobility).toFixed(1)} · Climate ${Number(point.climate).toFixed(1)}`}
               </span>
             </li>
           );
         })}
       </ul>
       <p className={styles.alertNote}>
-        Projected from the cell's recent trend and the hourly weather forecast. A projection,
-        not a measurement.
+        Screening-level projection: recent trend, hourly rainfall and a terrain-based
+        rainfall-runoff calculation. Flood probability and ponding depth use a drainage
+        capacity proxy, not a measured drain network. A projection, not a measurement.
       </p>
     </section>
   );

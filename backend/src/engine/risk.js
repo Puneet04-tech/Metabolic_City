@@ -9,6 +9,7 @@ import { getCityByCode } from '../services/cityConfig.js';
 import { isTrafficSource } from '../services/eventProvenance.js';
 import { reconcileCellAlerts } from '../services/alertService.js';
 import { recordForecastSnapshot } from '../services/forecastAudit.js';
+import { buildFloodForecast, FLOOD_MODEL_VERSION } from '../services/floodModel.js';
 
 export const H3_RESOLUTION = 8;
 export const WINDOW_MS = 60 * 60 * 1000; // 1 hour window (increased from 15 min for more real data)
@@ -145,6 +146,7 @@ function nearestForecastRow(rows, at) {
  */
 async function buildForecast({
   cityCode,
+  h3Index,
   latitude,
   longitude,
   currentMobility,
@@ -153,6 +155,8 @@ async function buildForecast({
   history,
   weights,
   hasAlerts,
+  context,
+  currentRainMmHr,
   now,
 }) {
   // Only a known city has a shared forecast. A cell outside the catalog
@@ -160,6 +164,24 @@ async function buildForecast({
   const city = cityCode ? getCityByCode(cityCode) : null;
   const rows = city ? await getWeatherForecast(city.code, city.lat, city.lon) : null;
   const trend = mobilityTrendPerHour(history, now);
+
+  let flood = null;
+  if (city) {
+    try {
+      flood = await buildFloodForecast({
+        cityCode: city.code,
+        h3Index,
+        context,
+        currentRainMmHr,
+        rows: rows || [],
+        horizons: FORECAST_HORIZONS_MINUTES,
+        now,
+      });
+    } catch (error) {
+      console.warn(`[flood] Screening model unavailable for ${city.code}:`, error.message);
+    }
+  }
+  const floodByMinutes = new Map((flood?.points || []).map((point) => [point.minutes, point]));
 
   const points = FORECAST_HORIZONS_MINUTES.map((minutes) => {
     const at = now + minutes * 60000;
@@ -178,9 +200,13 @@ async function buildForecast({
         ).score
       : currentClimate;
     const mobility = projectMobility(currentMobility, trend, minutes / 60, hasAlerts);
-    const risk = Number(
+    const weightedRisk = Number(
       (weights.Wm * mobility + weights.Wc * climate + weights.Wv * vulnerability).toFixed(2)
     );
+    const floodPoint = floodByMinutes.get(minutes);
+    // A flood screening result is a hazard in its own right: it must not be
+    // averaged away by low traffic delay and low averaged climate score.
+    const risk = Number(Math.max(weightedRisk, floodPoint?.floodRisk || 0).toFixed(2));
     return {
       minutes,
       at: new Date(at),
@@ -188,6 +214,10 @@ async function buildForecast({
       mobility: Number(mobility.toFixed(2)),
       climate,
       rainMmHr: row?.rainMmHr ?? 0,
+      floodRisk: floodPoint?.floodRisk ?? 0,
+      floodProbability: floodPoint?.probability ?? 0,
+      floodDepthM: floodPoint?.depthM ?? 0,
+      floodConfidence: floodPoint?.confidence ?? 0,
     };
   });
 
@@ -196,8 +226,16 @@ async function buildForecast({
     forecastRisk: peak.risk,
     forecast: {
       generatedAt: new Date(now),
-      source: rows?.length ? 'open-meteo-hourly+trend' : 'trend-only',
+      source: flood
+        ? rows?.length
+          ? 'open-meteo-hourly+trend+flood-screening'
+          : 'trend+flood-screening'
+        : rows?.length
+          ? 'open-meteo-hourly+trend'
+          : 'trend-only',
+      model: flood ? FLOOD_MODEL_VERSION : null,
       peakMinutes: peak.minutes,
+      floodPeak: flood?.peak || null,
       points,
     },
   };
@@ -736,6 +774,11 @@ export function scoreCellEvents(events, previousCell, weights = DEFAULT_WEIGHTS,
         waterway: terrainEvent.rawPayload.waterwayName || '',
         waterDistanceM: terrainEvent.rawPayload.waterDistanceM ?? null,
         elevationM: terrainEvent.rawPayload.elevationM ?? null,
+        slopeDeg: terrainEvent.rawPayload.slopeDeg ?? null,
+        reliefM: terrainEvent.rawPayload.reliefM ?? null,
+        floodSusceptibility: terrainEvent.rawPayload.floodSusceptibility ?? null,
+        roadCount: terrainEvent.rawPayload.roadCount ?? 0,
+        roadClasses: terrainEvent.rawPayload.roadClasses || [],
       }
     : null;
   // The last time something was actually observed here. When nothing has been
@@ -822,8 +865,12 @@ export async function recalculateCell(h3Index) {
   }
 
   const cityCode = events.find((event) => event.cityCode)?.cityCode || previousCell?.cityCode || null;
+  const latestWeather = events
+    .filter((event) => event.sourceType === 'WEATHER_API')
+    .sort((left, right) => new Date(right.observedAt) - new Date(left.observedAt))[0];
   const forecast = await buildForecast({
     cityCode,
+    h3Index,
     latitude,
     longitude,
     currentMobility: scored.scores.mobility,
@@ -832,6 +879,8 @@ export async function recalculateCell(h3Index) {
     history: previousCell?.history,
     weights: activeWeights,
     hasAlerts: scored.alerts.length > 0,
+    context: scored.context,
+    currentRainMmHr: Number(latestWeather?.rainMmHr) || 0,
     now: Date.now(),
   });
 

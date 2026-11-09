@@ -26,7 +26,8 @@ import styles from './Analytics.module.css';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const isoDay = (date) => date.toISOString().slice(0, 10);
+const isoDay = (date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 const defaultRange = () => {
   const to = new Date();
