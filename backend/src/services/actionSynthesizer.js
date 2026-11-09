@@ -25,17 +25,38 @@ function buildPlaybookResources(cell) {
   return [...resources];
 }
 
+/** The band the engine itself assigned, with a band-based fallback. */
+function riskLevelFor(cell, risk) {
+  const level = String(cell.riskLevel || '').toUpperCase();
+  if (['CRITICAL', 'HIGH', 'MODERATE', 'LOW'].includes(level)) return level;
+  if (risk >= 7) return 'CRITICAL';
+  if (risk >= 5) return 'HIGH';
+  if (risk >= 3) return 'MODERATE';
+  return 'LOW';
+}
+
 export function synthesizeAction(cell, transitAlerts = []) {
   const resources = buildPlaybookResources(cell);
   const risk = Number(cell.compositeRisk) || 0;
-  const priority = risk >= 8 ? 'CRITICAL' : 'HIGH';
+  const level = riskLevelFor(cell, risk);
   const scores = cell.scores || {};
   const alerts = transitAlerts.length ? ` Active corridor transit alerts: ${transitAlerts.join('; ')}.` : '';
+  const basis = `Composite risk score is ${risk.toFixed(1)}/10.0 (Mobility: ${scores.mobility || 0}, Climate: ${scores.climate || 0}, Vulnerability: ${scores.vulnerability || 0}).`;
+
+  const guidance = {
+    CRITICAL: `Critical risk in H3 cell ${cell.h3Index}. ${basis} Immediate deployment of ${resources.join(', ')} is advised.`,
+    HIGH: `High risk in H3 cell ${cell.h3Index}. ${basis} Deployment of ${resources.join(', ')} is advised.`,
+    MODERATE: `Moderate risk in H3 cell ${cell.h3Index}. ${basis} A preventive inspection by ${resources.join(', ')} is advised.`,
+    LOW: `Low risk in H3 cell ${cell.h3Index}. ${basis} No deployment is required; continue monitoring.`,
+  }[level];
+
   return {
     providerUsed: 'deterministic',
-    actionNarrative: `Critical municipal hazard detected in H3 cell ${cell.h3Index}. Composite risk score is ${risk.toFixed(1)}/10.0 (Mobility: ${scores.mobility || 0}, Climate: ${scores.climate || 0}, Vulnerability: ${scores.vulnerability || 0}). Immediate deployment of ${resources.join(', ')} is advised to mitigate urban gridlock and water accumulation.${alerts}`,
-    priority,
+    actionNarrative: `${guidance}${alerts}`,
+    priority: level,
     recommendedResources: resources,
-    dispatchText: `[METABOLIC CITY ${priority}] H3: ${cell.h3Index} | Risk: ${risk.toFixed(1)}/10 | Deploy: ${resources.slice(0, 3).join(', ')}. Operator confirmation logged.`,
+    dispatchText: `[METABOLIC CITY ${level}] H3: ${cell.h3Index} | Risk: ${risk.toFixed(1)}/10 | ${
+      level === 'LOW' ? 'Monitor' : `Deploy: ${resources.slice(0, 3).join(', ')}`
+    }. Operator confirmation required.`,
   };
 }

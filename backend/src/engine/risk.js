@@ -9,6 +9,32 @@ export const H3_RESOLUTION = 8;
 export const WINDOW_MS = 60 * 60 * 1000; // 1 hour window (increased from 15 min for more real data)
 export const HALF_LIFE_MS = 30 * 60 * 1000; // 30 minute temporal decay half-life (increased from 5 min)
 
+/** Calibrated defaults, used when neither the admin config nor the env set weights. */
+export const DEFAULT_WEIGHTS = { Wm: 0.4, Wc: 0.4, Wv: 0.2 };
+
+/**
+ * Weights configured through the environment. They are normalised so an
+ * operator can write 4/3/3 or 0.4/0.3/0.3 with the same result, and an invalid
+ * or all-zero set falls back to the calibrated defaults instead of dividing
+ * by zero.
+ */
+function weightsFromEnv() {
+  const raw = {
+    Wm: Number(process.env.WEIGHT_MOBILITY ?? DEFAULT_WEIGHTS.Wm),
+    Wc: Number(process.env.WEIGHT_CLIMATE ?? DEFAULT_WEIGHTS.Wc),
+    Wv: Number(process.env.WEIGHT_VULNERABILITY ?? DEFAULT_WEIGHTS.Wv),
+  };
+
+  if (![raw.Wm, raw.Wc, raw.Wv].every((value) => Number.isFinite(value) && value >= 0)) {
+    return DEFAULT_WEIGHTS;
+  }
+
+  const sum = raw.Wm + raw.Wc + raw.Wv;
+  if (sum <= 0) return DEFAULT_WEIGHTS;
+
+  return { Wm: raw.Wm / sum, Wc: raw.Wc / sum, Wv: raw.Wv / sum };
+}
+
 const clamp = (value, min = 0, max = 10) => {
   const num = Number(value);
   if (!Number.isFinite(num)) return min;
@@ -49,7 +75,7 @@ export async function getActiveWeights() {
   } catch (error) {
     console.error('[risk-engine] Error reading weights:', error.message);
   }
-  return { Wm: 0.4, Wc: 0.4, Wv: 0.2 };
+  return weightsFromEnv();
 }
 
 /**
@@ -349,7 +375,7 @@ function computeConfidenceAndDegradation(mobilityData, climateData, vulnerabilit
 /**
  * Determines risk category band.
  */
-function classifyRiskLevel(compositeRisk, threshold = 7.0) {
+export function classifyRiskLevel(compositeRisk, threshold = 7.0) {
   if (compositeRisk >= threshold) return 'CRITICAL';
   if (compositeRisk >= 5.0) return 'HIGH';
   if (compositeRisk >= 3.0) return 'MODERATE';
@@ -372,7 +398,7 @@ function detectAnomalies(scores, currentRisk, previousRisk) {
 /**
  * Evaluates all events for a spatial cell and produces rich scores.
  */
-export function scoreCellEvents(events, previousCell, weights = { Wm: 0.4, Wc: 0.4, Wv: 0.2 }, threshold = 7.0) {
+export function scoreCellEvents(events, previousCell, weights = DEFAULT_WEIGHTS, threshold = 7.0) {
   const now = Date.now();
   const transit = events.filter((e) => e.sourceType === 'GTFS_TRANSIT');
   const weather = events.filter((e) => e.sourceType === 'WEATHER_API');
@@ -635,9 +661,16 @@ export async function getRiskDistributionSummary() {
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const threshold = await getRiskThreshold();
 
+  // Same definition of "active" as listActiveCells, so the summary cannot
+  // report more cells than the list an operator can see.
+  const activeMatch = {
+    lastUpdated: { $gte: cutoff },
+    'telemetryStats.lastObservedAt': { $gte: cutoff },
+  };
+
   const [aggregation, totalCells] = await Promise.all([
     SpatialCell.aggregate([
-      { $match: { lastUpdated: { $gte: cutoff } } },
+      { $match: activeMatch },
       {
         $group: {
           _id: '$riskLevel',
@@ -651,7 +684,7 @@ export async function getRiskDistributionSummary() {
         },
       },
     ]),
-    SpatialCell.countDocuments({ lastUpdated: { $gte: cutoff } }),
+    SpatialCell.countDocuments(activeMatch),
   ]);
 
   return {

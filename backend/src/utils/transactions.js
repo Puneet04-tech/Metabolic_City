@@ -69,15 +69,8 @@ export async function dispatchIncidentWithTransaction(incidentId, dispatchData) 
       { session, new: true }
     );
 
-    // Assign to field crew if specified
-    if (dispatchData.assignedCrewId) {
-      await User.findByIdAndUpdate(
-        dispatchData.assignedCrewId,
-        { $push: { assignedTasks: incidentId } },
-        { session }
-      );
-    }
-
+    // The incident itself carries assignedCrewId; the User document has no
+    // assignedTasks field, so writing one there was silently discarded.
     return incident;
   });
 }
@@ -103,15 +96,6 @@ export async function resolveIncidentWithTransaction(incidentId, resolutionData)
     incident.resolution = resolutionData;
     incident.resolvedAt = new Date();
     await incident.save({ session });
-
-    // Remove from field crew's assigned tasks
-    if (incident.assignedCrewId) {
-      await User.findByIdAndUpdate(
-        incident.assignedCrewId,
-        { $pull: { assignedTasks: incidentId } },
-        { session }
-      );
-    }
 
     // Update cell risk level based on resolution
     if (resolutionData.riskReduction) {

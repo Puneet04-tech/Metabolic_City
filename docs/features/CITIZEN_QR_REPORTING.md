@@ -17,6 +17,8 @@ Administrators generate QR codes for specific locations using the **QR Generator
   "cityCode": "CITY-IND-BPL8",
   "locationId": "LOC-001",
   "h3Index": "8928308280ffff",
+  "latitude": 23.2599,
+  "longitude": 77.4126,
   "label": "New Market Area",
   "createdAt": "2026-10-12T00:00:00.000Z"
 }
@@ -25,11 +27,11 @@ Administrators generate QR codes for specific locations using the **QR Generator
 **Steps:**
 1. Log in as Administrator
 2. Go to Admin Console → QR Codes tab
-3. Select city code (Bhopal, Indore, or Sehore)
+3. Select city code (Bhopal, Indore, Sehore or Ashta)
 4. Add locations with:
    - Location ID (e.g., LOC-001)
-   - Latitude (optional - for H3 cell calculation)
-   - Longitude (optional - for H3 cell calculation)
+   - Latitude (stored in the code so the resident does not need geolocation)
+   - Longitude (stored in the code so the resident does not need geolocation)
    - Label (e.g., "New Market Area")
 5. Click "Generate QR Codes"
 6. Download individual QR codes or all at once
@@ -116,6 +118,8 @@ Generate a single QR code for a location.
     "cityCode": "CITY-IND-BPL8",
     "locationId": "LOC-001",
     "h3Index": "8928308280ffff",
+    "latitude": 23.2599,
+    "longitude": 77.4126,
     "label": "New Market Area",
     "createdAt": "2026-10-12T00:00:00.000Z"
   },
@@ -182,7 +186,7 @@ Submit a citizen report.
   "longitude": 77.4126,
   "observedAt": "2026-10-12T00:00:00.000Z",
   "reportText": "Large pothole on main road",
-  "category": "infrastructure",
+  "category": "STRUCTURAL_DAMAGE",
   "urgency": "high",
   "locationId": "LOC-001",
   "cityCode": "CITY-IND-BPL8",
@@ -194,12 +198,18 @@ Submit a citizen report.
 **Response:**
 ```json
 {
-  "success": true,
-  "message": "Citizen report ingested successfully",
-  "h3Index": "8928308280ffff",
-  "cellUpdated": true
+  "accepted": true,
+  "event": { "_id": "...", "h3Index": "8928308280ffff", "sourceType": "CITIZEN_311" },
+  "cell": { "h3Index": "8928308280ffff", "compositeRisk": 3.4 }
 }
 ```
+
+`category` must be one of `WATERLOGGING`, `TRAFFIC_JAM`, `ROAD_BLOCK`,
+`FALLEN_TREE`, `OPEN_MANHOLE`, `POWER_HAZARD`, `STRUCTURAL_DAMAGE` or
+`GENERAL_HAZARD`. The QR payload carries `latitude`/`longitude`; for an older
+code that only carries an H3 index, the client uses the cell centre.
+
+Both city-code families are accepted (`CITY-MP-BPL` and `CITY-IND-BPL8`).
 
 ## H3 Cell Integration
 
@@ -207,12 +217,15 @@ Citizen reports are integrated into the H3 cell system:
 
 1. **Cell Creation:** If the H3 cell doesn't exist, it's created with the citizen report data
 2. **Cell Update:** If the cell exists, the report is added to the cell's telemetry history
-3. **Risk Impact:** Citizen reports affect the cell's composite risk score:
-   - Critical urgency: +3 to risk score
-   - High urgency: +2 to risk score
-   - Medium urgency: +1 to risk score
-   - Low urgency: +0.5 to risk score
-4. **Temporal Decay:** Citizen report impact decays over time (24-hour window)
+3. **Risk Impact:** Citizen reports feed the mobility and vulnerability sub-scores:
+   - A report whose text mentions traffic, a jam, a blocked road or waterlogging
+     adds 2.5 to the mobility sub-score (capped at 10)
+   - Every report adds 2.0 to the citizen distress component of the
+     vulnerability sub-score (capped at 10)
+   - `urgency` is stored in `rawPayload` for the operator but does not change
+     the score by itself
+4. **Temporal Decay:** Citizen report impact decays over the 1-hour scoring
+   window with a 30-minute half-life, and the event itself expires after 7 days
 
 ## Deployment
 

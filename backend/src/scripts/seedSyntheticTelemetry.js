@@ -66,7 +66,7 @@ async function seed() {
       {
         sourceType: 'GTFS_TRANSIT',
         ...normalized,
-        cityCode: 'CITY-IND-BPL8',
+        cityCode: 'CITY-MP-BPL',
         observedAt,
         delayMins,
         rawPayload: { synthetic: true, source: 'Public Survey', location, responseCount: publicLocationRows.length },
@@ -74,7 +74,7 @@ async function seed() {
       {
         sourceType: 'WEATHER_API',
         ...normalized,
-        cityCode: 'CITY-IND-BPL8',
+        cityCode: 'CITY-MP-BPL',
         observedAt,
         rainMmHr: rainExtraMins * 2,
         rawPayload: { synthetic: true, source: 'Public Survey', location, responseCount: publicLocationRows.length },
@@ -82,7 +82,7 @@ async function seed() {
       {
         sourceType: 'GIS_STATIC',
         ...normalized,
-        cityCode: 'CITY-IND-BPL8',
+        cityCode: 'CITY-MP-BPL',
         observedAt,
         vulnerabilityScore,
         rawPayload: { synthetic: true, source: 'Municipal Survey', location, responseCount: municipalLocationRows.length },

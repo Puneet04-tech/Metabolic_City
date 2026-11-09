@@ -1,6 +1,8 @@
 import express from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { body, query, validationResult } from 'express-validator';
 import { protect, authorize } from '../middleware/auth.js';
+import { normalizeCityCode } from '../services/cityConfig.js';
 import { DeadLetterMessage } from '../models/DeadLetterMessage.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { normalizeCoordinates, recalculateCell } from '../engine/risk.js';
@@ -36,7 +38,11 @@ export async function ingest(sourceType, payload) {
     throw new Error('Payload must be a non-empty JSON object.');
   }
 
-  const { latitude, longitude, h3Index } = normalizeCoordinates(payload.latitude, payload.longitude);
+  // Sensor payloads use lat/lng; report payloads use latitude/longitude.
+  const { latitude, longitude, h3Index } = normalizeCoordinates(
+    payload.latitude ?? payload.lat,
+    payload.longitude ?? payload.lng
+  );
   const observedAt = parseObservedAt(payload.timestamp || payload.observedAt);
   const delayMins = payload.delayMins != null
     ? Number(payload.delayMins)
@@ -49,7 +55,8 @@ export async function ingest(sourceType, payload) {
     h3Index,
     latitude,
     longitude,
-    cityCode: payload.cityCode || 'CITY-IND-BPL8',
+    // No hardcoded fallback: the model default applies when the source is silent.
+    cityCode: normalizeCityCode(payload.cityCode) || undefined,
     observedAt,
     routeId: payload.routeId,
     vehicleId: payload.vehicleId,
@@ -152,9 +159,28 @@ router.post('/batch', protect, authorize('operator', 'admin'), async (req, res) 
   });
 });
 
-// POST /api/v1/telemetry/ingest - Async high-throughput ingestion via queue
-// Performance Principle: Async Processing - O(1) response time with background processing
-router.post('/ingest', async (req, res, next) => {
+/**
+ * Sensor ingestion accepts a shared key so devices do not need a JWT, but it
+ * must never be open: without a configured INGEST_API_KEY only a signed-in
+ * operator or admin may post.
+ */
+function requireIngestAuth(req, res, next) {
+  const configuredKey = process.env.INGEST_API_KEY;
+  const suppliedKey = req.headers['x-api-key'];
+
+  if (configuredKey && typeof suppliedKey === 'string') {
+    const expected = Buffer.from(configuredKey);
+    const supplied = Buffer.from(suppliedKey);
+    if (expected.length === supplied.length && timingSafeEqual(expected, supplied)) {
+      return next();
+    }
+  }
+
+  return protect(req, res, (error) => (error ? next(error) : authorize('operator', 'admin')(req, res, next)));
+}
+
+// POST /api/v1/telemetry/ingest - Ingestion for sensor/survey payloads
+router.post('/ingest', requireIngestAuth, async (req, res, next) => {
   try {
     const payload = req.body;
 
@@ -167,7 +193,7 @@ router.post('/ingest', async (req, res, next) => {
     }
 
     // Empty Input / Field Validation Guard
-    const { lat, lng, reading, sensorId } = payload;
+    const { lat, lng, sensorId } = payload;
     if (lat === undefined || lng === undefined || !sensorId) {
       return res.status(422).json({
         error_code: 'ERR_INVALID_TELEMETRY_SCHEMA',
@@ -175,8 +201,26 @@ router.post('/ingest', async (req, res, next) => {
       });
     }
 
-    // Push to Queue (O(1) async execution)
-    const job = await addTelemetryEvent(payload);
+    const event = {
+      ...payload,
+      sourceType: payload.sourceType || 'IOT_SENSOR',
+      latitude: payload.latitude ?? lat,
+      longitude: payload.longitude ?? lng,
+    };
+
+    const job = await addTelemetryEvent(event);
+
+    // When Redis is disabled the queue accepts nothing; process inline instead
+    // of returning QUEUED for a job that would never run.
+    if (job?.local) {
+      const result = await ingest(event.sourceType, event);
+      return res.status(201).json({
+        status: 'ACCEPTED',
+        eventId: result.event._id,
+        h3Index: result.event.h3Index,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     return res.status(202).json({
       status: 'QUEUED',
@@ -184,8 +228,8 @@ router.post('/ingest', async (req, res, next) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    // Upstream Error Handling
-    next(err);
+    await writeDeadLetter(req.body?.sourceType || 'IOT_SENSOR', req.body || {}, err);
+    return res.status(422).json({ accepted: false, message: err.message, degraded: true });
   }
 });
 

@@ -68,7 +68,7 @@ export async function initializeStreamServer(server) {
     // Verify JWT token
     try {
       const { verifyToken } = await import('../middleware/auth.js');
-      const decoded = verifyToken(token);
+      const decoded = await verifyToken(token);
       socket.user = decoded;
       next();
     } catch (error) {
@@ -79,7 +79,7 @@ export async function initializeStreamServer(server) {
   });
 
   io.on('connection', (socket) => {
-    console.info(`[STREAM] Client connected: ${socket.id}, User: ${socket.user?.email || 'unknown'}`);
+    console.info(`[STREAM] Client connected: ${socket.id}, User: ${socket.user?.email || socket.user?.user?.email || 'unknown'}`);
 
     // Join user-specific room for targeted updates
     if (socket.user?.role) {

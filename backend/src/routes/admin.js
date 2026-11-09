@@ -4,7 +4,7 @@ import { body, validationResult } from 'express-validator';
 import { protect, authorize } from '../middleware/auth.js';
 import { ConfigWeights } from '../models/ConfigWeights.js';
 import { SpatialCell } from '../models/SpatialCell.js';
-import { getActiveWeights, getRiskThreshold, recalculateAllActiveCells } from '../engine/risk.js';
+import { classifyRiskLevel, getActiveWeights, getRiskThreshold, recalculateAllActiveCells } from '../engine/risk.js';
 import { User } from '../models/User.js';
 import { AuditLog } from '../models/AuditLog.js';
 
@@ -69,8 +69,8 @@ router.post('/weights/dry-run', protect, authorize('admin'), async (req, res, ne
         h3Index: cell.h3Index,
         currentRisk: cell.compositeRisk,
         projectedRisk,
-        currentRiskLevel: cell.compositeRisk >= threshold ? 'CRITICAL' : cell.compositeRisk >= 5 ? 'HIGH' : 'NORMAL',
-        projectedRiskLevel: projectedRisk >= threshold ? 'CRITICAL' : projectedRisk >= 5 ? 'HIGH' : 'NORMAL',
+        currentRiskLevel: classifyRiskLevel(cell.compositeRisk, threshold),
+        projectedRiskLevel: classifyRiskLevel(projectedRisk, threshold),
         delta: Number((projectedRisk - cell.compositeRisk).toFixed(2)),
       };
     });

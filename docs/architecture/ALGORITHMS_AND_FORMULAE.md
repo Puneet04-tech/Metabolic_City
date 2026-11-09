@@ -923,9 +923,10 @@ function detectAnomalies(scores, currentRisk, previousRisk) {
 ## Configuration Parameters
 
 ### Risk Scoring
-- `WEIGHT_MOBILITY` (default: 0.4)
-- `WEIGHT_CLIMATE` (default: 0.3)
-- `WEIGHT_VULNERABILITY` (default: 0.3)
+- `WEIGHT_MOBILITY`, `WEIGHT_CLIMATE`, `WEIGHT_VULNERABILITY` — weights saved by
+  an administrator in the console take priority; otherwise these environment
+  values are normalised to sum to 1.0. The engine fallback when they are unset
+  is 0.4 / 0.4 / 0.2, and `.env.example` ships 0.4 / 0.3 / 0.3.
 - `DEFAULT_RISK_THRESHOLD` (default: 7.0)
 
 ### Temporal

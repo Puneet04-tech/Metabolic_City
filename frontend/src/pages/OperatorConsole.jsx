@@ -22,15 +22,27 @@ import { getNavItems } from '../lib/routes.js';
 import useLiveCells from '../lib/useLiveCells.js';
 import styles from './OperatorConsole.module.css';
 
-const THRESHOLD = 7;
-
-/** The municipalities the console can show, by the code the cells carry. */
+/** The municipalities the console can show, by either code family. */
 const CITY_NAMES = {
   'CITY-MP-BPL': 'Bhopal',
   'CITY-MP-SHR': 'Sehore',
   'CITY-MP-IDR': 'Indore',
   'CITY-MP-AST': 'Ashta',
+  'CITY-IND-BPL8': 'Bhopal',
+  'CITY-IND-INR6': 'Indore',
+  'CITY-IND-SHR4': 'Sehore',
+  'CITY-IND-AST4': 'Ashta',
 };
+
+// Both families name the same municipality, so the city picker must group them
+// instead of showing two entries labelled Bhopal.
+const CITY_ALIASES = {
+  'CITY-IND-BPL8': 'CITY-MP-BPL',
+  'CITY-IND-INR6': 'CITY-MP-IDR',
+  'CITY-IND-SHR4': 'CITY-MP-SHR',
+  'CITY-IND-AST4': 'CITY-MP-AST',
+};
+const canonicalCity = (code) => CITY_ALIASES[code] || code;
 
 export default function OperatorConsole() {
   const { cells, connection, lastUpdated, serverUpdated, cadence } = useLiveCells();
@@ -49,19 +61,38 @@ export default function OperatorConsole() {
   const [hovered, setHovered] = useState(null);
   const [city, setCity] = useState(null);
   const [relative, setRelative] = useState(false);
+  const [threshold, setThreshold] = useState(7);
 
   const navItems = useMemo(() => getNavItems(user.role), [user.role]);
 
+  // The threshold is configurable by an admin, so read the one the engine is
+  // actually using instead of hardcoding it in the console.
+  useEffect(() => {
+    let cancelled = false;
+    apiRequest('/v1/spatial-cells/summary')
+      .then((summary) => {
+        const value = Number(summary?.threshold);
+        if (!cancelled && Number.isFinite(value) && value > 0) setThreshold(value);
+      })
+      .catch(() => {
+        /* the engine default is 7; the console still works without the summary */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // The server classifies each cell with the municipality's configured
   // threshold, so the band always matches the engine.
-  const bandOf = useCallback((cell) => cellBandFor(cell, mode, THRESHOLD), [mode]);
+  const bandOf = useCallback((cell) => cellBandFor(cell, mode, threshold), [mode, threshold]);
 
   // The cities that have cells, with the busiest first.
   const cityOptions = useMemo(() => {
     const counts = new Map();
     for (const cell of cells) {
       if (!cell.cityCode) continue;
-      counts.set(cell.cityCode, (counts.get(cell.cityCode) || 0) + 1);
+      const code = canonicalCity(cell.cityCode);
+      counts.set(code, (counts.get(code) || 0) + 1);
     }
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
@@ -80,7 +111,7 @@ export default function OperatorConsole() {
   const cityCells = useMemo(() => {
     if (city === null) return [];
     if (city === 'all') return cells;
-    return cells.filter((cell) => cell.cityCode === city);
+    return cells.filter((cell) => canonicalCity(cell.cityCode) === city);
   }, [cells, city]);
 
   const filtered = useMemo(() => {
@@ -95,12 +126,12 @@ export default function OperatorConsole() {
   }, [cityCells, search, bandFilters, bandOf]);
 
   const rows = useMemo(() => sortCells(filtered, mode), [filtered, mode]);
-  const counts = useMemo(() => countByBand(cityCells, mode, THRESHOLD), [cityCells, mode]);
+  const counts = useMemo(() => countByBand(cityCells, mode, threshold), [cityCells, mode, threshold]);
   const isFiltered = search.trim().length > 0 || bandFilters.size > 0;
 
   // The relative view only means something when every cell is in the same
   // band, so it is offered only then.
-  const relativeAvailable = allInOneBand(cityCells, mode, THRESHOLD);
+  const relativeAvailable = allInOneBand(cityCells, mode, threshold);
   useEffect(() => {
     if (!relativeAvailable && relative) setRelative(false);
   }, [relativeAvailable, relative]);
@@ -174,7 +205,7 @@ export default function OperatorConsole() {
         });
         setNotice(
           decision === 'approve'
-            ? 'Alert approved. The field crew has been notified.'
+            ? 'Alert approved. The incident is ready for a crew to claim in the field console.'
             : 'Alert overridden and recorded in the audit trail.'
         );
         backToList();
@@ -274,7 +305,7 @@ export default function OperatorConsole() {
             className={styles.map}
             cells={cityCells}
             mode={mode}
-            threshold={THRESHOLD}
+            threshold={threshold}
             relative={relative && relativeAvailable}
             fitKey={city}
             selectedId={selected ? selected.h3Index : null}
@@ -295,7 +326,7 @@ export default function OperatorConsole() {
               <CellDetail
                 cell={selected}
                 mode={mode}
-                threshold={THRESHOLD}
+                threshold={threshold}
                 action={action}
                 loading={actionLoading}
                 error={error}
@@ -308,7 +339,7 @@ export default function OperatorConsole() {
               <CellList
                 cells={rows}
                 mode={mode}
-                threshold={THRESHOLD}
+                threshold={threshold}
                 sort={sort}
                 onSortChange={setSort}
                 selectedId={selected ? selected.h3Index : null}

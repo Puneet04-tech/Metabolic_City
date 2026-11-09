@@ -13,10 +13,12 @@ export async function evaluateEscalations() {
     const cutoff = new Date(Date.now() - escalationTimeoutMinutes * 60 * 1000);
     const threshold = await getRiskThreshold();
 
+    // The decision flow creates APPROVED (and the crew flow DISPATCHED), so a
+    // monitor that only watches DETECTED never fires for a real incident.
     const unhandledIncidents = await Incident.find({
       riskScore: { $gte: threshold },
-      status: 'DETECTED',
-      detectedAt: { $lte: cutoff },
+      status: { $in: ['DETECTED', 'APPROVED', 'DISPATCHED'] },
+      $or: [{ dispatchedAt: { $lte: cutoff } }, { dispatchedAt: null, detectedAt: { $lte: cutoff } }],
     })
       .limit(50)
       .lean();

@@ -13,6 +13,7 @@ const CITY_CODES = [
   { value: 'CITY-IND-BPL8', label: 'Bhopal' },
   { value: 'CITY-IND-INR6', label: 'Indore' },
   { value: 'CITY-IND-SHR4', label: 'Sehore' },
+  { value: 'CITY-IND-AST4', label: 'Ashta' },
 ];
 
 const emptyLocation = () => ({ locationId: '', latitude: '', longitude: '', label: '' });
@@ -177,7 +178,7 @@ export default function QrPanel({ cityCode: defaultCityCode = CITY_CODES[0].valu
               <img className={styles.codeImage} src={code.qrCode} alt={`QR code for ${code.label || code.locationId}`} width={160} height={160} />
               <p className={styles.codeLabel}>{code.label || code.locationId}</p>
               <p className={styles.codeId}>{code.locationId}</p>
-              <Button variant="ghost" size="sm" onClick={() => copy(code.url)}>
+              <Button variant="ghost" size="sm" onClick={() => copy(code.reportUrl)}>
                 <Copy size={13} aria-hidden="true" />
                 Copy report link
               </Button>

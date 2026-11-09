@@ -3,8 +3,6 @@ import { getCityNetworkCells, TRAFFIC_ROAD_CLASSES } from './osmService.js';
 import { consumeBudget, remainingBudget } from './requestBudget.js';
 import * as h3 from 'h3-js';
 
-const h3IndexOf = h3.latLngToCell || h3.geoToH3;
-
 const FLOW_URL = 'https://api.tomtom.com/traffic/services/4/flowSegmentData';
 const INCIDENT_URL = 'https://api.tomtom.com/traffic/services/5/incidentDetails';
 
@@ -211,6 +209,7 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
 
   const events = [];
   let failures = 0;
+  let firstFailure = null;
 
   for (const probe of probes) {
     const budget = await consumeBudget(FLOW_PROVIDER, 1, FLOW_MONTHLY_LIMIT);
@@ -223,6 +222,7 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
       segment = await fetchFlowSegment(probe);
     } catch (error) {
       failures += 1;
+      if (!firstFailure) firstFailure = error.message;
       if (error instanceof Error && /rate limit/.test(error.message)) break;
       continue;
     }
@@ -230,12 +230,12 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
 
     const mobility = flowToMobility(segment);
 
-    // The reading belongs to the road TomTom matched, not to the point we
-    // asked about, so the cell it lands in is the cell that road is in.
-    const coordinate = segment.coordinates?.coordinate?.[0];
-    const latitude = coordinate?.latitude ?? probe.latitude;
-    const longitude = coordinate?.longitude ?? probe.longitude;
-    const h3Index = h3IndexOf(latitude, longitude, 8) || probe.h3Index;
+    // The probe is the road chosen inside a watched cell, so the reading
+    // belongs to that cell. TomTom snaps the point to its nearest segment,
+    // and that snap can fall just outside the city network; taking the h3
+    // from the snapped coordinate used to create cells the city never
+    // watches, with no weather or terrain behind them.
+    const { latitude, longitude, h3Index } = probe;
 
     events.push({
       sourceType: 'GTFS_TRANSIT',
@@ -249,6 +249,10 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
       congestionLevel: segment.roadClosure ? 'STANDSTILL' : mobility.congestionLevel,
       rawPayload: {
         source: 'tomtom-traffic-flow',
+        // Replaced at the next poll for this city, like the weather and
+        // terrain readings, so repeated polls do not stack duplicate
+        // copies of the same road reading.
+        pipelineGenerated: true,
         roadName: probe.roadName,
         highway: probe.highway,
         frc: segment.frc,
@@ -262,7 +266,7 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
     });
   }
 
-  return { events, probes: probes.length, failures };
+  return { events, probes: probes.length, failures, firstFailure };
 }
 
 /**
@@ -281,6 +285,16 @@ export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 
 
   const probes = await selectTrafficProbes(cityName, Math.min(maxProbes, left), offset);
   if (!probes.length) return { events: [] };
+
+  // Incidents are reported where they are, which can sit just outside the
+  // city's watched cells. They are attributed to the nearest cell the city
+  // actually watches, so a real incident is never dropped for being a few
+  // metres over a boundary and never invents a cell of its own.
+  const networkCells = await getCityNetworkCells(cityName);
+  const centers = networkCells.map((cell) => {
+    const [latitude, longitude] = h3.cellToLatLng(cell.h3Index);
+    return { h3Index: cell.h3Index, latitude, longitude };
+  });
 
   const latitudes = probes.map((probe) => probe.latitude);
   const longitudes = probes.map((probe) => probe.longitude);
@@ -306,7 +320,7 @@ export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 
     // A LineString is [lon, lat] pairs; a Point is a single [lon, lat].
     const first = Array.isArray(coordinates[0]) ? coordinates[0] : coordinates;
     const [longitude, latitude] = first;
-    const h3Index = h3IndexOf(latitude, longitude, 8);
+    const h3Index = nearestCell(centers, latitude, longitude);
     if (!h3Index) continue;
 
     const properties = incident.properties || {};
@@ -328,6 +342,7 @@ export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 
       congestionLevel: congestionLevelFor(impact.speedReductionPct),
       rawPayload: {
         source: 'tomtom-traffic-incidents',
+        pipelineGenerated: true,
         incidentId: properties.id,
         category: impact.label,
         iconCategory: properties.iconCategory,
@@ -343,6 +358,28 @@ export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 
   }
 
   return { events };
+}
+
+/**
+ * The watched cell nearest to a point, used to place an incident that is
+ * reported a little outside the street network the cell list was built from.
+ */
+function nearestCell(centers, latitude, longitude) {
+  let best = null;
+  let bestDistance = Infinity;
+
+  for (const center of centers) {
+    const dLat = ((center.latitude - latitude) * Math.PI) / 180;
+    const dLng = ((center.longitude - longitude) * Math.PI) / 180;
+    const meanLat = ((center.latitude + latitude) / 2 * Math.PI) / 180;
+    const distance = dLat * dLat + (dLng * Math.cos(meanLat)) ** 2;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = center.h3Index;
+    }
+  }
+
+  return best;
 }
 
 /**
@@ -381,15 +418,6 @@ export function flowToMobility(segment) {
 export async function selectTrafficProbes(cityName, maxProbes = 25, offset = 0) {
   const cells = await getCityNetworkCells(cityName);
   const candidates = [];
-
-  // Debug: Log all highway types found in the city
-  const allHighwayTypes = new Set();
-  for (const cell of cells) {
-    for (const segment of cell.segments) {
-      if (segment.highway) allHighwayTypes.add(segment.highway);
-    }
-  }
-  console.log(`[traffic] Highway types found in ${cityName}:`, Array.from(allHighwayTypes).join(', '));
 
   for (const cell of cells) {
     const roads = cell.segments.filter((segment) => TRAFFIC_ROAD_CLASSES.has(segment.highway));

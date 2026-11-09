@@ -130,11 +130,8 @@ export class IncidentDispatchSaga {
       await this.updateIncidentStatus();
       this.steps.push('updateIncidentStatus');
       
-      // Step 2: Assign to field crew
-      await this.assignToFieldCrew();
-      this.steps.push('assignToFieldCrew');
-      
-      // Step 3: Update cell risk level
+      // Step 2: Update cell risk level
+      // The incident's assignedCrewId is the assignment; User has no task list.
       await this.updateCellRisk();
       this.steps.push('updateCellRisk');
       
@@ -163,20 +160,6 @@ export class IncidentDispatchSaga {
     });
     
     return incident;
-  }
-
-  async assignToFieldCrew() {
-    const { User } = await import('../models/User.js');
-    
-    await User.findByIdAndUpdate(
-      this.dispatchData.assignedCrewId,
-      { $push: { assignedTasks: this.incidentId } }
-    );
-    
-    this.compensatingActions.push({
-      action: 'removeTaskFromCrew',
-      crewId: this.dispatchData.assignedCrewId,
-    });
   }
 
   async updateCellRisk() {
@@ -208,14 +191,6 @@ export class IncidentDispatchSaga {
           await Incident.findByIdAndUpdate(
             this.incidentId,
             { status: action.data.status }
-          );
-        }
-        
-        if (action.action === 'removeTaskFromCrew') {
-          const { User } = await import('../models/User.js');
-          await User.findByIdAndUpdate(
-            action.crewId,
-            { $pull: { assignedTasks: this.incidentId } }
           );
         }
         

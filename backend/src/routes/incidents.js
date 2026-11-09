@@ -203,10 +203,30 @@ router.post(
         });
       }
 
+      // Approving the same cell twice must not open two incidents. The lock
+      // prevents concurrent operators; this covers the sequential case.
+      if (decision === 'approve') {
+        const openIncident = await Incident.findOne({
+          h3Index: cell.h3Index,
+          status: { $in: ['APPROVED', 'DISPATCHED', 'ACKNOWLEDGED', 'ARRIVED'] },
+        })
+          .sort({ detectedAt: -1 })
+          .lean();
+
+        if (openIncident) {
+          await CellLock.deleteOne({ _id: lock._id });
+          return res.status(409).json({
+            status: 'INCIDENT_ALREADY_OPEN',
+            message: 'An open incident already exists for this cell.',
+            incident: openIncident,
+          });
+        }
+      }
+
       const action = await synthesizeAction(cell);
       const incident = await Incident.create({
         h3Index: cell.h3Index,
-        cityCode: req.user.cityCode || 'CITY-IND-BPL8',
+        cityCode: req.user.cityCode || cell.cityCode || undefined,
         riskScore: cell.compositeRisk,
         scores: cell.scores,
         action,

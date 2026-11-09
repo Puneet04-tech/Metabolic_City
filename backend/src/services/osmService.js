@@ -37,6 +37,8 @@ export const TRAFFIC_ROAD_CLASSES = new Set([
   'residential',
   'living_street',
   'service',  // Service roads near highways - common in Indian cities
+  'track',  // Common in Indian cities for service access roads
+  'path',   // Paths that carry local traffic
 ]);
 
 const WATER_CLASSES = new Set(['river', 'stream', 'canal', 'drain', 'ditch', 'weir']);

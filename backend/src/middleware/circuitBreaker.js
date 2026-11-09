@@ -65,29 +65,6 @@ export const weatherCircuit = new Proxy({}, {
   },
 });
 
-// Fallback when circuit is open
-weatherCircuit.fallback(() => {
-  console.error('[Circuit Breaker] Weather API circuit open, using fallback');
-  return {
-    error: 'CIRCUIT_OPEN',
-    message: 'Weather API temporarily unavailable, using cached data',
-    fallback: true,
-  };
-});
-
-// Log circuit state changes
-weatherCircuit.on('open', () => {
-  console.error('[Circuit Breaker] Weather API circuit OPEN');
-});
-
-weatherCircuit.on('halfOpen', () => {
-  console.warn('[Circuit Breaker] Weather API circuit HALF-OPEN, testing...');
-});
-
-weatherCircuit.on('close', () => {
-  console.log('[Circuit Breaker] Weather API circuit CLOSED, normal operation');
-});
-
 /**
  * Circuit Breaker for Transit API
  * Prevents cascading failures when transit APIs are down
@@ -95,9 +72,14 @@ weatherCircuit.on('close', () => {
 export function getTransitCircuit() {
   if (!transitCircuitInstance) {
     transitCircuitInstance = new CircuitBreaker(
-      async (weather) => {
-        const { generateTransitData } = await import('../services/transitService.js');
-        return await generateTransitData(weather);
+      async (payload = {}) => {
+        const { generateTransitTelemetryEvents } = await import('../services/transitService.js');
+        return generateTransitTelemetryEvents(
+          payload.cityName,
+          payload.weather,
+          payload.horizonMinutes,
+          payload.options
+        );
       },
       circuitOptions
     );

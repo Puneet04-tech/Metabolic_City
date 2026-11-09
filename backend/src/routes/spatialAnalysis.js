@@ -1,4 +1,5 @@
 import express from 'express';
+import { protect, authorize } from '../middleware/auth.js';
 import {
   getMultiResolutionRisk,
   getNeighborAwareRisk,
@@ -8,6 +9,10 @@ import {
 } from '../services/spatialAnalysis.js';
 
 const router = express.Router();
+
+// These analyses read cell history and risk, so they require a signed-in
+// operator, field crew or admin like the rest of the console API.
+router.use(protect, authorize('operator', 'field', 'admin'));
 
 /**
  * Get multi-resolution risk analysis

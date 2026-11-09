@@ -94,7 +94,7 @@ Metabolic_City/
 │   │   ├── api.js                 # API client with session management
 │   │   ├── main.jsx               # React entry point
 │   │   ├── lib/
-│   │   │   ├── useOptimisticUpdate.js # Optimistic UI updates
+│   │   │   ├── cells/index.js     # Cell bands, labels and sorting
 │   │   │   ├── useLiveCells.js    # Live cell data management
 │   │   │   └── routes.js          # Route configuration
 │   │   ├── components/
@@ -126,12 +126,12 @@ Metabolic_City/
 
 2. **Field Crew** (`field_crew`)
    - Mobile field personnel
-   - Authenticated via Phone + SMS Passcode
+   - Authenticated via Phone + Password
    - Submits field reports with GPS/photos
 
 3. **Administrator** (`administrator`)
    - System administrators
-   - Authenticated via Admin ID + Hardware Token
+   - Authenticated via Admin ID + Password
    - Full system access and configuration
 
 ### Security Features (7-Layer Defense)
@@ -191,8 +191,8 @@ Metabolic_City/
 
 - Node.js 18+
 - MongoDB Atlas account (with TLS enabled)
-- Redis 6+ (for distributed WebSocket)
 - Git
+- Redis 6+ is optional; it is only needed for multi-instance Socket.IO
 
 ### Installation
 
@@ -228,7 +228,8 @@ MONGODB_CONNECT_TIMEOUT_MS=20000
 
 # JWT (Required - generate strong secret)
 JWT_SECRET=<generate-with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
-JWT_EXPIRES_IN=7d
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_TTL=7d
 
 # CORS (Update after deployment)
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000
@@ -237,8 +238,8 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=300
 
-# Redis (Required for distributed WebSocket)
-REDIS_ENABLED=true
+# Redis (optional, only for distributed Socket.IO)
+REDIS_ENABLED=false
 REDIS_URL=redis://localhost:6379
 
 # Security
@@ -369,8 +370,10 @@ API health check with MongoDB, Redis, and service status.
 
 ## 🎨 Frontend Routes
 
-- `/` - Authentication page (login/signup)
-- `/dashboard` - Protected dashboard (requires authentication)
+- `/` - Public landing page
+- `/login` - Sign in (operator, field crew or administrator)
+- `/signup` - Create an account for a municipality
+- `/role-home` - Redirects a signed-in user to their role's home
 - `/operator` - Operator console with H3 map and live telemetry
 - `/field` - Field crew task management and offline sync
 - `/admin` - Administrative controls and risk weight management

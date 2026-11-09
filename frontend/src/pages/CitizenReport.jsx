@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { cellToLatLng } from 'h3-js';
 import { CheckCircle2, CloudOff, MapPin } from 'lucide-react';
 import PublicReportShell from '../components/shell/PublicReportShell/PublicReportShell';
 import Button from '../components/ui/Button/Button';
@@ -10,14 +11,41 @@ import Textarea from '../components/ui/Textarea/Textarea';
 import { apiRequest } from '../api.js';
 import styles from './CitizenReport.module.css';
 
+// These values are the TelemetryEvent category enum: the API rejects anything
+// else, so the labels are the only thing that should differ from the schema.
 const CATEGORIES = [
-  { value: 'infrastructure', label: 'Infrastructure (roads, drainage, water)' },
-  { value: 'traffic', label: 'Traffic and transport' },
-  { value: 'flood', label: 'Flooding and waterlogging' },
-  { value: 'sanitation', label: 'Sanitation and waste' },
-  { value: 'emergency', label: 'Emergency' },
-  { value: 'other', label: 'Other' },
+  { value: 'WATERLOGGING', label: 'Flooding and waterlogging' },
+  { value: 'TRAFFIC_JAM', label: 'Traffic jam' },
+  { value: 'ROAD_BLOCK', label: 'Road blocked or closed' },
+  { value: 'FALLEN_TREE', label: 'Fallen tree' },
+  { value: 'OPEN_MANHOLE', label: 'Open manhole or missing cover' },
+  { value: 'POWER_HAZARD', label: 'Electrical or power hazard' },
+  { value: 'STRUCTURAL_DAMAGE', label: 'Damaged road, drain or structure' },
+  { value: 'GENERAL_HAZARD', label: 'Other hazard' },
 ];
+
+/**
+ * The report needs coordinates. New codes carry them; older codes carry only
+ * an H3 index, whose cell centre is close enough for a street-level report.
+ */
+function resolveCoordinates(location, qrData) {
+  if (location) return location;
+
+  const lat = Number(qrData?.latitude);
+  const lon = Number(qrData?.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) return { latitude: lat, longitude: lon };
+
+  if (qrData?.h3Index) {
+    try {
+      const [cellLat, cellLon] = cellToLatLng(qrData.h3Index);
+      return { latitude: cellLat, longitude: cellLon };
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
 
 const URGENCY = [
   { value: 'low', label: 'Low — can be addressed within a week' },
@@ -33,7 +61,7 @@ export default function CitizenReport() {
   const [searchParams] = useSearchParams();
   const [qrData, setQrData] = useState(null);
   const [reportText, setReportText] = useState('');
-  const [category, setCategory] = useState('infrastructure');
+  const [category, setCategory] = useState('GENERAL_HAZARD');
   const [urgency, setUrgency] = useState('medium');
   const [location, setLocation] = useState(null);
   const [locating, setLocating] = useState(false);
@@ -96,13 +124,19 @@ export default function CitizenReport() {
       return;
     }
 
+    const coordinates = resolveCoordinates(location, qrData);
+    if (!coordinates) {
+      setError('This code does not include a usable location. Use your current position and try again.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
 
     const reportData = {
       sourceType: 'citizen',
-      latitude: location?.latitude ?? qrData?.latitude,
-      longitude: location?.longitude ?? qrData?.longitude,
+      latitude: coordinates.latitude,
+      longitude: coordinates.longitude,
       observedAt: new Date().toISOString(),
       reportText,
       category,

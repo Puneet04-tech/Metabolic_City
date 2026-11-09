@@ -50,6 +50,32 @@ export const authorize = (...roles) => (req, res, next) => {
   next();
 };
 
+/**
+ * Verify an access token outside of an Express request (for example a
+ * Socket.IO handshake). Throws when the signature, session or user is not
+ * valid, so callers can map the failure to their own error shape.
+ */
+export async function verifyToken(token) {
+  if (!token) throw new Error('Missing token.');
+  if (isTokenRevoked(token)) throw new Error('Token has been revoked.');
+
+  const decoded = jwt.verify(token, getJwtSecret());
+  if (!decoded.jti || decoded.type !== 'access') {
+    throw new Error('Invalid token type.');
+  }
+
+  const session = await TokenSession.findOne({ jti: decoded.jti, revokedAt: null }).lean();
+  if (!session) throw new Error('Token has been revoked or session expired.');
+
+  const user = await User.findById(decoded.id).lean();
+  if (!user || user.active === false) {
+    throw new Error('User account not found or deactivated.');
+  }
+
+  // The database is authoritative for role and city, not the token payload.
+  return { ...decoded, email: user.email, role: user.role, cityCode: user.cityCode, user };
+}
+
 export const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;

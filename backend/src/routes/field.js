@@ -6,14 +6,26 @@ import { AuditLog } from '../models/AuditLog.js';
 import { broadcastIncident } from '../engine/stream.js';
 import { ingest } from './telemetry.js';
 import { congestionLevelFor } from '../services/trafficService.js';
+import { getCityCodeVariants } from '../services/cityConfig.js';
 
 const router = express.Router();
 const allowedStatuses = ['ACKNOWLEDGED', 'ARRIVED', 'RESOLVED'];
+
+/**
+ * A field crew works for one municipality. Admins keep cross-city visibility,
+ * but a crew must not be able to claim or resolve another city's incident.
+ * Both city-code families are accepted, so existing incidents still match.
+ */
+function cityScope(user) {
+  if (!user?.cityCode || user.role === 'admin' || user.role === 'administrator') return {};
+  return { cityCode: { $in: getCityCodeVariants(user.cityCode) } };
+}
 
 // GET /api/v1/field/tasks - List assigned and unassigned approved tasks
 router.get('/tasks', protect, authorize('field', 'admin'), async (req, res, next) => {
   try {
     const incidents = await Incident.find({
+      ...cityScope(req.user),
       $or: [
         { assignedCrewId: req.user._id },
         { status: 'APPROVED', assignedCrewId: { $exists: false } },
@@ -67,6 +79,7 @@ router.post('/sync', protect, authorize('field', 'admin'), async (req, res, next
       const incident = await Incident.findOneAndUpdate(
         {
           _id: incidentId,
+          ...cityScope(req.user),
           $or: [{ assignedCrewId: req.user._id }, { assignedCrewId: { $exists: false } }],
         },
         { $set: fields },
@@ -108,6 +121,7 @@ router.get('/history', protect, authorize('field', 'admin'), async (req, res, ne
   try {
     const limit = Math.min(Number(req.query.limit) || 30, 100);
     const incidents = await Incident.find({
+      ...cityScope(req.user),
       assignedCrewId: req.user._id,
       status: 'RESOLVED',
     })

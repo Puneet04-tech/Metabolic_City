@@ -202,6 +202,7 @@ export async function runDataPipeline() {
     const successfulCityCodes = [];
     const failedCities = [];
     const citiesWithFreshTraffic = new Set();
+    const citiesWithFreshTransit = new Set();
 
     for (const cityName of cities) {
       const weather = weatherData[cityName];
@@ -334,12 +335,28 @@ export async function runDataPipeline() {
             console.warn(`  ${cityName}: incident feed unavailable: ${incidentError.message}`);
           }
 
-          lastTrafficPollAt.set(cityName, Date.now());
-          trafficOffset.set(cityName, offset + probes);
-          citiesWithFreshTraffic.add(cityName);
+          // Only a poll that produced readings counts as done. A zero-result
+          // poll (no cached roads, provider refusing, every probe failing) is
+          // retried on the next cycle instead of being hidden for a full
+          // interval, which is what made the log read 0 and then stay silent.
+          if (traffic.events.length > 0) {
+            lastTrafficPollAt.set(cityName, Date.now());
+            trafficOffset.set(cityName, offset + (traffic.probes || probes));
+            citiesWithFreshTraffic.add(cityCoords.code);
+          } else {
+            lastTrafficPollAt.delete(cityName);
+          }
 
+          const attempted = traffic.probes ?? 0;
+          const failed = traffic.failures ?? 0;
+          const reason = traffic.skipped
+            ? ` — ${traffic.skipped}`
+            : traffic.firstFailure
+              ? ` — first failure: ${traffic.firstFailure}`
+              : '';
           console.log(
-            `  ${cityName}: ${traffic.events.length} real road speed readings and ${incidentCount} real incidents`
+            `  ${cityName}: ${traffic.events.length} real road speed readings from ${attempted} probes ` +
+              `(${failed} failed) and ${incidentCount} real incidents${reason}`
           );
         }
       } else {
@@ -359,7 +376,7 @@ export async function runDataPipeline() {
           Object.assign(event, normalizeCoordinates(event.latitude, event.longitude));
           allTelemetryEvents.push(event);
         }
-        citiesWithFreshTraffic.add(cityName);
+        citiesWithFreshTransit.add(cityCoords.code);
         console.log(`  ${cityName}: ${transitEvents.length} simulated transit events`);
       }
 
@@ -384,11 +401,32 @@ export async function runDataPipeline() {
 
     // The traffic readings are only replaced when they have been refreshed,
     // so a cycle that does not poll traffic keeps the last readings.
+    // Simulated transit is replaced whenever it is regenerated, but only
+    // the simulated readings: a simulated cycle must never remove the real
+    // road speeds measured on the previous poll.
+    if (citiesWithFreshTransit.size) {
+      await TelemetryEvent.deleteMany({
+        sourceType: 'GTFS_TRANSIT',
+        cityCode: { $in: [...citiesWithFreshTransit] },
+        'rawPayload.simulated': true,
+      });
+    }
+
     if (citiesWithFreshTraffic.size) {
       await TelemetryEvent.deleteMany({
         sourceType: 'GTFS_TRANSIT',
         cityCode: { $in: [...citiesWithFreshTraffic] },
-        'rawPayload.pipelineGenerated': true,
+        // Readings written before the pipeline flag existed are still
+        // traffic readings, so they are replaced too rather than lingering
+        // beside the new ones until they age out of the window.
+        $or: [
+          { 'rawPayload.pipelineGenerated': true },
+          {
+            'rawPayload.source': {
+              $in: ['tomtom-traffic-flow', 'tomtom-traffic-incidents'],
+            },
+          },
+        ],
       });
     }
 

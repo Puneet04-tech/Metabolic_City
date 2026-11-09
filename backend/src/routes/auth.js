@@ -13,8 +13,21 @@ const router = express.Router();
 
 const ROLES = ['operator', 'field_crew', 'administrator'];
 
-const ACCESS_TOKEN_TTL = process.env.JWT_EXPIRES_IN || '15m';
-const REFRESH_TOKEN_TTL = '7d';
+// An access token lives as long as its server-side session. JWT_EXPIRES_IN is
+// not used for access tokens: a long value there silently produced a token the
+// API treated as expired after 15 minutes.
+const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
+const REFRESH_TOKEN_TTL = process.env.REFRESH_TOKEN_TTL || '7d';
+
+function ttlToMs(ttl, fallbackMs) {
+  const match = /^(\d+)([smhd])$/.exec(String(ttl).trim());
+  if (!match) return fallbackMs;
+  const unitMs = { s: 1000, m: 60 * 1000, h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000 }[match[2]];
+  return Number(match[1]) * unitMs;
+}
+
+const ACCESS_TOKEN_MS = ttlToMs(ACCESS_TOKEN_TTL, 15 * 60 * 1000);
+const REFRESH_TOKEN_MS = ttlToMs(REFRESH_TOKEN_TTL, 7 * 24 * 60 * 60 * 1000);
 
 const roleAliases = {
   field: 'field_crew',
@@ -69,8 +82,8 @@ const readRefreshCookie = (req) => {
 const issueSession = async (res, user) => {
   const access = createToken(user, 'access', ACCESS_TOKEN_TTL);
   const refresh = createToken(user, 'refresh', REFRESH_TOKEN_TTL);
-  await persistSession(user, access.tokenId, new Date(Date.now() + 15 * 60 * 1000));
-  await persistSession(user, refresh.tokenId, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+  await persistSession(user, access.tokenId, new Date(Date.now() + ACCESS_TOKEN_MS));
+  await persistSession(user, refresh.tokenId, new Date(Date.now() + REFRESH_TOKEN_MS));
   setRefreshCookie(res, refresh.token);
   return access.token;
 };

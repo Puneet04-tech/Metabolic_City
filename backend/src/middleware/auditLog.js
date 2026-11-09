@@ -1,46 +1,26 @@
-import mongoose from 'mongoose';
+import { AuditLog } from '../models/AuditLog.js';
 
-/**
- * Audit Log Schema
- * Security Principle: Audit Logging - All actions logged with user, timestamp, and context
- * 
- * Note: This schema must match backend/src/models/AuditLog.js to avoid conflicts
- * Fields: actorId, action, entityType, entityId, metadata, createdAt
- */
-const auditLogSchema = new mongoose.Schema({
-  actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  action: { type: String, required: true },
-  entityType: { type: String, required: true },
-  entityId: String,
-  metadata: mongoose.Schema.Types.Mixed,
-  createdAt: { type: Date, default: Date.now, index: true },
-});
-
-auditLogSchema.index({ actorId: 1, createdAt: -1 });
-auditLogSchema.index({ action: 1, createdAt: -1 });
-auditLogSchema.index({ entityType: 1, createdAt: -1 });
-auditLogSchema.index({ createdAt: -1 });
-
-// Check if model already exists before defining (prevents hot reload errors)
-export const AuditLog = mongoose.models.AuditLog || mongoose.model('AuditLog', auditLogSchema);
+export { AuditLog };
 
 /**
  * Audit Logging Middleware
- * Logs all successful API calls for security and compliance
+ * Logs all successful authenticated API calls for security and compliance.
+ * The model (and its retention index) lives in models/AuditLog.js so there is
+ * only one AuditLog schema in the process.
  */
 export function auditLogMiddleware(req, res, next) {
   const originalSend = res.send;
   const startTime = Date.now();
 
-  res.send = function(data) {
+  res.send = function (data) {
     const duration = Date.now() - startTime;
-    
+
     // Only log successful requests (status < 400)
     if (res.statusCode < 400 && req.user) {
       // Determine entity type from path and params
       let entityType = 'api';
       let entityId = null;
-      
+
       if (req.params.h3Index) {
         entityType = 'cell';
         entityId = req.params.h3Index;
@@ -93,9 +73,9 @@ export function auditLogMiddleware(req, res, next) {
  */
 function sanitizeBody(body) {
   if (!body) return undefined;
-  
+
   const sanitized = { ...body };
-  
+
   // Remove sensitive fields
   const sensitiveFields = ['password', 'token', 'secret', 'apiKey', 'creditCard'];
   sensitiveFields.forEach((field) => {
@@ -103,7 +83,7 @@ function sanitizeBody(body) {
       sanitized[field] = '[REDACTED]';
     }
   });
-  
+
   return sanitized;
 }
 
@@ -111,18 +91,14 @@ function sanitizeBody(body) {
  * Get audit logs for a user
  */
 export async function getUserAuditLogs(userId, limit = 100) {
-  return AuditLog.find({ userId })
-    .sort({ timestamp: -1 })
-    .limit(limit);
+  return AuditLog.find({ actorId: userId }).sort({ createdAt: -1 }).limit(limit);
 }
 
 /**
  * Get audit logs for a specific action
  */
 export async function getActionAuditLogs(action, limit = 100) {
-  return AuditLog.find({ action })
-    .sort({ timestamp: -1 })
-    .limit(limit);
+  return AuditLog.find({ action }).sort({ createdAt: -1 }).limit(limit);
 }
 
 /**
@@ -130,7 +106,5 @@ export async function getActionAuditLogs(action, limit = 100) {
  */
 export async function getRecentAuditLogs(hours = 24, limit = 1000) {
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
-  return AuditLog.find({ timestamp: { $gte: cutoff } })
-    .sort({ timestamp: -1 })
-    .limit(limit);
+  return AuditLog.find({ createdAt: { $gte: cutoff } }).sort({ createdAt: -1 }).limit(limit);
 }

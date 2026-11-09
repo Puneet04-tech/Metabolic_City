@@ -230,7 +230,10 @@ export default function FieldTaskDetail() {
                 <p className={styles.eyebrow}>Incident</p>
                 <h1 className={styles.title}>Cell {task.h3Index}</h1>
               </div>
-              <SeverityBadge severity={prioritySeverity(task.priority)} label={priorityLabel(task.priority)} />
+              <SeverityBadge
+                severity={prioritySeverity(task.action?.priority ?? task.priority)}
+                label={priorityLabel(task.action?.priority ?? task.priority)}
+              />
             </header>
 
             <StatusStepper status={task.status} />

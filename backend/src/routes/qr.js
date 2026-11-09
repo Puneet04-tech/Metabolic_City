@@ -1,8 +1,22 @@
 import express from 'express';
 import QRCode from 'qrcode';
 import h3 from 'h3-js';
+import { protect, authorize } from '../middleware/auth.js';
+import { normalizeCityCode } from '../services/cityConfig.js';
 
 const router = express.Router();
+
+// Both code families are accepted: CITY-MP-BPL (pipeline) and CITY-IND-BPL8
+// (operator accounts and existing printed codes).
+const CITY_CODE_PATTERN = /^CITY-[A-Z]{2,3}-[A-Z0-9]{2,8}$/;
+
+function normalizeCoordinates(latitude, longitude) {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { latitude: lat, longitude: lon };
+}
 
 /**
  * QR Code Data Structure:
@@ -20,11 +34,12 @@ const getFrontendUrl = () => {
 };
 
 // POST /api/v1/qr/generate - Generate QR code for a location
-router.post('/generate', async (req, res, next) => {
+router.post('/generate', protect, authorize('operator', 'admin'), async (req, res, next) => {
   try {
-    const { cityCode, locationId, latitude, longitude, label } = req.body;
+    const { cityCode, locationId, label } = req.body;
+    const normalizedCityCode = normalizeCityCode(cityCode);
 
-    if (!cityCode || !locationId) {
+    if (!normalizedCityCode || !locationId) {
       return res.status(400).json({
         error: 'ERR_MISSING_FIELDS',
         message: 'cityCode and locationId are required'
@@ -32,29 +47,33 @@ router.post('/generate', async (req, res, next) => {
     }
 
     // Validate city code format
-    if (!cityCode.match(/^CITY-IND-[A-Z]{3}\d+$/)) {
+    if (!CITY_CODE_PATTERN.test(normalizedCityCode)) {
       return res.status(400).json({
         error: 'ERR_INVALID_CITY_CODE',
-        message: 'City code must match format: CITY-IND-XXX (e.g., CITY-IND-BPL8)'
+        message: 'City code must look like CITY-MP-BPL or CITY-IND-BPL8.'
       });
     }
 
+    const coords = normalizeCoordinates(req.body.latitude, req.body.longitude);
+
     // Generate H3 index if lat/lon provided
     let h3Index = null;
-    if (latitude && longitude) {
+    if (coords) {
       try {
-        h3Index = h3.latLngToCell(latitude, longitude, 8);
+        h3Index = h3.latLngToCell(coords.latitude, coords.longitude, 8);
       } catch (error) {
         console.error('H3 generation error:', error);
       }
     }
 
-    // QR Code Data Structure
+    // QR Code Data Structure. Coordinates travel with the code so a resident
+    // can report without enabling geolocation.
     const qrData = {
       type: 'citizen_report',
-      cityCode,
+      cityCode: normalizedCityCode,
       locationId,
       h3Index,
+      ...(coords || {}),
       label: label || `Location ${locationId}`,
       createdAt: new Date().toISOString()
     };
@@ -86,14 +105,22 @@ router.post('/generate', async (req, res, next) => {
 });
 
 // POST /api/v1/qr/batch-generate - Generate multiple QR codes for locations
-router.post('/batch-generate', async (req, res, next) => {
+router.post('/batch-generate', protect, authorize('operator', 'admin'), async (req, res, next) => {
   try {
-    const { cityCode, locations } = req.body;
+    const { locations } = req.body;
+    const normalizedCityCode = normalizeCityCode(req.body.cityCode);
 
-    if (!cityCode || !Array.isArray(locations) || locations.length === 0) {
+    if (!normalizedCityCode || !Array.isArray(locations) || locations.length === 0) {
       return res.status(400).json({
         error: 'ERR_INVALID_REQUEST',
         message: 'cityCode and locations array are required'
+      });
+    }
+
+    if (!CITY_CODE_PATTERN.test(normalizedCityCode)) {
+      return res.status(400).json({
+        error: 'ERR_INVALID_CITY_CODE',
+        message: 'City code must look like CITY-MP-BPL or CITY-IND-BPL8.'
       });
     }
 
@@ -101,13 +128,14 @@ router.post('/batch-generate', async (req, res, next) => {
 
     const qrCodes = await Promise.all(
       locations.map(async (location) => {
-        const { locationId, latitude, longitude, label } = location;
+        const { locationId, label } = location;
+        const coords = normalizeCoordinates(location.latitude, location.longitude);
 
         // Generate H3 index if lat/lon provided
         let h3Index = null;
-        if (latitude && longitude) {
+        if (coords) {
           try {
-            h3Index = h3.latLngToCell(latitude, longitude, 8);
+            h3Index = h3.latLngToCell(coords.latitude, coords.longitude, 8);
           } catch (error) {
             console.error('H3 generation error:', error);
           }
@@ -115,9 +143,10 @@ router.post('/batch-generate', async (req, res, next) => {
 
         const qrData = {
           type: 'citizen_report',
-          cityCode,
+          cityCode: normalizedCityCode,
           locationId,
           h3Index,
+          ...(coords || {}),
           label: label || `Location ${locationId}`,
           createdAt: new Date().toISOString()
         };

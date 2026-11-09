@@ -44,14 +44,20 @@ export async function consumeBudget(provider, amount, limit) {
 
   const month = monthKey();
 
+  // The configured limit is authoritative, not whatever an older record was
+  // created with: a record left behind by a previous month or an older
+  // allowance must not be able to block every call. The comparison uses the
+  // literal limit and the write stores it, so the record repairs itself.
+  const spendable = {
+    provider,
+    month,
+    $expr: { $lte: [{ $add: [{ $ifNull: ['$used', 0] }, amount] }, limit] },
+  };
+
   // Spend against the existing record, but only if it stays inside the limit.
   const updated = await ApiUsage.findOneAndUpdate(
-    {
-      provider,
-      month,
-      $expr: { $lte: [{ $add: ['$used', amount] }, '$limit'] },
-    },
-    { $inc: { used: amount } },
+    spendable,
+    { $inc: { used: amount }, $set: { limit } },
     { returnDocument: 'after' }
   );
   if (updated) {
@@ -75,12 +81,8 @@ export async function consumeBudget(provider, amount, limit) {
   } catch {
     // Another caller created the record first, so try to spend against it.
     const raced = await ApiUsage.findOneAndUpdate(
-      {
-        provider,
-        month,
-        $expr: { $lte: [{ $add: ['$used', amount] }, '$limit'] },
-      },
-      { $inc: { used: amount } },
+      spendable,
+      { $inc: { used: amount }, $set: { limit } },
       { returnDocument: 'after' }
     );
     if (raced) {

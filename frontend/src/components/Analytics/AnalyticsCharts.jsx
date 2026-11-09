@@ -155,7 +155,7 @@ export const ResponsePipelineChart = memo(function ResponsePipelineChart({ statu
       emptyDescription="Nothing has reached the response pipeline yet."
     >
       <div className={styles.pipeline}>
-        <div className={styles.pipelineBar} role="img" aria-label={`${total} incidents across ${rows.length} stages`}>
+        <div className={styles.pipelineBar} role="img" aria-label={`${total} incidents across ${rows.length} ${rows.length === 1 ? 'stage' : 'stages'}`}>
           {rows.map((row, index) => (
             <span
               key={row.status}

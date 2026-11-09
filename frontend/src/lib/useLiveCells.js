@@ -104,28 +104,54 @@ export function useLiveCells({ intervalMs = 600 } = {}) {
     })();
 
     const controller = new AbortController();
+    let reconnectTimer = null;
 
-    (async () => {
-      try {
-        await fetchStream('/v1/stream/h3', {
-          signal: controller.signal,
-          onMessage: (data) => {
-            if (data?.cells) {
-              accept(data.cells);
-              setConnection((current) => (current === 'live' ? current : 'live'));
-            }
+    const sleep = (ms) =>
+      new Promise((resolve) => {
+        reconnectTimer = setTimeout(resolve, ms);
+        controller.signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(reconnectTimer);
+            resolve();
           },
-        });
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setConnection('degraded');
+          { once: true }
+        );
+      });
+
+    // A server restart or a network blip closes the stream. The operator
+    // console must reconnect by itself instead of showing old cells as live.
+    (async () => {
+      let attempt = 0;
+      while (!controller.signal.aborted) {
+        try {
+          if (attempt > 0) setConnection('connecting');
+          await fetchStream('/v1/stream/h3', {
+            signal: controller.signal,
+            onMessage: (data) => {
+              if (data?.cells) {
+                accept(data.cells);
+                setConnection('live');
+                attempt = 0;
+              }
+            },
+          });
+        } catch (error) {
+          if (controller.signal.aborted) break;
         }
+
+        if (controller.signal.aborted) break;
+        setConnection('degraded');
+        attempt += 1;
+        const delay = Math.min(30000, 2000 * 2 ** Math.min(attempt - 1, 4));
+        await sleep(delay);
       }
     })();
 
     return () => {
       cancelled = true;
       controller.abort();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [accept]);

@@ -59,18 +59,23 @@ export async function apiRequest(path, options = {}) {
 
   if (response.status === 401 && auth) {
     if (canRefreshFor(path, options) && getToken()) {
+      let refreshStatus = null;
       try {
         const refreshResponse = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+        refreshStatus = refreshResponse.status;
         if (refreshResponse.ok) {
           const refreshed = await refreshResponse.json();
           setSession(refreshed.token, refreshed.user);
           return apiRequest(path, { ...options, _retried: true });
         }
       } catch {
-        // Fall through to the normal session-clearing path.
+        // A restart or a dropped connection is not a rejected session: keep
+        // the token so the next request can try again.
       }
+      if (refreshStatus === 401 || refreshStatus === 403) clearSession();
+    } else {
+      clearSession();
     }
-    clearSession();
   }
 
   const contentType = response.headers.get('content-type') || '';
@@ -88,17 +93,19 @@ export async function apiRequest(path, options = {}) {
 
 async function refreshAccessToken() {
   if (!getToken()) return false;
+  let refreshStatus = null;
   try {
     const refreshResponse = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+    refreshStatus = refreshResponse.status;
     if (refreshResponse.ok) {
       const refreshed = await refreshResponse.json();
       setSession(refreshed.token, refreshed.user);
       return true;
     }
   } catch {
-    // Fall through to session clearing.
+    // Network failure: the session may still be valid, so keep it.
   }
-  clearSession();
+  if (refreshStatus === 401 || refreshStatus === 403) clearSession();
   return false;
 }
 
