@@ -1,7 +1,7 @@
 import { fetchWeatherForAllCities, fetchWeatherObservations, getWeatherSnapshot, weatherToTelemetry } from './weatherServiceMultiProvider.js';
 import { generateTransitTelemetryEvents } from './transitService.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
-import { processTelemetryToCells, recalculateAllActiveCells, normalizeCoordinates, H3_RESOLUTION } from '../engine/risk.js';
+import { processTelemetryToCells, normalizeCoordinates, H3_RESOLUTION } from '../engine/risk.js';
 import { getCity, getConfiguredCityNames } from './cityConfig.js';
 import { getCityStops } from './staticGTFSData.js';
 import { buildAnchorPoints, interpolateSnapshot } from './spatialInterpolation.js';
@@ -9,6 +9,7 @@ import { fetchCityNetwork, saveCityNetwork, getCityNetworkCells } from './osmSer
 import { buildCityTerrain, getCityTerrain, terrainToTelemetry } from './terrainService.js';
 import { fetchCityTraffic, fetchCityIncidents, trafficProviderConfigured } from './trafficService.js';
 import { budgetReport, affordablePerCity } from './requestBudget.js';
+import { stampEvent } from './eventProvenance.js';
 import * as h3 from 'h3-js';
 import dotenv from 'dotenv';
 
@@ -388,6 +389,15 @@ export async function runDataPipeline() {
       throw new Error('No telemetry was generated; preserving existing telemetry.');
     }
 
+    // Every observation gets one stable identity before it is written. A
+    // retried provider response can then be recognised as the same reading.
+    const stampedEvents = [
+      ...new Map(allTelemetryEvents.map((event) => {
+        const stamped = stampEvent(event);
+        return [stamped.eventId, stamped];
+      })).values(),
+    ];
+
     // Step 3: Replace only the telemetry this pipeline generated.
     // The pollers write real observations into the same collections, and
     // those must survive: they are per-point readings that the city cannot
@@ -414,14 +424,19 @@ export async function runDataPipeline() {
 
     if (citiesWithFreshTraffic.size) {
       await TelemetryEvent.deleteMany({
-        sourceType: 'GTFS_TRANSIT',
         cityCode: { $in: [...citiesWithFreshTraffic] },
-        // Readings written before the pipeline flag existed are still
-        // traffic readings, so they are replaced too rather than lingering
-        // beside the new ones until they age out of the window.
+        // Only the provider readings are replaced. A field crew's own GPS
+        // measurement is also TRAFFIC_API now, but it must survive a provider
+        // refresh.
         $or: [
-          { 'rawPayload.pipelineGenerated': true },
           {
+            sourceType: 'TRAFFIC_API',
+            'rawPayload.source': {
+              $in: ['tomtom-traffic-flow', 'tomtom-traffic-incidents'],
+            },
+          },
+          {
+            sourceType: 'GTFS_TRANSIT',
             'rawPayload.source': {
               $in: ['tomtom-traffic-flow', 'tomtom-traffic-incidents'],
             },
@@ -431,7 +446,7 @@ export async function runDataPipeline() {
     }
 
     console.log('Inserting new telemetry events...');
-    await TelemetryEvent.insertMany(allTelemetryEvents);
+    await TelemetryEvent.insertMany(stampedEvents);
 
     // Step 4: Process telemetry into spatial cells
     console.log('Processing telemetry into spatial cells...');
@@ -439,9 +454,10 @@ export async function runDataPipeline() {
 
     console.log(`  Processed ${processedCells.length} spatial cells`);
 
-    // Step 5: Recalculate cell risks
-    console.log('Recalculating cell risks...');
-    const recalculatedCells = await recalculateAllActiveCells();
+    // Step 5: The cells were already recalculated by processTelemetryToCells.
+    // Running a second full pass here doubled the provider and database work
+    // without changing a score, which made the pipeline miss its own cadence.
+    const recalculatedCells = processedCells.filter(Boolean);
 
     console.log(`  Recalculated ${recalculatedCells.length} cells`);
 
@@ -470,7 +486,7 @@ export async function runDataPipeline() {
       partial: !success,
       cities,
       failedCities,
-      eventsCount: allTelemetryEvents.length,
+      eventsCount: stampedEvents.length,
       cellsCount: recalculatedCells.length,
     };
 

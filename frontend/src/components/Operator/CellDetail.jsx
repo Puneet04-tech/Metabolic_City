@@ -23,7 +23,8 @@ const LENS_LABELS = {
 /** The real sources that can back a cell, and what each one means. */
 const SOURCE_LABELS = {
   WEATHER_API: { label: 'Weather readings', hint: 'Observed rainfall, visibility, wind and temperature' },
-  GTFS_TRANSIT: { label: 'Road speed readings', hint: 'Measured travel time against free flow' },
+  TRAFFIC_API: { label: 'Road traffic readings', hint: 'Measured travel time against free flow, and provider incidents' },
+  GTFS_TRANSIT: { label: 'Transit readings', hint: 'Vehicle positions and delays from the transit feed' },
   GIS_STATIC: { label: 'Terrain', hint: 'Elevation, slope and distance to a watercourse' },
   CITIZEN_311: { label: 'Citizen reports', hint: 'Reports from residents and field crew' },
   IOT_SENSOR: { label: 'Sensor readings', hint: 'Readings from a device on the ground' },
@@ -66,13 +67,15 @@ function ProvenancePanel({ cell }) {
             const count =
               source === 'WEATHER_API'
                 ? stats.weatherEventsCount
-                : source === 'GTFS_TRANSIT'
-                  ? stats.transitEventsCount
-                  : source === 'CITIZEN_311'
-                    ? stats.citizenEventsCount
-                    : source === 'GIS_STATIC'
-                      ? stats.gisEventsCount
-                      : stats.eventCount;
+                : source === 'TRAFFIC_API'
+                  ? stats.trafficEventsCount
+                  : source === 'GTFS_TRANSIT'
+                    ? stats.transitEventsCount
+                    : source === 'CITIZEN_311'
+                      ? stats.citizenEventsCount
+                      : source === 'GIS_STATIC'
+                        ? stats.gisEventsCount
+                        : stats.eventCount;
             const meta = SOURCE_LABELS[source] || { label: source, hint: '' };
             return (
               <li key={source} className={styles.source}>
@@ -166,8 +169,9 @@ function ForecastPanel({ cell, threshold }) {
  * are listed by name and severity because "Mobility 3.0" does not tell an
  * operator that a road is closed.
  */
-function AlertPanel({ cell, threshold }) {
-  const alerts = Array.isArray(cell.alerts) ? cell.alerts : [];
+function AlertPanel({ cell, threshold, liveAlerts = [], onAckAlert, onResolveAlert }) {
+  const snapshotAlerts = Array.isArray(cell.alerts) ? cell.alerts : [];
+  const alerts = liveAlerts.length ? liveAlerts : snapshotAlerts;
   if (!alerts.length) return null;
 
   return (
@@ -176,9 +180,10 @@ function AlertPanel({ cell, threshold }) {
       <ul className={styles.alerts}>
         {alerts.map((alert, index) => {
           const severity = Number(alert.severity) || 0;
+          const isLifecycle = Boolean(alert.alertKey);
           return (
             <li
-              key={`${alert.type || 'alert'}-${index}`}
+              key={alert.alertKey || `${alert.type || 'alert'}-${index}`}
               className={styles.alert}
               data-severity={severity >= threshold ? 'critical' : 'warning'}
             >
@@ -186,15 +191,43 @@ function AlertPanel({ cell, threshold }) {
               <span className={styles.alertText}>
                 <span className={styles.alertTitle}>{alert.title}</span>
                 {alert.detail ? <span className={styles.alertDetail}>{alert.detail}</span> : null}
+                {isLifecycle ? (
+                  <span className={styles.alertDetail}>
+                    {alert.status} · {alert.verification}
+                  </span>
+                ) : null}
               </span>
               <span className={styles.alertScore}>{severity.toFixed(1)}</span>
+              {isLifecycle ? (
+                <span className={styles.alertActions}>
+                  {alert.status === 'OPEN' && onAckAlert ? (
+                    <button
+                      type="button"
+                      className={styles.alertAction}
+                      onClick={() => onAckAlert(alert)}
+                    >
+                      Ack
+                    </button>
+                  ) : null}
+                  {onResolveAlert ? (
+                    <button
+                      type="button"
+                      className={styles.alertAction}
+                      onClick={() => onResolveAlert(alert)}
+                    >
+                      All-clear
+                    </button>
+                  ) : null}
+                </span>
+              ) : null}
             </li>
           );
         })}
       </ul>
       <p className={styles.alertNote}>
         Alerts are current road incidents, measured slowdowns and citizen reports in this
-        cell, not a forecast.
+        cell, not a forecast. Acknowledgement and all-clear are recorded in the alert
+        lifecycle.
       </p>
     </section>
   );
@@ -259,7 +292,21 @@ function CellContext({ cell }) {
  * The cell detail view. It replaces the list in the panel when a cell is
  * selected, and it is where the response directive and the actions live.
  */
-export default function CellDetail({ cell, mode, threshold, action, loading, error, notice, onBack, onLock, onDecide }) {
+export default function CellDetail({
+  cell,
+  mode,
+  threshold,
+  action,
+  loading,
+  error,
+  notice,
+  liveAlerts = [],
+  onAckAlert,
+  onResolveAlert,
+  onBack,
+  onLock,
+  onDecide,
+}) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!cell) return null;
@@ -308,7 +355,13 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
 
       <ForecastPanel cell={cell} threshold={threshold} />
 
-      <AlertPanel cell={cell} threshold={threshold} />
+      <AlertPanel
+        cell={cell}
+        threshold={threshold}
+        liveAlerts={liveAlerts}
+        onAckAlert={onAckAlert}
+        onResolveAlert={onResolveAlert}
+      />
 
       <ProvenancePanel cell={cell} />
 

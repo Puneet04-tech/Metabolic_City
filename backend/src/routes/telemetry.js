@@ -5,7 +5,9 @@ import { protect, authorize } from '../middleware/auth.js';
 import { normalizeCityCode } from '../services/cityConfig.js';
 import { DeadLetterMessage } from '../models/DeadLetterMessage.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
+import { SpatialCell } from '../models/SpatialCell.js';
 import { normalizeCoordinates, recalculateCell } from '../engine/risk.js';
+import { buildEventIdentity } from '../services/eventProvenance.js';
 import { rateLimit } from 'express-rate-limit';
 import { addTelemetryEvent } from '../queues/telemetryQueue.js';
 
@@ -50,34 +52,73 @@ export async function ingest(sourceType, payload) {
     ? Number(payload.delaySeconds) / 60
     : undefined;
 
-  const event = await TelemetryEvent.create({
+  // Some adapters put their provenance inside `rawPayload`; the pipeline
+  // writes it directly. Normalise once so a source is never looked up in the
+  // wrong nesting level.
+  const provenancePayload =
+    payload.rawPayload && typeof payload.rawPayload === 'object'
+      ? { ...payload, ...payload.rawPayload }
+      : payload;
+  const identity = buildEventIdentity({
     sourceType,
+    payload: provenancePayload,
     h3Index,
-    latitude,
-    longitude,
-    // No hardcoded fallback: the model default applies when the source is silent.
-    cityCode: normalizeCityCode(payload.cityCode) || undefined,
     observedAt,
-    routeId: payload.routeId,
-    vehicleId: payload.vehicleId,
-    delayMins: Number.isFinite(delayMins) ? delayMins : undefined,
-    speedReductionPct: Number.isFinite(Number(payload.speedReductionPct)) ? Number(payload.speedReductionPct) : undefined,
-    congestionLevel: payload.congestionLevel,
-    rainMmHr: Number.isFinite(Number(payload.rainMmHr ?? payload.precipitationRate))
-      ? Number(payload.rainMmHr ?? payload.precipitationRate)
-      : undefined,
-    visibilityM: Number.isFinite(Number(payload.visibilityM)) ? Number(payload.visibilityM) : undefined,
-    windGustMps: Number.isFinite(Number(payload.windGustMps)) ? Number(payload.windGustMps) : undefined,
-    temperatureC: Number.isFinite(Number(payload.temperatureC)) ? Number(payload.temperatureC) : undefined,
-    humidityPct: Number.isFinite(Number(payload.humidityPct)) ? Number(payload.humidityPct) : undefined,
-    weatherCondition: payload.weatherCondition,
-    vulnerabilityScore: Number.isFinite(Number(payload.vulnerabilityScore)) ? Number(payload.vulnerabilityScore) : undefined,
-    category: payload.category,
-    senderId: payload.senderId,
-    reportText: payload.reportText ? String(payload.reportText).slice(0, 1000) : undefined,
-    imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.filter((url) => typeof url === 'string') : [],
-    rawPayload: payload,
   });
+
+  // Idempotency: retrying the same observation is not a second observation.
+  const existing = await TelemetryEvent.findOne({ eventId: identity.eventId }).lean();
+  if (existing) {
+    return {
+      event: existing,
+      cell: await SpatialCell.findOne({ h3Index }).lean(),
+      duplicate: true,
+    };
+  }
+
+  let event;
+  try {
+    event = await TelemetryEvent.create({
+      sourceType,
+      ...identity,
+      h3Index,
+      latitude,
+      longitude,
+      // No hardcoded fallback: the model default applies when the source is silent.
+      cityCode: normalizeCityCode(payload.cityCode) || undefined,
+      observedAt,
+      receivedAt: new Date(),
+      routeId: payload.routeId,
+      vehicleId: payload.vehicleId,
+      delayMins: Number.isFinite(delayMins) ? delayMins : undefined,
+      speedReductionPct: Number.isFinite(Number(payload.speedReductionPct)) ? Number(payload.speedReductionPct) : undefined,
+      congestionLevel: payload.congestionLevel,
+      rainMmHr: Number.isFinite(Number(payload.rainMmHr ?? payload.precipitationRate))
+        ? Number(payload.rainMmHr ?? payload.precipitationRate)
+        : undefined,
+      visibilityM: Number.isFinite(Number(payload.visibilityM)) ? Number(payload.visibilityM) : undefined,
+      windGustMps: Number.isFinite(Number(payload.windGustMps)) ? Number(payload.windGustMps) : undefined,
+      temperatureC: Number.isFinite(Number(payload.temperatureC)) ? Number(payload.temperatureC) : undefined,
+      humidityPct: Number.isFinite(Number(payload.humidityPct)) ? Number(payload.humidityPct) : undefined,
+      weatherCondition: payload.weatherCondition,
+      vulnerabilityScore: Number.isFinite(Number(payload.vulnerabilityScore)) ? Number(payload.vulnerabilityScore) : undefined,
+      category: payload.category,
+      senderId: payload.senderId,
+      reportText: payload.reportText ? String(payload.reportText).slice(0, 1000) : undefined,
+      imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.filter((url) => typeof url === 'string') : [],
+      rawPayload: provenancePayload,
+    });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    // Lost the race with an identical concurrent request; the observation is
+    // already stored, so return it instead of failing the caller.
+    const raced = await TelemetryEvent.findOne({ eventId: identity.eventId }).lean();
+    return {
+      event: raced,
+      cell: await SpatialCell.findOne({ h3Index }).lean(),
+      duplicate: true,
+    };
+  }
 
   const cell = await recalculateCell(h3Index);
   return { event, cell };
@@ -86,7 +127,12 @@ export async function ingest(sourceType, payload) {
 async function handleIngest(sourceType, req, res) {
   try {
     const result = await ingest(sourceType, req.body || {});
-    return res.status(201).json({ accepted: true, event: result.event, cell: result.cell });
+    return res.status(result.duplicate ? 200 : 201).json({
+      accepted: true,
+      duplicate: Boolean(result.duplicate),
+      event: result.event,
+      cell: result.cell,
+    });
   } catch (error) {
     await writeDeadLetter(sourceType, req.body || {}, error);
     return res.status(422).json({ accepted: false, message: error.message, degraded: true });
@@ -214,8 +260,8 @@ router.post('/ingest', requireIngestAuth, async (req, res, next) => {
     // of returning QUEUED for a job that would never run.
     if (job?.local) {
       const result = await ingest(event.sourceType, event);
-      return res.status(201).json({
-        status: 'ACCEPTED',
+      return res.status(result.duplicate ? 200 : 201).json({
+        status: result.duplicate ? 'DUPLICATE' : 'ACCEPTED',
         eventId: result.event._id,
         h3Index: result.event.h3Index,
         timestamp: new Date().toISOString(),

@@ -24,6 +24,10 @@ import spatialAnalysisRoutes from './routes/spatialAnalysis.js';
 import { latencyMonitor, getLatencyStats } from './middleware/latencyMonitor.js';
 import { initializeStreamServer, closeStreamServer } from './services/streamManager.js';
 import qrRoutes from './routes/qr.js';
+import alertRoutes from './routes/alerts.js';
+import systemRoutes from './routes/system.js';
+import { startAlertMonitor, stopAlertMonitor } from './services/alertService.js';
+import { startForecastVerifier, stopForecastVerifier } from './services/forecastAudit.js';
 
 dotenv.config();
 
@@ -133,6 +137,8 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/spatial', spatialAnalysisRoutes);
 app.use('/api/v1/qr', qrRoutes);
+app.use('/api/v1/alerts', alertRoutes);
+app.use('/api/v1/system', systemRoutes);
 
 // PRINCIPLE: Usability - Error Handling
 // 404 for unknown API routes.
@@ -165,6 +171,8 @@ let escalationStarted = false;
 const shutdown = async (signal) => {
   console.log(`[server] ${signal} received; initiating graceful shutdown.`);
   stopEscalationMonitor();
+  stopAlertMonitor();
+  stopForecastVerifier();
   stopScheduledPipeline();
   await closeStreamServer();
   if (server) {
@@ -184,6 +192,8 @@ connectDB()
     pollersStarted = true;
     startEscalationMonitor();
     escalationStarted = true;
+    startAlertMonitor();
+    startForecastVerifier();
     
     // Start the scheduled data pipeline (Open-Meteo + Simulated Transit)
     startScheduledPipeline();

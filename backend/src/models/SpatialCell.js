@@ -35,6 +35,9 @@ const spatialCellSchema = new mongoose.Schema(
     alertLevel: { type: String, default: null, index: true },
     alerts: [
       {
+        // Stable identity of the alert across recalculations, so the alert
+        // lifecycle can tell an update from a new event and an all-clear.
+        key: { type: String },
         type: { type: String },
         severity: Number,
         title: String,
@@ -77,6 +80,7 @@ const spatialCellSchema = new mongoose.Schema(
       sources: [String],
       lastObservedAt: Date,
       transitEventsCount: { type: Number, default: 0 },
+      trafficEventsCount: { type: Number, default: 0 },
       weatherEventsCount: { type: Number, default: 0 },
       citizenEventsCount: { type: Number, default: 0 },
       gisEventsCount: { type: Number, default: 0 },

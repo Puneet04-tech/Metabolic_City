@@ -20,6 +20,7 @@ export function useLiveCells({ intervalMs = 600 } = {}) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [serverUpdated, setServerUpdated] = useState(null);
   const [cadence, setCadence] = useState(null);
+  const [alerts, setAlerts] = useState([]);
 
   const cellsRef = useRef([]);
   const latestRef = useRef(null);
@@ -37,6 +38,19 @@ export function useLiveCells({ intervalMs = 600 } = {}) {
     cellsRef.current = incoming;
     setCells(incoming);
     setLastUpdated(new Date());
+  }, []);
+
+  const applyAlert = useCallback((alert, action) => {
+    if (!alert?.alertKey) return;
+    setAlerts((current) => {
+      const next = current.filter((item) => item.alertKey !== alert.alertKey);
+      if (action !== 'resolved' && action !== 'expired') next.push(alert);
+      return next.sort(
+        (left, right) =>
+          Number(right.severity || 0) - Number(left.severity || 0) ||
+          new Date(right.lastSeenAt || 0) - new Date(left.lastSeenAt || 0)
+      );
+    });
   }, []);
 
   const accept = useCallback(
@@ -103,6 +117,15 @@ export function useLiveCells({ intervalMs = 600 } = {}) {
       }
     })();
 
+    (async () => {
+      try {
+        const response = await apiRequest('/v1/alerts?status=OPEN,ACKNOWLEDGED&limit=30');
+        if (!cancelled && Array.isArray(response?.alerts)) setAlerts(response.alerts);
+      } catch {
+        /* the alert stream still works when the initial list is unavailable */
+      }
+    })();
+
     const controller = new AbortController();
     let reconnectTimer = null;
 
@@ -128,7 +151,11 @@ export function useLiveCells({ intervalMs = 600 } = {}) {
           if (attempt > 0) setConnection('connecting');
           await fetchStream('/v1/stream/h3', {
             signal: controller.signal,
-            onMessage: (data) => {
+            onMessage: (data, event) => {
+              if (event === 'alert_update' && data?.alert) {
+                applyAlert(data.alert, data.action);
+                return;
+              }
               if (data?.cells) {
                 accept(data.cells);
                 setConnection('live');
@@ -154,9 +181,9 @@ export function useLiveCells({ intervalMs = 600 } = {}) {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [accept]);
+  }, [accept, applyAlert]);
 
-  return { cells, connection, lastUpdated, serverUpdated, cadence };
+  return { cells, connection, lastUpdated, serverUpdated, cadence, alerts };
 }
 
 export default useLiveCells;

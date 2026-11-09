@@ -134,11 +134,16 @@ async function openStream(path, retried = false) {
   return response;
 }
 
-function parseSseLine(line) {
-  const dataLine = line.split('\n').find((part) => part.startsWith('data: '));
+function parseSseMessage(message) {
+  const lines = message.split('\n');
+  const eventLine = lines.find((part) => part.startsWith('event: '));
+  const dataLine = lines.find((part) => part.startsWith('data: '));
   if (!dataLine) return null;
   try {
-    return JSON.parse(dataLine.slice(6));
+    return {
+      event: eventLine ? eventLine.slice(7).trim() : 'message',
+      data: JSON.parse(dataLine.slice(6)),
+    };
   } catch {
     return null;
   }
@@ -166,8 +171,8 @@ export async function fetchStream(path, { onMessage, signal } = {}) {
       const messages = buffer.split('\n\n');
       buffer = messages.pop() || '';
       for (const message of messages) {
-        const data = parseSseLine(message);
-        if (data) onMessage(data);
+        const parsed = parseSseMessage(message);
+        if (parsed?.data) onMessage(parsed.data, parsed.event);
       }
     }
   };

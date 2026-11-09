@@ -169,7 +169,7 @@ router.post(
         : 0;
 
     try {
-      const result = await ingest('GTFS_TRANSIT', {
+      const result = await ingest('TRAFFIC_API', {
         latitude: req.body.latitude,
         longitude: req.body.longitude,
         delayMins: 0,

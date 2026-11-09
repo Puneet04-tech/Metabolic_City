@@ -6,6 +6,9 @@ import { ConfigWeights } from '../models/ConfigWeights.js';
 import { broadcastCells } from './stream.js';
 import { fetchWeatherForecast } from '../services/weatherService.js';
 import { getCityByCode } from '../services/cityConfig.js';
+import { isTrafficSource } from '../services/eventProvenance.js';
+import { reconcileCellAlerts } from '../services/alertService.js';
+import { recordForecastSnapshot } from '../services/forecastAudit.js';
 
 export const H3_RESOLUTION = 8;
 export const WINDOW_MS = 60 * 60 * 1000; // 1 hour window (increased from 15 min for more real data)
@@ -615,9 +618,11 @@ function deriveCellAlerts(transit, citizen) {
       const severity = clamp(base + Math.min(1, delayMins / 10));
       const description = payload.description || payload.category || 'Road incident';
       alerts.push({
+        key: `INCIDENT|${event.h3Index}|${payload.incidentId || payload.category || 'incident'}|${payload.from || ''}`,
         type: 'INCIDENT',
         severity: Number(severity.toFixed(1)),
         title: /^closed$/i.test(description) ? 'Road closed' : description,
+        category: payload.category || null,
         detail:
           delayMins > 0
             ? `${payload.category || 'Incident'} · ${delayMins.toFixed(1)} min delay`
@@ -632,6 +637,7 @@ function deriveCellAlerts(transit, citizen) {
     if (delayMins >= 3 || reduction >= 30) {
       const severity = clamp(ALERT_CAUTION + delayMins / 5 + reduction / 25, ALERT_CAUTION, 9);
       alerts.push({
+        key: `CONGESTION|${event.h3Index}`,
         type: 'CONGESTION',
         severity: Number(severity.toFixed(1)),
         title: 'Slow traffic',
@@ -648,10 +654,14 @@ function deriveCellAlerts(transit, citizen) {
     const urgency = String(payload.urgency || '').toLowerCase();
     const base = CITIZEN_ALERT_SEVERITY[category] ?? ALERT_CAUTION;
     const severity = clamp(base + (urgency === 'high' ? 1 : urgency === 'low' ? -1 : 0));
+    const reportIdentity =
+      event.eventId || String(event._id || `${event.observedAt}|${event.reportText || ''}`);
     alerts.push({
+      key: `REPORT|${event.h3Index}|${category}|${reportIdentity}`,
       type: 'REPORT',
       severity,
       title: CITIZEN_ALERT_LABELS[category] || 'Citizen report',
+      category: category || null,
       detail: event.reportText ? String(event.reportText).slice(0, 160) : 'Reported by a resident',
       observedAt: event.observedAt,
     });
@@ -666,7 +676,10 @@ function deriveCellAlerts(transit, citizen) {
     seen.add(key);
     unique.push(alert);
   }
-  return unique.slice(0, 4);
+  // Keep every active alert. The cell panel can show a long list, but the
+  // lifecycle must not mistake an alert that was truncated from a snapshot
+  // for an alert that has cleared.
+  return unique;
 }
 
 /**
@@ -674,7 +687,13 @@ function deriveCellAlerts(transit, citizen) {
  */
 export function scoreCellEvents(events, previousCell, weights = DEFAULT_WEIGHTS, threshold = 7.0) {
   const now = Date.now();
-  const transit = events.filter((e) => e.sourceType === 'GTFS_TRANSIT');
+  const traffic = events.filter((e) => isTrafficSource(e.sourceType, e.rawPayload));
+  const gtfsTransit = events.filter(
+    (e) => e.sourceType === 'GTFS_TRANSIT' && !isTrafficSource(e.sourceType, e.rawPayload)
+  );
+  // Both are mobility measurements, but they are counted separately in the
+  // provenance panel so a road probe is never described as a bus feed.
+  const transit = [...gtfsTransit, ...traffic];
   const weather = events.filter((e) => e.sourceType === 'WEATHER_API');
   const citizen = events.filter((e) => e.sourceType === 'CITIZEN_311');
   const gis = events.filter((e) => e.sourceType === 'GIS_STATIC' || Number.isFinite(e.vulnerabilityScore));
@@ -754,7 +773,8 @@ export function scoreCellEvents(events, previousCell, weights = DEFAULT_WEIGHTS,
       eventCount: events.length,
       sources,
       lastObservedAt: lastObserved,
-      transitEventsCount: transit.length,
+      transitEventsCount: gtfsTransit.length,
+      trafficEventsCount: traffic.length,
       weatherEventsCount: weather.length,
       citizenEventsCount: citizen.length,
       gisEventsCount: gis.length,
@@ -851,6 +871,23 @@ export async function recalculateCell(h3Index) {
   ).lean();
 
   broadcastCells([updatedCell]);
+
+  // The alert lifecycle is reconciled against the same snapshot the operator
+  // sees, so a new alert and its cell update cannot disagree about the world.
+  try {
+    await reconcileCellAlerts(updatedCell);
+  } catch (error) {
+    console.error(`[alerts] Failed to reconcile alerts for ${h3Index}:`, error.message);
+  }
+
+  // Keep the forecast the cell published so its accuracy can be measured
+  // later instead of asserted now.
+  try {
+    await recordForecastSnapshot(updatedCell);
+  } catch (error) {
+    console.error(`[forecast] Failed to record forecast for ${h3Index}:`, error.message);
+  }
+
   return updatedCell;
 }
 

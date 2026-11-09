@@ -6,6 +6,7 @@ import MapCanvas from '../components/map/MapCanvas';
 import CellDetail from '../components/Operator/CellDetail';
 import CellList from '../components/Operator/CellList';
 import LensFilter from '../components/Operator/LensFilter';
+import LiveAlerts from '../components/Operator/LiveAlerts';
 import SummaryStrip from '../components/Operator/SummaryStrip';
 import TelemetryStatus from '../components/Operator/TelemetryStatus';
 import SearchInput from '../components/ui/SearchInput/SearchInput';
@@ -45,7 +46,7 @@ const CITY_ALIASES = {
 const canonicalCity = (code) => CITY_ALIASES[code] || code;
 
 export default function OperatorConsole() {
-  const { cells, connection, lastUpdated, serverUpdated, cadence } = useLiveCells();
+  const { cells, connection, lastUpdated, serverUpdated, cadence, alerts } = useLiveCells();
   const navigate = useNavigate();
   const user = getStoredUser();
 
@@ -167,6 +168,18 @@ export default function OperatorConsole() {
     }
   }, []);
 
+  const selectAlert = useCallback(
+    (alert) => {
+      const cell = cells.find((item) => item.h3Index === alert.h3Index);
+      if (cell) {
+        selectCell(cell);
+      } else {
+        setNotice('This alert belongs to a cell outside the current city view.');
+      }
+    },
+    [cells, selectCell]
+  );
+
   const backToList = useCallback(() => {
     setSelected(null);
     setAction(null);
@@ -215,6 +228,27 @@ export default function OperatorConsole() {
     },
     [selected, backToList]
   );
+
+  const acknowledgeAlert = useCallback(async (alert) => {
+    try {
+      await apiRequest(`/v1/alerts/${alert._id}/acknowledge`, { method: 'PATCH' });
+      setNotice('Alert acknowledged. The lifecycle record now shows who owns it.');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }, []);
+
+  const clearAlert = useCallback(async (alert) => {
+    try {
+      await apiRequest(`/v1/alerts/${alert._id}/resolve`, {
+        method: 'PATCH',
+        body: { note: 'Operator all-clear from the cell detail.' },
+      });
+      setNotice('All-clear recorded. The alert remains in the audit trail.');
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }, []);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -293,6 +327,8 @@ export default function OperatorConsole() {
           />
         </div>
 
+        <LiveAlerts alerts={alerts} threshold={threshold} onSelect={selectAlert} />
+
         {relative && relativeAvailable ? (
           <p className={styles.relativeNote}>
             Colours show where each cell sits among these cells, not how severe it is. Every
@@ -334,6 +370,9 @@ export default function OperatorConsole() {
                 onBack={backToList}
                 onLock={lock}
                 onDecide={decide}
+                liveAlerts={alerts.filter((alert) => alert.h3Index === selected.h3Index)}
+                onAckAlert={acknowledgeAlert}
+                onResolveAlert={clearAlert}
               />
             ) : (
               <CellList

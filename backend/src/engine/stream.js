@@ -61,6 +61,18 @@ export function broadcastIncident(incident) {
   }
 }
 
+export function broadcastAlert(alert, action = 'updated') {
+  if (!alert) return;
+  const payload = `event: alert_update\ndata: ${JSON.stringify({ alert, action, emittedAt: new Date().toISOString() })}\n\n`;
+  for (const client of clients) {
+    try {
+      client.write(payload);
+    } catch {
+      clients.delete(client);
+    }
+  }
+}
+
 export function streamClientCount() {
   return clients.size;
 }

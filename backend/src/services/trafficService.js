@@ -238,7 +238,7 @@ export async function fetchCityTraffic(cityName, { maxProbes = 25, offset = 0 } 
     const { latitude, longitude, h3Index } = probe;
 
     events.push({
-      sourceType: 'GTFS_TRANSIT',
+      sourceType: 'TRAFFIC_API',
       h3Index,
       latitude,
       longitude,
@@ -331,7 +331,7 @@ export async function fetchCityIncidents(cityName, { maxProbes = 25, offset = 0 
       properties.events?.[0]?.description || impact.label;
 
     events.push({
-      sourceType: 'GTFS_TRANSIT',
+      sourceType: 'TRAFFIC_API',
       h3Index,
       latitude,
       longitude,
