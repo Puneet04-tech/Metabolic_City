@@ -113,6 +113,9 @@ export async function fetchWeatherForCity(cityName) {
     'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m'
   );
   url.searchParams.set('hourly', 'visibility');
+  // The pipeline stores wind in m/s, so ask for it in m/s instead of the
+  // provider's default km/h.
+  url.searchParams.set('wind_speed_unit', 'ms');
   url.searchParams.set('timezone', 'auto');
 
   let lastError;
@@ -218,6 +221,7 @@ export async function fetchWeatherAtPoint(latitude, longitude) {
     'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m'
   );
   url.searchParams.set('hourly', 'visibility');
+  url.searchParams.set('wind_speed_unit', 'ms');
   url.searchParams.set('timezone', 'auto');
 
   const controller = new AbortController();
@@ -228,6 +232,59 @@ export async function fetchWeatherAtPoint(latitude, longitude) {
       throw new Error(`Open-Meteo API returned ${response.status}`);
     }
     return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * The hourly weather forecast for one point.
+ *
+ * Times are requested in UTC so the forecast rows line up with the risk
+ * engine's clock regardless of the server's timezone. Only the next few hours
+ * are returned: the forecast lens projects three hours ahead.
+ */
+export async function fetchWeatherForecast(latitude, longitude, hours = 3) {
+  const budget = await consumeBudget('open-meteo', 1, MONTHLY_LIMIT);
+  if (!budget.allowed) {
+    throw new Error('Open-Meteo daily allowance exhausted');
+  }
+
+  const url = new URL(`${OPENMETEO_BASE_URL}/forecast`);
+  url.searchParams.set('latitude', String(latitude));
+  url.searchParams.set('longitude', String(longitude));
+  url.searchParams.set('hourly', 'precipitation,visibility,wind_gusts_10m,temperature_2m');
+  url.searchParams.set('forecast_days', '2');
+  url.searchParams.set('wind_speed_unit', 'ms');
+  url.searchParams.set('timezone', 'UTC');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENMETEO_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`Open-Meteo forecast API returned ${response.status}`);
+    }
+    const data = await response.json();
+    const hourly = data?.hourly || {};
+    const times = Array.isArray(hourly.time) ? hourly.time : [];
+    const now = Date.now();
+
+    return times
+      .map((time, index) => {
+        const at = new Date(time.endsWith('Z') ? time : `${time}Z`).getTime();
+        return {
+          time: at,
+          rainMmHr: Math.max(0, Number(hourly.precipitation?.[index]) || 0),
+          visibilityM: Number.isFinite(Number(hourly.visibility?.[index]))
+            ? Number(hourly.visibility[index])
+            : 10000,
+          windGustMps: Math.max(0, Number(hourly.wind_gusts_10m?.[index]) || 0),
+          temperatureC: Number(hourly.temperature_2m?.[index]),
+        };
+      })
+      .filter((row) => Number.isFinite(row.time) && row.time >= now)
+      .slice(0, Math.max(1, hours));
   } finally {
     clearTimeout(timeout);
   }

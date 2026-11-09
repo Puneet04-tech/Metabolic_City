@@ -42,6 +42,24 @@ const spatialCellSchema = new mongoose.Schema(
         observedAt: Date,
       },
     ],
+    // The highest risk projected over the next three hours, and the hourly
+    // points behind it. A projection, kept separate from the measured risk.
+    forecastRisk: { type: Number, min: 0, max: 10, default: 0, index: true },
+    forecast: {
+      generatedAt: Date,
+      source: String,
+      peakMinutes: Number,
+      points: [
+        {
+          minutes: Number,
+          at: Date,
+          risk: Number,
+          mobility: Number,
+          climate: Number,
+          rainMmHr: Number,
+        },
+      ],
+    },
     trend: {
       type: String,
       enum: ['SURGING', 'RISING', 'STABLE', 'DE-ESCALATING'],

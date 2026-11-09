@@ -17,6 +17,7 @@ const LENS_LABELS = {
   climate: 'Climate',
   vulnerability: 'Vulnerability',
   alerts: 'Alert severity',
+  forecast: 'Forecast risk',
 };
 
 /** The real sources that can back a cell, and what each one means. */
@@ -114,6 +115,47 @@ function TrendChart({ values }) {
     <svg viewBox="0 0 100 30" className={styles.trendChart} preserveAspectRatio="none" role="img" aria-label="Composite risk over the last readings">
       <polyline points={points} className={styles.trendLine} />
     </svg>
+  );
+}
+
+/**
+ * The risk projected for the next three hours.
+ *
+ * Each point applies the cell's recent trend and the hourly weather forecast
+ * to its measured baseline. It is labelled as a projection everywhere.
+ */
+function ForecastPanel({ cell, threshold }) {
+  const forecast = cell.forecast;
+  const points = Array.isArray(forecast?.points) ? forecast.points : [];
+  if (!points.length) return null;
+
+  return (
+    <section className={styles.section} aria-label="Forecast">
+      <h3 className={styles.sectionTitle}>Next three hours</h3>
+      <ul className={styles.forecast}>
+        {points.map((point) => {
+          const band = cellBandFor({ forecastRisk: point.risk }, 'forecast', threshold);
+          const rain = Number(point.rainMmHr) || 0;
+          return (
+            <li key={point.minutes} className={styles.forecastRow}>
+              <span className={styles.forecastTime}>+{Math.round(point.minutes / 60)}h</span>
+              <span className={styles.forecastRisk} data-band={band}>
+                {Number(point.risk).toFixed(1)}
+              </span>
+              <span className={styles.forecastDetail}>
+                {rain > 0
+                  ? `${rain.toFixed(1)} mm/h rain`
+                  : `Mobility ${Number(point.mobility).toFixed(1)} · Climate ${Number(point.climate).toFixed(1)}`}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className={styles.alertNote}>
+        Projected from the cell's recent trend and the hourly weather forecast. A projection,
+        not a measurement.
+      </p>
+    </section>
   );
 }
 
@@ -263,6 +305,8 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
           <TrendChart values={history} />
         </section>
       ) : null}
+
+      <ForecastPanel cell={cell} threshold={threshold} />
 
       <AlertPanel cell={cell} threshold={threshold} />
 

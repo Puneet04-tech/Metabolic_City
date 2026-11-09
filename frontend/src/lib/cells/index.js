@@ -38,6 +38,7 @@ export const riskLevelLabel = (level) => LEVEL_LABEL[String(level || '').toUpper
 
 export const cellScore = (cell, mode) => {
   if (mode === 'alerts') return Number(cell?.alertScore) || 0;
+  if (mode === 'forecast') return Number(cell?.forecastRisk) || 0;
   if (mode === 'composite') return Number(cell?.compositeRisk) || 0;
   return Number(cell?.scores?.[mode]) || 0;
 };
@@ -115,6 +116,7 @@ export const LENS_CODES = {
   climate: 'Sc',
   vulnerability: 'Sv',
   alerts: 'A',
+  forecast: 'F',
 };
 
 export const LENS_NAMES = {
@@ -123,6 +125,7 @@ export const LENS_NAMES = {
   climate: 'Climate',
   vulnerability: 'Vulnerability',
   alerts: 'Active alerts',
+  forecast: 'Forecast risk (next 3h)',
 };
 
 /**

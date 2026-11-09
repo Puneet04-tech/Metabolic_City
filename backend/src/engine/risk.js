@@ -4,6 +4,8 @@ import { SpatialCell } from '../models/SpatialCell.js';
 import { TelemetryEvent } from '../models/TelemetryEvent.js';
 import { ConfigWeights } from '../models/ConfigWeights.js';
 import { broadcastCells } from './stream.js';
+import { fetchWeatherForecast } from '../services/weatherService.js';
+import { getCityByCode } from '../services/cityConfig.js';
 
 export const H3_RESOLUTION = 8;
 export const WINDOW_MS = 60 * 60 * 1000; // 1 hour window (increased from 15 min for more real data)
@@ -40,6 +42,163 @@ const clamp = (value, min = 0, max = 10) => {
   if (!Number.isFinite(num)) return min;
   return Math.max(min, Math.min(max, num));
 };
+
+const FORECAST_HORIZONS_MINUTES = [60, 120, 180];
+const FORECAST_CACHE_MS = 30 * 60 * 1000;
+const FORECAST_FAILURE_CACHE_MS = 5 * 60 * 1000;
+const weatherForecastCache = new Map();
+
+/**
+ * The hourly forecast for a city, shared by every cell in it.
+ *
+ * One request serves all the cells recalculated in a cycle, and the result is
+ * reused for half an hour. A failure is remembered briefly so a provider
+ * outage does not turn into one request per cell.
+ */
+async function getWeatherForecast(key, latitude, longitude) {
+  const cached = weatherForecastCache.get(key);
+  if (cached?.promise) return cached.promise;
+
+  const age = Date.now() - (cached?.at || 0);
+  const ttl = cached?.value ? FORECAST_CACHE_MS : FORECAST_FAILURE_CACHE_MS;
+  if (cached && age < ttl) return cached.value;
+
+  const promise = fetchWeatherForecast(latitude, longitude, FORECAST_HORIZONS_MINUTES.length)
+    .then((rows) => {
+      weatherForecastCache.set(key, { at: Date.now(), value: rows });
+      return rows;
+    })
+    .catch((error) => {
+      console.warn(`[forecast] Weather forecast unavailable (${error.message}); using trend only.`);
+      weatherForecastCache.set(key, { at: Date.now(), value: null });
+      return null;
+    });
+
+  weatherForecastCache.set(key, { at: Date.now(), promise });
+  return promise;
+}
+
+/** The recent change in a cell's measured mobility, in points per hour. */
+function mobilityTrendPerHour(history, now) {
+  const entries = (Array.isArray(history) ? history : [])
+    .filter((entry) => entry?.calculatedAt && Number.isFinite(Number(entry?.scores?.mobility)))
+    .map((entry) => ({
+      at: new Date(entry.calculatedAt).getTime(),
+      mobility: Number(entry.scores.mobility),
+    }))
+    .filter((entry) => Number.isFinite(entry.at) && now - entry.at <= 60 * 60 * 1000)
+    .sort((a, b) => a.at - b.at);
+
+  if (entries.length < 2) return 0;
+  const last = entries[entries.length - 1];
+  // A trend needs a baseline at least fifteen minutes old. Recalculations a
+  // minute apart would otherwise turn one reading into a steep false slope.
+  const first = entries.find((entry) => last.at - entry.at >= 15 * 60 * 1000);
+  if (!first) return 0;
+  const hours = (last.at - first.at) / 3600000;
+  if (hours < 0.05) return 0;
+  return clamp((last.mobility - first.mobility) / hours, -1.5, 1.5);
+}
+
+/**
+ * Projects measured mobility forward.
+ *
+ * The recent trend carries forward, damped, and traffic returns to free flow
+ * over a few hours unless a live incident is still holding it. An incident
+ * cell keeps its congestion for the whole horizon rather than being assumed
+ * to clear by itself.
+ */
+function projectMobility(current, trend, hours, hasAlerts) {
+  // A live incident is not assumed to clear itself: the cell keeps at least
+  // three quarters of its measured disruption for the whole horizon.
+  if (hasAlerts) {
+    const floor = current * 0.75;
+    return clamp(Math.max(floor, current + trend * 0.3 * hours), 0, 10);
+  }
+  // Without an incident, traffic returns to free flow and the trend fades.
+  const dampedTrend = trend * Math.max(0, 1 - hours / 4);
+  return clamp(current + (dampedTrend - current / 6) * hours, 0, 10);
+}
+
+/** The forecast row closest to a horizon, within the hourly tolerance. */
+function nearestForecastRow(rows, at) {
+  let best = null;
+  let bestDistance = Infinity;
+  for (const row of rows || []) {
+    const distance = Math.abs(row.time - at);
+    if (distance < bestDistance) {
+      best = row;
+      bestDistance = distance;
+    }
+  }
+  return best && bestDistance <= 90 * 60 * 1000 ? best : null;
+}
+
+/**
+ * Projects the cell's risk for the next three hours.
+ *
+ * Mobility comes from the cell's own trend, climate from the hourly weather
+ * forecast, and vulnerability stays at its measured baseline.
+ */
+async function buildForecast({
+  cityCode,
+  latitude,
+  longitude,
+  currentMobility,
+  currentClimate,
+  vulnerability,
+  history,
+  weights,
+  hasAlerts,
+  now,
+}) {
+  // Only a known city has a shared forecast. A cell outside the catalog
+  // falls back to its own trend rather than triggering a request per cell.
+  const city = cityCode ? getCityByCode(cityCode) : null;
+  const rows = city ? await getWeatherForecast(city.code, city.lat, city.lon) : null;
+  const trend = mobilityTrendPerHour(history, now);
+
+  const points = FORECAST_HORIZONS_MINUTES.map((minutes) => {
+    const at = now + minutes * 60000;
+    const row = nearestForecastRow(rows, at);
+    const climate = row
+      ? computeClimateScore(
+          [
+            {
+              observedAt: new Date(at),
+              rainMmHr: row.rainMmHr,
+              visibilityM: row.visibilityM,
+              windGustMps: row.windGustMps,
+            },
+          ],
+          at
+        ).score
+      : currentClimate;
+    const mobility = projectMobility(currentMobility, trend, minutes / 60, hasAlerts);
+    const risk = Number(
+      (weights.Wm * mobility + weights.Wc * climate + weights.Wv * vulnerability).toFixed(2)
+    );
+    return {
+      minutes,
+      at: new Date(at),
+      risk,
+      mobility: Number(mobility.toFixed(2)),
+      climate,
+      rainMmHr: row?.rainMmHr ?? 0,
+    };
+  });
+
+  const peak = points.reduce((best, point) => (point.risk > best.risk ? point : best), points[0]);
+  return {
+    forecastRisk: peak.risk,
+    forecast: {
+      generatedAt: new Date(now),
+      source: rows?.length ? 'open-meteo-hourly+trend' : 'trend-only',
+      peakMinutes: peak.minutes,
+      points,
+    },
+  };
+}
 
 /**
  * Normalizes latitude and longitude and returns H3 index at resolution 8.
@@ -642,6 +801,20 @@ export async function recalculateCell(h3Index) {
     }
   }
 
+  const cityCode = events.find((event) => event.cityCode)?.cityCode || previousCell?.cityCode || null;
+  const forecast = await buildForecast({
+    cityCode,
+    latitude,
+    longitude,
+    currentMobility: scored.scores.mobility,
+    currentClimate: scored.scores.climate,
+    vulnerability: scored.scores.vulnerability,
+    history: previousCell?.history,
+    weights: activeWeights,
+    hasAlerts: scored.alerts.length > 0,
+    now: Date.now(),
+  });
+
   // Manage rolling history (keep latest 10 snapshots for micro-trend rendering)
   const previousHistory = Array.isArray(previousCell?.history) ? previousCell.history : [];
   const updatedHistory = [
@@ -665,12 +838,13 @@ export async function recalculateCell(h3Index) {
           coordinates: [longitude, latitude],
         },
         ...scored,
+        ...forecast,
         history: updatedHistory,
         lastUpdated: new Date(),
         degradationStatus: scored.degradationStatus,
         // The city the cell belongs to, taken from the telemetry that
         // produced it, so the console can group the cells by city.
-        cityCode: events.find((event) => event.cityCode)?.cityCode || previousCell?.cityCode || null,
+        cityCode,
       },
     },
     { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
