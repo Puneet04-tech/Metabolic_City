@@ -8,6 +8,7 @@ import CellList from '../components/Operator/CellList';
 import LensFilter from '../components/Operator/LensFilter';
 import ForecastModelPanel from '../components/Operator/ForecastModelPanel';
 import LiveAlerts from '../components/Operator/LiveAlerts';
+import ReportVerificationPanel from '../components/Operator/ReportVerificationPanel';
 import SummaryStrip from '../components/Operator/SummaryStrip';
 import TelemetryStatus from '../components/Operator/TelemetryStatus';
 import SearchInput from '../components/ui/SearchInput/SearchInput';
@@ -344,6 +345,7 @@ export default function OperatorConsole() {
         </div>
 
         <LiveAlerts alerts={alerts} threshold={threshold} onSelect={selectAlert} />
+        <ReportVerificationPanel alerts={alerts} onSelect={selectAlert} />
         <ForecastModelPanel accuracy={forecastAccuracy} />
 
         {relative && relativeAvailable ? (

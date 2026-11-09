@@ -28,6 +28,8 @@ describe('OperatorConsole', () => {
     expect(html).toContain('Composite');
     expect(html).toContain('Vulnerability');
     expect(html).toContain('Risk summary');
+    expect(html).toContain('Citizen &amp; field reports');
+    expect(html).toContain('No citizen or field reports');
   });
 });
 
