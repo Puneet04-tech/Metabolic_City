@@ -29,6 +29,19 @@ const spatialCellSchema = new mongoose.Schema(
       default: 'LOW',
       index: true,
     },
+    // The strongest active alert in the cell, kept separate from the averaged
+    // risk so a road closure is visible even when it causes little delay.
+    alertScore: { type: Number, min: 0, max: 10, default: 0, index: true },
+    alertLevel: { type: String, default: null, index: true },
+    alerts: [
+      {
+        type: { type: String },
+        severity: Number,
+        title: String,
+        detail: String,
+        observedAt: Date,
+      },
+    ],
     trend: {
       type: String,
       enum: ['SURGING', 'RISING', 'STABLE', 'DE-ESCALATING'],

@@ -61,7 +61,7 @@ const HexLayer = L.Layer.extend({
       } catch {
         continue;
       }
-      const value = mode === 'composite' ? cell.compositeRisk : Number(cell.scores?.[mode]) || 0;
+      const value = cellScore(cell, mode);
       const band = cellBandFor(cell, mode, threshold);
       const percentile = ranks ? (ranks.get(cell.h3Index) ?? 0) : null;
       const color = useRelative

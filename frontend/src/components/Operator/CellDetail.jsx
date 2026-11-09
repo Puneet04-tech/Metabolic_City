@@ -16,6 +16,7 @@ const LENS_LABELS = {
   mobility: 'Mobility',
   climate: 'Climate',
   vulnerability: 'Vulnerability',
+  alerts: 'Alert severity',
 };
 
 /** The real sources that can back a cell, and what each one means. */
@@ -113,6 +114,47 @@ function TrendChart({ values }) {
     <svg viewBox="0 0 100 30" className={styles.trendChart} preserveAspectRatio="none" role="img" aria-label="Composite risk over the last readings">
       <polyline points={points} className={styles.trendLine} />
     </svg>
+  );
+}
+
+/**
+ * The live alerts behind a cell.
+ *
+ * These are current incidents, measured slowdowns and citizen reports. They
+ * are listed by name and severity because "Mobility 3.0" does not tell an
+ * operator that a road is closed.
+ */
+function AlertPanel({ cell, threshold }) {
+  const alerts = Array.isArray(cell.alerts) ? cell.alerts : [];
+  if (!alerts.length) return null;
+
+  return (
+    <section className={styles.section} aria-label="Active alerts">
+      <h3 className={styles.sectionTitle}>Active alerts</h3>
+      <ul className={styles.alerts}>
+        {alerts.map((alert, index) => {
+          const severity = Number(alert.severity) || 0;
+          return (
+            <li
+              key={`${alert.type || 'alert'}-${index}`}
+              className={styles.alert}
+              data-severity={severity >= threshold ? 'critical' : 'warning'}
+            >
+              <span className={styles.alertDot} aria-hidden="true" />
+              <span className={styles.alertText}>
+                <span className={styles.alertTitle}>{alert.title}</span>
+                {alert.detail ? <span className={styles.alertDetail}>{alert.detail}</span> : null}
+              </span>
+              <span className={styles.alertScore}>{severity.toFixed(1)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className={styles.alertNote}>
+        Alerts are current road incidents, measured slowdowns and citizen reports in this
+        cell, not a forecast.
+      </p>
+    </section>
   );
 }
 
@@ -221,6 +263,8 @@ export default function CellDetail({ cell, mode, threshold, action, loading, err
           <TrendChart values={history} />
         </section>
       ) : null}
+
+      <AlertPanel cell={cell} threshold={threshold} />
 
       <ProvenancePanel cell={cell} />
 

@@ -5,6 +5,7 @@ const LENSES = [
   { value: 'mobility', label: 'Mobility', hint: 'Sm' },
   { value: 'climate', label: 'Climate', hint: 'Sc' },
   { value: 'vulnerability', label: 'Vulnerability', hint: 'Sv' },
+  { value: 'alerts', label: 'Alerts', hint: 'A' },
 ];
 
 /** The lens switcher. Each option shows the score code it drives. */

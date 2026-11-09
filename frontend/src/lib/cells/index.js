@@ -36,8 +36,11 @@ const LEVEL_LABEL = {
 
 export const riskLevelLabel = (level) => LEVEL_LABEL[String(level || '').toUpperCase()] ?? 'Normal';
 
-export const cellScore = (cell, mode) =>
-  mode === 'composite' ? cell.compositeRisk : Number(cell.scores?.[mode]) || 0;
+export const cellScore = (cell, mode) => {
+  if (mode === 'alerts') return Number(cell?.alertScore) || 0;
+  if (mode === 'composite') return Number(cell?.compositeRisk) || 0;
+  return Number(cell?.scores?.[mode]) || 0;
+};
 
 export const cellBand = (value, threshold) =>
   value >= threshold ? SEVERITY.CRITICAL : value >= CAUTION_THRESHOLD ? SEVERITY.CAUTION : SEVERITY.NORMAL;
@@ -50,8 +53,19 @@ export const cellBand = (value, threshold) =>
  * for payloads that carry no risk level.
  */
 export const cellBandFor = (cell, mode, threshold) => {
-  const level = String(cell?.riskLevel || '').toUpperCase();
-  if (LEVEL_BAND[level]) return LEVEL_BAND[level];
+  // Alerts have their own severity: a road closure is critical even when the
+  // averaged composite risk it contributes to is low.
+  if (mode === 'alerts') {
+    if (String(cell?.alertLevel || '').toUpperCase() === 'CRITICAL') return SEVERITY.CRITICAL;
+    return cellBand(cellScore(cell, mode), threshold);
+  }
+  // Every lens colours by the score it is showing, so switching lens changes
+  // the map. The one exception is composite, which keeps the server's own
+  // classification because the threshold is configured per municipality.
+  if (mode === 'composite') {
+    const level = String(cell?.riskLevel || '').toUpperCase();
+    if (LEVEL_BAND[level]) return LEVEL_BAND[level];
+  }
   return cellBand(cellScore(cell, mode), threshold);
 };
 
@@ -100,6 +114,7 @@ export const LENS_CODES = {
   mobility: 'Sm',
   climate: 'Sc',
   vulnerability: 'Sv',
+  alerts: 'A',
 };
 
 export const LENS_NAMES = {
@@ -107,16 +122,24 @@ export const LENS_NAMES = {
   mobility: 'Mobility',
   climate: 'Climate',
   vulnerability: 'Vulnerability',
+  alerts: 'Active alerts',
 };
 
 /**
  * The scale of a lens, so the legend can say what the colours mean.
  */
-export const lensScale = (mode, threshold) => [
-  { band: 'critical', label: 'Critical', text: `≥ ${threshold}` },
-  { band: 'caution', label: 'Caution', text: `${CAUTION_THRESHOLD}–${threshold}` },
-  { band: 'normal', label: 'Normal', text: `< ${CAUTION_THRESHOLD}` },
-];
+export const lensScale = (mode, threshold) =>
+  mode === 'alerts'
+    ? [
+        { band: 'critical', label: 'Critical alert', text: `≥ ${threshold}` },
+        { band: 'caution', label: 'Warning', text: `${CAUTION_THRESHOLD}–${threshold}` },
+        { band: 'normal', label: 'No alert', text: `< ${CAUTION_THRESHOLD}` },
+      ]
+    : [
+        { band: 'critical', label: 'Critical', text: `≥ ${threshold}` },
+        { band: 'caution', label: 'Caution', text: `${CAUTION_THRESHOLD}–${threshold}` },
+        { band: 'normal', label: 'Normal', text: `< ${CAUTION_THRESHOLD}` },
+      ];
 
 /**
  * Ordering used everywhere: risk first, then the most recently updated, then

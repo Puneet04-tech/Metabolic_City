@@ -395,6 +395,121 @@ function detectAnomalies(scores, currentRisk, previousRisk) {
   return { detected: false, reason: null };
 }
 
+/** How disruptive each TomTom incident category is, as an alert severity. */
+const INCIDENT_ALERT_SEVERITY = {
+  1: 8, // accident
+  2: 6, // fog
+  3: 6, // dangerous conditions
+  4: 5, // rain
+  5: 6, // ice
+  6: 7, // jam
+  7: 8, // lane closed
+  8: 9, // road closed
+  9: 6, // road works
+  10: 5, // high wind
+  11: 9, // flooding
+  14: 6, // broken-down vehicle
+};
+
+const CITIZEN_ALERT_SEVERITY = {
+  ROAD_BLOCK: 8,
+  WATERLOGGING: 8,
+  FALLEN_TREE: 7,
+  OPEN_MANHOLE: 7,
+  POWER_HAZARD: 7,
+  STRUCTURAL_DAMAGE: 6,
+  TRAFFIC_JAM: 5,
+  GENERAL_HAZARD: 5,
+};
+
+const CITIZEN_ALERT_LABELS = {
+  ROAD_BLOCK: 'Road blocked or closed',
+  WATERLOGGING: 'Flooding and waterlogging',
+  FALLEN_TREE: 'Fallen tree',
+  OPEN_MANHOLE: 'Open manhole',
+  POWER_HAZARD: 'Electrical hazard',
+  STRUCTURAL_DAMAGE: 'Damaged road or structure',
+  TRAFFIC_JAM: 'Traffic jam',
+  GENERAL_HAZARD: 'Citizen hazard report',
+};
+
+const ALERT_CAUTION = 5;
+
+/**
+ * Turns the readings behind a cell into explicit alerts.
+ *
+ * An alert says what is wrong and where, instead of burying a road closure in
+ * a weighted average: a closure is an alert even when the delay it reports is
+ * zero. Only measured events produce alerts — simulated transit is ignored.
+ */
+function deriveCellAlerts(transit, citizen) {
+  const alerts = [];
+
+  for (const event of transit) {
+    const payload = event.rawPayload || {};
+    if (payload.simulated) continue;
+
+    if (payload.source === 'tomtom-traffic-incidents') {
+      const iconCategory = Number(payload.iconCategory);
+      const delayMins = Number(event.delayMins) || 0;
+      const base = INCIDENT_ALERT_SEVERITY[iconCategory] ?? 5;
+      const severity = clamp(base + Math.min(1, delayMins / 10));
+      const description = payload.description || payload.category || 'Road incident';
+      alerts.push({
+        type: 'INCIDENT',
+        severity: Number(severity.toFixed(1)),
+        title: /^closed$/i.test(description) ? 'Road closed' : description,
+        detail:
+          delayMins > 0
+            ? `${payload.category || 'Incident'} · ${delayMins.toFixed(1)} min delay`
+            : `${payload.category || 'Incident'} reported on a watched road`,
+        observedAt: event.observedAt,
+      });
+      continue;
+    }
+
+    const delayMins = Number(event.delayMins) || 0;
+    const reduction = Number(event.speedReductionPct) || 0;
+    if (delayMins >= 3 || reduction >= 30) {
+      const severity = clamp(ALERT_CAUTION + delayMins / 5 + reduction / 25, ALERT_CAUTION, 9);
+      alerts.push({
+        type: 'CONGESTION',
+        severity: Number(severity.toFixed(1)),
+        title: 'Slow traffic',
+        detail: `${reduction.toFixed(0)}% below free flow${delayMins > 0 ? ` · ${delayMins.toFixed(1)} min delay` : ''}`,
+        observedAt: event.observedAt,
+      });
+    }
+  }
+
+  for (const event of citizen) {
+    const payload = event.rawPayload || {};
+    if (payload.simulated) continue;
+    const category = String(event.category || payload.category || '').toUpperCase();
+    const urgency = String(payload.urgency || '').toLowerCase();
+    const base = CITIZEN_ALERT_SEVERITY[category] ?? ALERT_CAUTION;
+    const severity = clamp(base + (urgency === 'high' ? 1 : urgency === 'low' ? -1 : 0));
+    alerts.push({
+      type: 'REPORT',
+      severity,
+      title: CITIZEN_ALERT_LABELS[category] || 'Citizen report',
+      detail: event.reportText ? String(event.reportText).slice(0, 160) : 'Reported by a resident',
+      observedAt: event.observedAt,
+    });
+  }
+
+  alerts.sort((a, b) => b.severity - a.severity);
+  const seen = new Set();
+  const unique = [];
+  for (const alert of alerts) {
+    const key = `${alert.type}|${alert.title}|${alert.detail}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(alert);
+  }
+  return unique.slice(0, 4);
+}
+
 /**
  * Evaluates all events for a spatial cell and produces rich scores.
  */
@@ -410,6 +525,11 @@ export function scoreCellEvents(events, previousCell, weights = DEFAULT_WEIGHTS,
   const mobility = computeMobilityScore(transit, citizen, now);
   const climate = computeClimateScore(weather, now);
   const vulnerability = computeVulnerabilityScore(gis, citizen, previousVulnerability);
+
+  const alerts = deriveCellAlerts(transit, citizen);
+  const alertScore = alerts.length ? alerts[0].severity : 0;
+  const alertLevel =
+    alertScore >= threshold ? 'CRITICAL' : alertScore >= ALERT_CAUTION ? 'WARNING' : null;
 
   const directRisk = Number(
     (weights.Wm * mobility.score + weights.Wc * climate.score + weights.Wv * vulnerability.score).toFixed(2)
@@ -457,6 +577,10 @@ export function scoreCellEvents(events, previousCell, weights = DEFAULT_WEIGHTS,
     weights,
     compositeRisk: directRisk,
     riskLevel,
+    // What is actively wrong in this cell, independent of the averaged risk.
+    alertScore,
+    alertLevel,
+    alerts,
     trend,
     trendDisplay,
     riskVelocity: velocity,

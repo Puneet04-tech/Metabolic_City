@@ -248,3 +248,64 @@
 .contextWater {
   color: var(--text-secondary);
 }
+
+.alerts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alert {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+}
+
+.alertDot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--caution);
+}
+
+.alert[data-severity='critical'] .alertDot {
+  background: var(--critical);
+}
+
+.alertText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.alertTitle {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.alertDetail {
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.alertScore {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.alertNote {
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  color: var(--text-disabled);
+}
