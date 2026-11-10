@@ -19,6 +19,51 @@ export function fallbackAlertKey(alert, h3Index) {
 }
 
 /**
+ * The reporter-level trail behind a citizen alert.
+ *
+ * Sender IDs stay in telemetry. The alert keeps only what an operator needs
+ * to judge independence: an anonymous reporter label, whether the report came
+ * from a resident or a field crew, and when it was observed. That is enough to
+ * explain corroboration without turning the alert into a copy of personal
+ * data or extending its retention.
+ */
+export function deriveReportEvidence(alert, observations = []) {
+  if (alert.type !== 'REPORT') return [];
+
+  const category = String(alert.category || '').toUpperCase();
+  const matching = observations
+    .filter(
+      (event) =>
+        event.sourceType === 'CITIZEN_311' &&
+        String(event.category || '').toUpperCase() === category
+    )
+    .sort((left, right) => new Date(left.observedAt || 0) - new Date(right.observedAt || 0));
+
+  const residentLabels = new Map();
+  let residentCount = 0;
+
+  return matching.map((event) => {
+    const fieldCrew = /^CREW_/i.test(String(event.senderId || ''));
+    let reporter = 'Field crew';
+
+    if (!fieldCrew) {
+      const identity = event.senderId || String(event.eventId || event._id || 'anonymous');
+      if (!residentLabels.has(identity)) {
+        residentCount += 1;
+        residentLabels.set(identity, `Resident ${residentCount}`);
+      }
+      reporter = residentLabels.get(identity);
+    }
+
+    return {
+      reporter,
+      kind: fieldCrew ? 'FIELD_CREW' : 'RESIDENT',
+      at: event.observedAt || event.receivedAt || null,
+    };
+  });
+}
+
+/**
  * Evidence rules, kept pure so they can be tested without a database.
  *
  * A provider report is not a field verification, and one resident is not a
@@ -38,26 +83,39 @@ export function deriveVerification(alert, observations = []) {
     const distinctReporters = new Set(
       matching.map((event) => event.senderId || String(event.eventId || event._id))
     ).size;
+    const evidence = deriveReportEvidence(alert, matching);
 
     if (matchingField) {
-      return { verification: 'VERIFIED', evidenceCount: Math.max(1, distinctReporters) };
+      return {
+        verification: 'VERIFIED',
+        evidenceCount: Math.max(1, distinctReporters),
+        evidence,
+      };
     }
     if (distinctReporters >= 2) {
-      return { verification: 'CORROBORATED', evidenceCount: distinctReporters };
+      return {
+        verification: 'CORROBORATED',
+        evidenceCount: distinctReporters,
+        evidence,
+      };
     }
-    return { verification: 'UNVERIFIED', evidenceCount: 1 };
+    return { verification: 'UNVERIFIED', evidenceCount: 1, evidence };
   }
 
   if (fieldReports.length) {
-    return { verification: 'CORROBORATED', evidenceCount: Math.max(1, fieldReports.length) };
+    return {
+      verification: 'CORROBORATED',
+      evidenceCount: Math.max(1, fieldReports.length),
+      evidence: [],
+    };
   }
   if (alert.type === 'INCIDENT') {
-    return { verification: 'PROVIDER_REPORTED', evidenceCount: 1 };
+    return { verification: 'PROVIDER_REPORTED', evidenceCount: 1, evidence: [] };
   }
   if (alert.type === 'CONGESTION' || alert.type === 'SENSOR') {
-    return { verification: 'OBSERVED', evidenceCount: 1 };
+    return { verification: 'OBSERVED', evidenceCount: 1, evidence: [] };
   }
-  return { verification: 'UNVERIFIED', evidenceCount: 1 };
+  return { verification: 'UNVERIFIED', evidenceCount: 1, evidence: [] };
 }
 
 function alertFields(alert, cell, now, verification) {

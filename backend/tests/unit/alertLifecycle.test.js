@@ -1,16 +1,29 @@
-import { deriveVerification, fallbackAlertKey } from '../../src/services/alertService.js';
+import {
+  deriveReportEvidence,
+  deriveVerification,
+  fallbackAlertKey,
+} from '../../src/services/alertService.js';
+import { Alert } from '../../src/models/Alert.js';
 import { SpatialCell } from '../../src/models/SpatialCell.js';
 
 const observation = (overrides = {}) => ({
   sourceType: 'CITIZEN_311',
   senderId: 'resident-1',
   category: 'WATERLOGGING',
+  observedAt: '2026-11-10T10:00:00.000Z',
   ...overrides,
 });
 
 describe('cell alert persistence', () => {
   it('keeps the report category needed for verification', () => {
     expect(SpatialCell.schema.path('alerts').schema.path('category')).toBeDefined();
+  });
+
+  it('keeps an anonymized reporter trail on the alert', () => {
+    expect(SpatialCell.schema.path('alerts')).toBeDefined();
+    expect(Alert.schema.path('evidence.reporter')).toBeDefined();
+    expect(Alert.schema.path('evidence.kind')).toBeDefined();
+    expect(Alert.schema.path('evidence.at')).toBeDefined();
   });
 });
 
@@ -62,6 +75,50 @@ describe('alert evidence', () => {
       [observation({ senderId: 'CREW_123' })]
     );
     expect(result.verification).toBe('CORROBORATED');
+  });
+});
+
+describe('report evidence trail', () => {
+  it('names distinct residents and keeps their observation times', () => {
+    const evidence = deriveReportEvidence(
+      { type: 'REPORT', category: 'WATERLOGGING' },
+      [
+        observation({
+          senderId: 'resident-2',
+          observedAt: '2026-11-10T10:06:00.000Z',
+        }),
+        observation({
+          senderId: 'resident-1',
+          observedAt: '2026-11-10T10:01:00.000Z',
+        }),
+      ]
+    );
+
+    expect(evidence).toEqual([
+      { reporter: 'Resident 1', kind: 'RESIDENT', at: '2026-11-10T10:01:00.000Z' },
+      { reporter: 'Resident 2', kind: 'RESIDENT', at: '2026-11-10T10:06:00.000Z' },
+    ]);
+  });
+
+  it('identifies a field crew report without exposing its sender ID', () => {
+    const evidence = deriveReportEvidence(
+      { type: 'REPORT', category: 'WATERLOGGING' },
+      [observation({ senderId: 'CREW_123', observedAt: '2026-11-10T10:12:00.000Z' })]
+    );
+
+    expect(evidence).toEqual([
+      { reporter: 'Field crew', kind: 'FIELD_CREW', at: '2026-11-10T10:12:00.000Z' },
+    ]);
+    expect(JSON.stringify(evidence)).not.toContain('CREW_123');
+  });
+
+  it('does not attach reporter evidence to provider alerts', () => {
+    expect(
+      deriveReportEvidence(
+        { type: 'INCIDENT' },
+        [observation({ senderId: 'CREW_123' })]
+      )
+    ).toEqual([]);
   });
 });
 

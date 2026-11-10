@@ -36,6 +36,15 @@ const alertSchema = new mongoose.Schema(
       index: true,
     },
     evidenceCount: { type: Number, default: 1 },
+    // An anonymized report trail, not a copy of the source telemetry. It lets
+    // an operator see which independent reporters back a verification state.
+    evidence: [
+      {
+        reporter: { type: String, default: null },
+        kind: { type: String, enum: ['RESIDENT', 'FIELD_CREW'], default: 'RESIDENT' },
+        at: Date,
+      },
+    ],
     firstSeenAt: { type: Date, default: Date.now, index: true },
     lastSeenAt: { type: Date, default: Date.now },
     acknowledgedAt: Date,

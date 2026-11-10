@@ -1,4 +1,7 @@
+import { useId, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { cellRef } from '../../lib/cells/index.js';
+import { absoluteTime } from '../../lib/useRelativeTime.js';
 import styles from './ReportVerificationPanel.module.css';
 
 const STATES = [
@@ -29,6 +32,22 @@ const stateFor = (alert) =>
     ? alert.verification
     : 'UNVERIFIED';
 
+const parseTimestamp = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const timestampNode = (value, className) => {
+  const date = parseTimestamp(value);
+  if (!date) return <span className={className}>Unknown time</span>;
+  return (
+    <time className={className} dateTime={date.toISOString()} title={absoluteTime(date)}>
+      {absoluteTime(date)}
+    </time>
+  );
+};
+
 /**
  * The evidence level of citizen and field reports.
  *
@@ -38,6 +57,8 @@ const stateFor = (alert) =>
  * a report before dispatching anyone.
  */
 export default function ReportVerificationPanel({ alerts = [], onSelect }) {
+  const [expandedKey, setExpandedKey] = useState(null);
+  const detailId = useId();
   const reports = alerts.filter((alert) => alert.type === 'REPORT');
   const counts = Object.fromEntries(STATES.map((state) => [state.value, 0]));
   for (const report of reports) counts[stateFor(report)] += 1;
@@ -70,40 +91,150 @@ export default function ReportVerificationPanel({ alerts = [], onSelect }) {
       {reports.length ? (
         <>
           <ul className={styles.list}>
-            {reports.slice(0, 3).map((report) => {
+            {reports.slice(0, 3).map((report, index) => {
               const state = stateFor(report);
               const stateLabel = STATES.find((item) => item.value === state)?.label;
-              const evidence = Number(report.evidenceCount) || 1;
+              const evidence = Array.isArray(report.evidence) ? report.evidence : [];
+              const evidenceCount = Number(report.evidenceCount) || 1;
+              const reportCount = evidence.length || evidenceCount;
+              const reportKey =
+                report.alertKey || report._id || `${report.h3Index}-${index}`;
+              const expanded = expandedKey === reportKey;
+              const reportDetailId = `${detailId}-${index}`;
+              const evidenceTimes = evidence
+                .map((item) => parseTimestamp(item.at))
+                .filter(Boolean);
+              const latestEvidenceAt = evidenceTimes.length
+                ? new Date(Math.max(...evidenceTimes.map((date) => date.getTime())))
+                : null;
               const content = (
                 <>
                   <span className={styles.reportText}>
                     <span className={styles.reportTitle}>{report.title}</span>
                     <span className={styles.reportMeta}>
                       Cell {cellRef(report.h3Index)} ·{' '}
-                      {STATUS_LABELS[report.status] || report.status} · {evidence}{' '}
-                      {evidence === 1 ? 'report' : 'reports'}
+                      {STATUS_LABELS[report.status] || report.status} · {reportCount}{' '}
+                      {reportCount === 1 ? 'report' : 'reports'}
                     </span>
                   </span>
                   <span className={styles.badge} data-state={state}>
                     {stateLabel}
                   </span>
+                  <ChevronDown
+                    size={14}
+                    className={styles.chevron}
+                    data-expanded={expanded}
+                    aria-hidden="true"
+                  />
                 </>
               );
 
               return (
-                <li key={report.alertKey || report._id || report.h3Index} className={styles.item}>
-                  {onSelect ? (
-                    <button
-                      type="button"
-                      className={styles.report}
-                      onClick={() => onSelect(report)}
-                      aria-label={`Open ${report.title} in cell ${cellRef(report.h3Index)}`}
-                    >
-                      {content}
-                    </button>
-                  ) : (
-                    <div className={styles.report}>{content}</div>
-                  )}
+                <li key={reportKey} className={styles.item}>
+                  <button
+                    type="button"
+                    className={styles.report}
+                    onClick={() =>
+                      setExpandedKey((current) =>
+                        current === reportKey ? null : reportKey
+                      )
+                    }
+                    aria-expanded={expanded}
+                    aria-controls={expanded ? reportDetailId : undefined}
+                    aria-label={`${expanded ? 'Hide' : 'Show'} evidence for ${
+                      report.title
+                    } in cell ${cellRef(report.h3Index)}`}
+                  >
+                    {content}
+                  </button>
+
+                  {expanded ? (
+                    <div className={styles.detail} id={reportDetailId}>
+                      <dl className={styles.facts}>
+                        <div className={styles.fact}>
+                          <dt className={styles.factLabel}>First reported</dt>
+                          <dd className={styles.factValue}>
+                            {timestampNode(report.firstSeenAt, styles.factTime)}
+                          </dd>
+                        </div>
+                        <div className={styles.fact}>
+                          <dt className={styles.factLabel}>Latest evidence</dt>
+                          <dd className={styles.factValue}>
+                            {latestEvidenceAt
+                              ? timestampNode(latestEvidenceAt, styles.factTime)
+                              : 'None retained'}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <div className={styles.evidence}>
+                        <div className={styles.evidenceHeader}>
+                          <span className={styles.evidenceTitle}>
+                            Reporter evidence
+                          </span>
+                          <span className={styles.evidenceCount}>
+                            {evidenceCount} distinct{' '}
+                            {evidenceCount === 1 ? 'reporter' : 'reporters'}
+                          </span>
+                        </div>
+
+                        {evidence.length ? (
+                          <ul className={styles.evidenceList}>
+                            {evidence.slice(0, 5).map((item, evidenceIndex) => {
+                              const label =
+                                item.reporter ||
+                                (item.kind === 'FIELD_CREW'
+                                  ? 'Field crew'
+                                  : 'Resident');
+                              return (
+                                <li
+                                  key={`${label}-${item.at || 'unknown'}-${evidenceIndex}`}
+                                  className={styles.evidenceRow}
+                                >
+                                  <span className={styles.reporter}>
+                                    <span className={styles.reporterName}>
+                                      {label}
+                                    </span>
+                                    <span className={styles.reporterKind}>
+                                      {item.kind === 'FIELD_CREW'
+                                        ? 'Field verified report'
+                                        : 'Citizen report'}
+                                    </span>
+                                  </span>
+                                  {timestampNode(
+                                    item.at,
+                                    styles.evidenceTime
+                                  )}
+                                </li>
+                              );
+                            })}
+                            {evidence.length > 5 ? (
+                              <li className={styles.moreEvidence}>
+                                +{evidence.length - 5} more reports in the cell
+                                record
+                              </li>
+                            ) : null}
+                          </ul>
+                        ) : (
+                          <p className={styles.evidenceEmpty}>
+                            No reporter-level evidence was retained for this
+                            alert. The verification state reflects the alert
+                            record.
+                          </p>
+                        )}
+                      </div>
+
+                      {onSelect ? (
+                        <button
+                          type="button"
+                          className={styles.openCell}
+                          onClick={() => onSelect(report)}
+                        >
+                          Open cell {cellRef(report.h3Index)}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
