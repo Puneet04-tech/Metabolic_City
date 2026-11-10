@@ -179,6 +179,73 @@ describe('CellDetail', () => {
     );
     expect(html).toContain('No road speed readings for this cell');
   });
+
+  it('shows the latest incident status on the selected cell', () => {
+    const html = render(
+      <CellDetail
+        cell={selected}
+        mode="composite"
+        threshold={7}
+        action={{
+          action: { actionNarrative: 'Send crew', priority: 'High', dispatchText: 'Dispatch now' },
+          incident: {
+            status: 'APPROVED',
+            riskScore: 7.4,
+            detectedAt: new Date('2026-11-10T12:00:00Z').toISOString(),
+          },
+        }}
+        onBack={() => {}}
+        onLock={() => {}}
+        onDecide={() => {}}
+      />
+    );
+
+    expect(html).toContain('Incident lifecycle');
+    expect(html).toContain('Approved');
+    expect(html).toContain('Raised at 7.40 risk');
+    expect(html).not.toContain('Resolved');
+  });
+
+  it('shows a resolved incident with its resolution time', () => {
+    const html = render(
+      <CellDetail
+        cell={selected}
+        mode="composite"
+        threshold={7}
+        action={{
+          action: { actionNarrative: 'Send crew', priority: 'High', dispatchText: 'Dispatch now' },
+          incident: {
+            status: 'RESOLVED',
+            riskScore: 7.4,
+            detectedAt: new Date('2026-11-10T12:00:00Z').toISOString(),
+            resolvedAt: new Date('2026-11-10T12:30:00Z').toISOString(),
+          },
+        }}
+        onBack={() => {}}
+        onLock={() => {}}
+        onDecide={() => {}}
+      />
+    );
+
+    expect(html).toContain('Resolved');
+    expect(html).toContain('Opened');
+  });
+
+  it('says when the cell has no incident', () => {
+    const html = render(
+      <CellDetail
+        cell={selected}
+        mode="composite"
+        threshold={7}
+        action={{ action: { actionNarrative: 'Send crew' }, incident: null }}
+        onBack={() => {}}
+        onLock={() => {}}
+        onDecide={() => {}}
+      />
+    );
+
+    expect(html).toContain('No incident has been opened for this cell.');
+  });
 });
 
 describe('band counting and ordering', () => {

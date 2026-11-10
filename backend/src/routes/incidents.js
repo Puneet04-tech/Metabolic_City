@@ -96,10 +96,19 @@ router.get('/:h3Index/action', protect, authorize('operator', 'admin'), async (r
       expiresAt: { $gt: new Date() },
     }).lean();
 
+    // The latest incident is the cell's current lifecycle state. It stays
+    // visible after resolution so the operator can see what happened without
+    // opening the field history.
+    const incident = await Incident.findOne({ h3Index: cell.h3Index })
+      .sort({ detectedAt: -1 })
+      .select('_id status riskScore detectedAt operatorDecisionAt assignedCrewId dispatchedAt acknowledgedAt arrivedAt resolvedAt escalatedAt')
+      .lean();
+
     return res.json({
       cell,
       action,
       lock: activeLock ? { ownerId: activeLock.lockOwnerId, expiresAt: activeLock.expiresAt } : null,
+      incident,
     });
   } catch (error) {
     return res.status(error.status || 422).json({ message: error.message });

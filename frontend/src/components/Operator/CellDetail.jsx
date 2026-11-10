@@ -7,7 +7,7 @@ import Skeleton from '../ui/Skeleton/Skeleton';
 import { Dialog, DialogContent } from '../ui/Dialog/Dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/Tooltip/Tooltip';
 import { CAUTION_THRESHOLD, cellBandFor, cellScore, getCellLabel } from '../../lib/cells/index.js';
-import { priorityLabel } from '../../lib/taskStatus.js';
+import { incidentStatusLabel, priorityLabel } from '../../lib/taskStatus.js';
 import { useState } from 'react';
 import styles from './CellDetail.module.css';
 
@@ -37,6 +37,73 @@ const DEGRADATION_LABELS = {
   SPARSE_MOBILITY: 'Only a few road speed readings',
   SPARSE_CLIMATE: 'Only a few weather readings',
 };
+
+const INCIDENT_SEVERITY = {
+  DETECTED: 'caution',
+  APPROVED: 'caution',
+  OVERRIDDEN: 'normal',
+  DISPATCHED: 'caution',
+  ACKNOWLEDGED: 'info',
+  ARRIVED: 'info',
+  RESOLVED: 'normal',
+  ESCALATED: 'critical',
+};
+
+const formatIncidentTime = (value) =>
+  new Date(value).toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+/** The cell's latest incident, including a resolved one, so its state is visible. */
+function IncidentLifecycle({ incident, loading, loaded }) {
+  return (
+    <section className={styles.section} aria-label="Incident lifecycle">
+      <h3 className={styles.sectionTitle}>Incident lifecycle</h3>
+
+      {loading ? <Skeleton height={18} width="60%" /> : null}
+
+      {!loading && loaded && !incident ? (
+        <p className={styles.empty}>No incident has been opened for this cell.</p>
+      ) : null}
+
+      {!loading && !loaded ? (
+        <p className={styles.empty}>Incident status is unavailable.</p>
+      ) : null}
+
+      {!loading && loaded && incident ? (
+        <>
+          <div className={styles.incidentStatus}>
+            <SeverityBadge
+              severity={INCIDENT_SEVERITY[incident.status] || 'caution'}
+              label={incidentStatusLabel(incident.status)}
+            />
+            {Number.isFinite(Number(incident.riskScore)) ? (
+              <span className={styles.incidentRisk}>
+                Raised at {Number(incident.riskScore).toFixed(2)} risk
+              </span>
+            ) : null}
+          </div>
+
+          <dl className={styles.facts}>
+            <div className={styles.fact}>
+              <dt>Opened</dt>
+              <dd>{formatIncidentTime(incident.detectedAt || incident.createdAt)}</dd>
+            </div>
+            {incident.resolvedAt ? (
+              <div className={styles.fact}>
+                <dt>Resolved</dt>
+                <dd>{formatIncidentTime(incident.resolvedAt)}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </>
+      ) : null}
+    </section>
+  );
+}
 
 /**
  * What this cell's score is actually made of.
@@ -343,6 +410,8 @@ export default function CellDetail({
       {error ? (
         <Notice tone="error">{error}</Notice>
       ) : null}
+
+      <IncidentLifecycle incident={action?.incident} loading={loading} loaded={Boolean(action)} />
 
       <section className={styles.section} aria-label="Risk breakdown">
         <ScoreRow label="Composite risk" code="Rc" value={cell.compositeRisk ?? 0} threshold={threshold} />

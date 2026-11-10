@@ -9,11 +9,14 @@ export const TASK_STATUSES = {
 
 /** The same lifecycle, as an operator reads it in the console and analytics. */
 export const INCIDENT_STATUS_LABELS = {
+  DETECTED: 'Detected',
   APPROVED: 'Approved',
+  OVERRIDDEN: 'Overridden',
   DISPATCHED: 'Dispatched',
   ACKNOWLEDGED: 'Accepted',
   ARRIVED: 'On site',
   RESOLVED: 'Resolved',
+  ESCALATED: 'Escalated',
 };
 
 export const incidentStatusLabel = (status) =>
