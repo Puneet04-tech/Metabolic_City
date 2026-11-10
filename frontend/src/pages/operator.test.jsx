@@ -72,6 +72,7 @@ describe('CellList', () => {
     expect(html).not.toContain('883d…fff');
     expect(html).toContain('7.40');
     expect(html).toContain('0.60');
+    expect(html).toContain('0.0/h');
   });
 
   it('labels the score column with the active lens', () => {

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import DataTable from '../ui/DataTable/DataTable';
 import EmptyState from '../ui/EmptyState/EmptyState';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/Tooltip/Tooltip';
@@ -27,8 +27,16 @@ const SCORE_PARTS = [
  */
 function Trend({ velocity }) {
   const value = Number(velocity);
-  if (!Number.isFinite(value) || value === 0) {
+  if (!Number.isFinite(value)) {
     return <span className={styles.trendFlat}>—</span>;
+  }
+  if (value === 0) {
+    return (
+      <span className={styles.trend} data-direction="flat">
+        <Minus size={13} aria-hidden="true" />
+        0.0/h
+      </span>
+    );
   }
   const up = value > 0;
   return (
@@ -159,7 +167,6 @@ export default function CellList({
 
       <DataTable
         fill
-        fixedLayout
         columns={columns}
         rows={cells}
         sort={sort}

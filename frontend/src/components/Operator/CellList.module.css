@@ -84,6 +84,10 @@
   color: var(--normal-text);
 }
 
+.trend[data-direction='flat'] {
+  color: var(--text-secondary);
+}
+
 .trendFlat {
   font-size: var(--text-xs);
   color: var(--text-disabled);
