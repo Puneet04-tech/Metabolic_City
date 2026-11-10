@@ -10,13 +10,15 @@ import styles from './TaskCard.module.css';
  */
 export default function TaskCard({ task, distance, onOpen, className, ...rest }) {
   const status = TASK_STATUSES[task.status] ?? { label: task.status };
-  const severity = prioritySeverity(task.priority);
+  const priority = task.action?.priority ?? task.priority;
+  const dispatchText = task.action?.dispatchText ?? task.dispatchText;
+  const severity = prioritySeverity(priority);
   const age = relativeTime(task.detectedAt);
 
   return (
     <button type="button" className={cn(styles.card, className)} onClick={() => onOpen(task)} {...rest}>
       <div className={styles.top}>
-        <SeverityBadge severity={severity} label={priorityLabel(task.priority)} />
+        <SeverityBadge severity={severity} label={priorityLabel(priority)} />
         <span className={styles.status} data-status={task.status}>
           {status.label}
         </span>
@@ -24,7 +26,7 @@ export default function TaskCard({ task, distance, onOpen, className, ...rest })
 
       <p className={styles.cell}>Cell {task.h3Index}</p>
 
-      <p className={styles.instruction}>{task.dispatchText || 'No instruction was attached to this task.'}</p>
+      <p className={styles.instruction}>{dispatchText || 'No instruction was attached to this task.'}</p>
 
       <div className={styles.meta}>
         {age ? (

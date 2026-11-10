@@ -107,6 +107,16 @@ describe('TaskCard', () => {
     expect(screen.getByText('Water is backing up on the main road.')).toBeTruthy();
     expect(screen.getByText(/Reported/)).toBeTruthy();
   });
+
+  it('reads the priority and instruction from the incident action', () => {
+    const { priority, dispatchText, ...incident } = tasks[0];
+    render(<TaskCard task={incident} onOpen={() => {}} />);
+
+    expect(screen.getByText('Critical')).toBeTruthy();
+    expect(screen.getByText('Water is backing up on the main road.')).toBeTruthy();
+    expect(screen.queryByText('Unset')).toBeNull();
+    expect(screen.queryByText('No instruction was attached to this task.')).toBeNull();
+  });
 });
 
 describe('FieldTasks', () => {
