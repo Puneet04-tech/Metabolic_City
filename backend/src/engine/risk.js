@@ -496,21 +496,47 @@ async function computeCascadeRisk(h3Index, directRisk) {
 }
 
 /**
- * Determines trend and velocity based on previous score and time elapsed.
- * Returns formatted trend string for better UI display
+ * Determines trend and velocity from the cell's recent readings.
+ *
+ * A single unchanged interval is not a trend: it reports the last two saves,
+ * which is zero for a cell that rose ten minutes ago and has been flat since.
+ * Use the rolling history instead so the list answers the question operators
+ * actually ask - where has this cell moved over its recent readings?
  */
-function computeVelocityAndTrend(currentRisk, previousCell, calculatedAt = new Date()) {
-  if (!previousCell || !Number.isFinite(previousCell.compositeRisk) || !previousCell.lastUpdated) {
+export function computeVelocityAndTrend(currentRisk, previousCell, calculatedAt = new Date()) {
+  const history = Array.isArray(previousCell?.history) ? previousCell.history : [];
+  const points = history
+    .map((entry) => ({
+      risk: Number(entry.compositeRisk),
+      at: new Date(entry.calculatedAt),
+    }))
+    .filter((entry) => Number.isFinite(entry.risk) && !Number.isNaN(entry.at.getTime()))
+    .filter((entry) => entry.at <= calculatedAt)
+    .sort((a, b) => a.at - b.at);
+
+  // Older cells may predate the history array. The previous score is still a
+  // real observation, so keep it as the baseline rather than inventing a trend.
+  if (!points.length && Number.isFinite(previousCell?.compositeRisk) && previousCell?.lastUpdated) {
+    points.push({
+      risk: Number(previousCell.compositeRisk),
+      at: new Date(previousCell.lastUpdated),
+    });
+  }
+
+  if (!points.length) {
     return { velocity: 0, trend: 'STABLE', trendDisplay: 'Stable (no history)' };
   }
 
-  const timeDiffHours = Math.max(0.05, (calculatedAt.getTime() - new Date(previousCell.lastUpdated).getTime()) / (1000 * 60 * 60));
-  const riskDiff = currentRisk - previousCell.compositeRisk;
-  const velocity = Number((riskDiff / timeDiffHours).toFixed(2));
+  const baseline = points[0];
+  const timeDiffHours = Math.max(
+    0.05,
+    (calculatedAt.getTime() - baseline.at.getTime()) / (1000 * 60 * 60)
+  );
+  const velocity = Number(((currentRisk - baseline.risk) / timeDiffHours).toFixed(2));
 
   let trend = 'STABLE';
   let trendDisplay = 'Stable';
-  
+
   if (velocity > 1.5) {
     trend = 'SURGING';
     trendDisplay = `Surging (+${velocity.toFixed(1)}/h)`;
@@ -520,8 +546,8 @@ function computeVelocityAndTrend(currentRisk, previousCell, calculatedAt = new D
   } else if (velocity < -0.3) {
     trend = 'DE-ESCALATING';
     trendDisplay = `Falling (${velocity.toFixed(1)}/h)`;
-  } else {
-    trendDisplay = `Stable (${velocity.toFixed(1)}/h)`;
+  } else if (velocity === 0) {
+    trendDisplay = 'Stable (no change)';
   }
 
   return { velocity, trend, trendDisplay };

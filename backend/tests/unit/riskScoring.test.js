@@ -4,7 +4,7 @@
  * cell, not from the city as a whole
  */
 
-import { scoreCellEvents } from '../../src/engine/risk.js';
+import { computeVelocityAndTrend, scoreCellEvents } from '../../src/engine/risk.js';
 
 const now = new Date().toISOString();
 
@@ -30,6 +30,45 @@ const transitEvent = (overrides = {}) => ({
 });
 
 describe('scoreCellEvents', () => {
+  it('reads the trend across recent readings, not only the last unchanged interval', () => {
+    // The cell rose from 2.17 to 2.5 and then held that score. The last two
+    // saves are identical, but the recent trend is still upward.
+    const previousCell = {
+      compositeRisk: 2.5,
+      lastUpdated: new Date('2026-11-10T12:07:00Z'),
+      history: [
+        { compositeRisk: 2.17, calculatedAt: new Date('2026-11-10T11:27:00Z') },
+        { compositeRisk: 2.17, calculatedAt: new Date('2026-11-10T11:38:00Z') },
+        { compositeRisk: 2.5, calculatedAt: new Date('2026-11-10T11:48:00Z') },
+        { compositeRisk: 2.5, calculatedAt: new Date('2026-11-10T11:58:00Z') },
+        { compositeRisk: 2.5, calculatedAt: new Date('2026-11-10T12:07:00Z') },
+      ],
+    };
+
+    const trend = computeVelocityAndTrend(2.5, previousCell, new Date('2026-11-10T12:17:00Z'));
+
+    expect(trend.velocity).toBe(0.4);
+    expect(trend.trend).toBe('RISING');
+    expect(trend.trendDisplay).toContain('Rising');
+  });
+
+  it('does not report a zero rate for a cell that has not moved', () => {
+    const previousCell = {
+      compositeRisk: 2.5,
+      lastUpdated: new Date('2026-11-10T12:07:00Z'),
+      history: [
+        { compositeRisk: 2.5, calculatedAt: new Date('2026-11-10T11:58:00Z') },
+        { compositeRisk: 2.5, calculatedAt: new Date('2026-11-10T12:07:00Z') },
+      ],
+    };
+
+    const trend = computeVelocityAndTrend(2.5, previousCell, new Date('2026-11-10T12:17:00Z'));
+
+    expect(trend.velocity).toBe(0);
+    expect(trend.trend).toBe('STABLE');
+    expect(trend.trendDisplay).toBe('Stable (no change)');
+  });
+
   it('gives two cells with the same readings the same score', () => {
     // This is what the pipeline produced when it copied one city reading
     // into every cell: identical events, identical scores.

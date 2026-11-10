@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 import AppShell from '../components/shell/AppShell/AppShell';
 import {
   CellRiskBandsChart,
@@ -109,6 +109,7 @@ export default function Analytics() {
   const [cells, setCells] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const requestInFlight = useRef(false);
 
   const setFilter = useCallback(
     (key, value) => {
@@ -121,6 +122,8 @@ export default function Analytics() {
   );
 
   const load = useCallback(async () => {
+    if (requestInFlight.current) return;
+    requestInFlight.current = true;
     setLoading(true);
     setError('');
     try {
@@ -135,6 +138,7 @@ export default function Analytics() {
     } catch (requestError) {
       setError(requestError.message);
     } finally {
+      requestInFlight.current = false;
       setLoading(false);
     }
   }, []);
@@ -143,6 +147,23 @@ export default function Analytics() {
     load();
   }, [load]);
 
+  // An operator can approve or resolve an incident in another tab while this
+  // page is open. Re-read the summaries when the page regains focus instead of
+  // leaving the charts on the snapshot from when the page first mounted.
+  // This is deliberately not a timer: audit middleware records every read,
+  // and polling would fill the audit trail with analytics requests.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
+
   const threshold = data?.threshold ?? 7;
 
   const incidents = useMemo(() => {
@@ -248,10 +269,16 @@ export default function Analytics() {
               What the city did in the selected range. The filters are part of the address, so a view can be shared.
             </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={exportIncidents} disabled={!incidents.length}>
-            <Download size={13} aria-hidden="true" />
-            Export incidents
-          </Button>
+          <div className={styles.headerActions}>
+            <Button variant="ghost" size="sm" onClick={load}>
+              <RefreshCw size={13} aria-hidden="true" />
+              Refresh
+            </Button>
+            <Button variant="secondary" size="sm" onClick={exportIncidents} disabled={!incidents.length}>
+              <Download size={13} aria-hidden="true" />
+              Export incidents
+            </Button>
+          </div>
         </header>
 
         <section className={styles.filters} aria-label="Filters">

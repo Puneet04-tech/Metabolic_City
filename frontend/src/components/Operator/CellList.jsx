@@ -22,8 +22,9 @@ const SCORE_PARTS = [
 /**
  * The trend of a cell.
  *
- * The arrow follows the number, not the other way round, and a cell with no
- * movement says so rather than showing a zero.
+ * The arrow follows the number, not the other way round. A flat cell says
+ * "Stable" instead of claiming a measured rate of 0.0/h, because zero is the
+ * absence of movement, not a trend value.
  */
 function Trend({ velocity }) {
   const value = Number(velocity);
@@ -32,9 +33,13 @@ function Trend({ velocity }) {
   }
   if (value === 0) {
     return (
-      <span className={styles.trend} data-direction="flat">
+      <span
+        className={styles.trend}
+        data-direction="flat"
+        title="No change across the recent readings"
+      >
         <Minus size={13} aria-hidden="true" />
-        0.0/h
+        Stable
       </span>
     );
   }

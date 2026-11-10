@@ -99,6 +99,17 @@ describe('Analytics', () => {
     expect(status.value).toBe('APPROVED');
   });
 
+  it('re-reads the summary when the page regains focus', async () => {
+    renderAt(<Analytics />);
+
+    await waitFor(() => expect(screen.getByText('Incidents')).toBeTruthy());
+    const callsBeforeFocus = apiRequest.mock.calls.length;
+
+    window.dispatchEvent(new Event('focus'));
+
+    await waitFor(() => expect(apiRequest.mock.calls.length).toBeGreaterThan(callsBeforeFocus));
+  });
+
   it('shows the table alternative for a chart', async () => {
     renderAt(<Analytics />);
 
