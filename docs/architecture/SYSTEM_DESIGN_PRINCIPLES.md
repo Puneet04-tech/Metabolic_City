@@ -2,7 +2,7 @@
 
 **Project:** Urban Risk Management Platform  
 **Version:** 1.0  
-**Last Updated:** October 8, 2026
+**Last Updated:** November 11, 2026
 
 ---
 
@@ -133,7 +133,7 @@ shardKey: { cityCode: 1 }
 
 **Application in Metabolic City:**
 - Weather API failure: Use last known weather data with degraded flag
-- Transit API failure: Use simulated delays based on historical patterns
+- Transit API failure: Mark transit unavailable; never synthesize delays. GTFS-RT stays dormant until a compatible feed is configured
 - MongoDB connection failure: Retry with exponential backoff
 - SSE connection failure: Client auto-reconnects
 
@@ -534,7 +534,7 @@ class RiskEngine { calculateRisk(telemetry) { ... } }
 
 // Open/closed (extensible transit sources)
 class TransitService {
-  constructor(source = 'simulated') {
+  constructor(source = 'gtfs-rt') {
     this.strategy = TransitStrategies[source];
   }
 }
@@ -1278,5 +1278,5 @@ These principles will be referenced when implementing advanced features (H3 Cell
 ---
 
 **Document Version:** 1.0  
-**Last Updated:** October 8, 2026  
+**Last Updated:** November 11, 2026
 **Next Review:** November 15, 2026 (before AI feature implementation)

@@ -19,6 +19,7 @@ const FieldTasks = lazy(() => import('./pages/FieldTasks.jsx'));
 const FieldTaskDetail = lazy(() => import('./pages/FieldTaskDetail.jsx'));
 const AdminConsole = lazy(() => import('./pages/Admin.jsx'));
 const Analytics = lazy(() => import('./pages/Analytics.jsx'));
+const Intelligence = lazy(() => import('./pages/Intelligence.jsx'));
 const RoleHome = lazy(() => import('./components/Shared/RoleHome.jsx'));
 const CitizenReport = lazy(() => import('./pages/CitizenReport.jsx'));
 const Gallery = import.meta.env.DEV ? lazy(() => import('./components/gallery/Gallery.jsx')) : null;
@@ -88,6 +89,14 @@ export default function App() {
           element={
             <RequireAuth routeId="analytics">
               {withFrame('analytics', <Analytics />)}
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/intelligence"
+          element={
+            <RequireAuth routeId="intelligence">
+              {withFrame('intelligence', <Intelligence />)}
             </RequireAuth>
           }
         />

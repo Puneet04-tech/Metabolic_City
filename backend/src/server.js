@@ -28,6 +28,7 @@ import alertRoutes from './routes/alerts.js';
 import systemRoutes from './routes/system.js';
 import { startAlertMonitor, stopAlertMonitor } from './services/alertService.js';
 import { startForecastVerifier, stopForecastVerifier } from './services/forecastAudit.js';
+import intelligenceRoutes from './routes/intelligence.js';
 
 dotenv.config();
 
@@ -116,6 +117,7 @@ const healthHandler = (req, res) => {
       mongodb: dbReady ? 'ready' : 'unavailable',
       authentication: 'ready',
       h3: 'ready',
+      intelligence: process.env.INTELLIGENCE_SERVICE_URL || 'http://127.0.0.1:8001',
       circuitBreakers: circuitStatus,
     },
     performance: {
@@ -139,6 +141,7 @@ app.use('/api/v1/spatial', spatialAnalysisRoutes);
 app.use('/api/v1/qr', qrRoutes);
 app.use('/api/v1/alerts', alertRoutes);
 app.use('/api/v1/system', systemRoutes);
+app.use('/api/v1/intelligence', intelligenceRoutes);
 
 // PRINCIPLE: Usability - Error Handling
 // 404 for unknown API routes.

@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Metabolic City AI — System Architecture</title>
+<style>
+  :root{
+    --bg:#F4F7FA; --card:#FFFFFF; --ink:#0B1B2B; --muted:#5B7085; --dim:#8093A6;
+    --line:#D6E1EB; --line-strong:#B9CAD9;
+    --teal:#0F766E; --teal-bg:#E7F4F1; --teal-line:#A9D8D0;
+    --blue:#1D4ED8; --blue-bg:#EBF1FF; --blue-line:#BCD0FB;
+    --amber:#B45309; --amber-bg:#FFF5E7; --amber-line:#F0D0A7;
+    --red:#B91C1C; --red-bg:#FDECEC; --red-line:#F3C1C1;
+    --navy:#0B1B2B; --shadow:0 1px 2px rgba(11,27,43,.06), 0 8px 20px rgba(11,27,43,.04);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);}
+  body{width:1600px;height:900px;overflow:hidden;font-family:"Segoe UI",Arial,sans-serif;color:var(--ink);}
+  .poster{position:relative;width:1600px;height:900px;overflow:hidden;
+    background:
+      radial-gradient(circle at 90% 2%, rgba(15,118,110,.10), transparent 28%),
+      radial-gradient(circle at 0% 98%, rgba(29,78,216,.07), transparent 28%),
+      var(--bg);}
+  .grid{position:absolute;inset:0;opacity:.45;background-image:
+    linear-gradient(rgba(11,27,43,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(11,27,43,.035) 1px,transparent 1px);
+    background-size:32px 32px;}
+  .top-accent{position:absolute;left:0;top:0;width:100%;height:5px;
+    background:linear-gradient(90deg,var(--teal) 0 28%,var(--blue) 45% 62%,var(--amber) 82% 100%);}
+  header{position:absolute;left:40px;top:24px;width:1520px;height:96px;display:flex;justify-content:space-between;align-items:flex-start;}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.17em;color:var(--teal);text-transform:uppercase;}
+  h1{margin:8px 0 3px 0;font-size:34px;line-height:1.02;letter-spacing:-.025em;font-weight:650;color:var(--navy);}
+  .sub{margin-top:7px;font-size:14.5px;color:var(--muted);letter-spacing:.005em;}
+  .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:7px;margin-top:4px;}
+  .stamp{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 4px rgba(15,118,110,.12);}
+  .status-line{display:flex;gap:6px;}
+  .tag{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:20px;padding:4px 8px;font-size:9.5px;font-weight:650;color:var(--muted);white-space:nowrap;}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;}
+  .dot.live{background:var(--teal);} .dot.static{background:var(--blue);} .dot.warn{background:var(--amber);} .dot.red{background:var(--red);}
+
+  .zone{position:absolute;background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);}
+  .zone-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 9px 14px;}
+  .zone-kicker{font-size:9px;font-weight:750;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;}
+  .zone-title{font-size:12.5px;font-weight:700;color:var(--ink);margin-top:2px;}
+  .zone-meta{font-size:9.5px;color:var(--dim);font-weight:600;}
+
+  /* experience */
+  .exp{left:36px;top:128px;width:1528px;height:86px;display:flex;align-items:stretch;padding:8px;gap:8px;}
+  .exp-label{width:152px;flex:0 0 152px;border-right:1px solid var(--line);padding:10px 12px 0 10px;}
+  .exp-label .k{font-size:9px;font-weight:750;letter-spacing:.14em;color:var(--teal);text-transform:uppercase;}
+  .exp-label .t{font-size:14px;font-weight:700;margin-top:5px;line-height:1.1;}
+  .exp-label .s{font-size:8.7px;color:var(--dim);margin-top:4px;line-height:1.2;}
+  .channel{flex:1;border:1px solid var(--line);border-radius:9px;background:#FBFDFE;padding:9px 10px;display:flex;gap:9px;align-items:center;position:relative;overflow:hidden;}
+  .channel:after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal);opacity:.9;}
+  .channel:nth-of-type(2):after{background:var(--blue);} .channel:nth-of-type(3):after{background:var(--amber);} .channel:nth-of-type(4):after{background:var(--red);}
+  .hexicon{width:36px;height:40px;flex:0 0 36px;background:var(--teal-bg);border:1px solid var(--teal-line);clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:750;color:var(--teal);}
+  .channel:nth-of-type(2) .hexicon{background:var(--blue-bg);border-color:var(--blue-line);color:var(--blue);}
+  .channel:nth-of-type(3) .hexicon{background:var(--amber-bg);border-color:var(--amber-line);color:var(--amber);}
+  .channel:nth-of-type(4) .hexicon{background:var(--red-bg);border-color:var(--red-line);color:var(--red);}
+  .ch-title{font-size:12.5px;font-weight:700;line-height:1.05;}
+  .ch-sub{font-size:9.5px;color:var(--muted);line-height:1.25;margin-top:3px;}
+  .ch-role{font-size:8px;font-weight:750;letter-spacing:.07em;color:var(--dim);text-transform:uppercase;margin-top:4px;}
+
+  /* main columns */
+  .sources{left:36px;top:232px;width:286px;height:468px;padding:12px 11px;}
+  .sources .zone-kicker{color:var(--teal);}
+  .sources .zone-title{font-size:13px;}
+  .src-list{margin-top:9px;display:flex;flex-direction:column;gap:6px;}
+  .src{height:53px;border:1px solid var(--line);border-radius:7px;background:#FCFDFE;padding:7px 8px;position:relative;}
+  .src-name{font-size:10.8px;font-weight:700;line-height:1.05;display:flex;justify-content:space-between;gap:4px;}
+  .src-detail{font-size:8.7px;color:var(--muted);line-height:1.2;margin-top:3px;}
+  .mini-tag{font-size:7.4px;font-weight:750;letter-spacing:.02em;padding:2px 5px;border-radius:10px;white-space:nowrap;}
+  .mini-tag.live{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-line);}
+  .mini-tag.static{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-line);}
+  .mini-tag.warn{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-line);}
+  .mini-tag.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-line);}
+  .source-rule{margin-top:8px;border-radius:6px;background:var(--amber-bg);border:1px solid var(--amber-line);padding:6px 8px;font-size:8.5px;line-height:1.25;color:#7A4508;font-weight:600;}
+
+  .core{left:348px;top:232px;width:730px;height:468px;padding:12px 13px;}
+  .core-head{display:flex;justify-content:space-between;align-items:flex-start;height:43px;}
+  .core-kicker{font-size:9px;font-weight:750;letter-spacing:.14em;color:var(--blue);text-transform:uppercase;}
+  .core-title{font-size:15px;font-weight:750;margin-top:2px;letter-spacing:-.01em;}
+  .core-title span{color:var(--muted);font-weight:600;}
+  .trust{border:1px dashed var(--line-strong);background:#F8FAFC;border-radius:20px;padding:4px 8px;font-size:8.5px;font-weight:700;color:var(--dim);white-space:nowrap;}
+  .core-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8px;height:392px;margin-top:2px;}
+  .core-card{border:1px solid var(--line);border-radius:8px;background:#FCFDFE;padding:9px 10px;overflow:hidden;position:relative;}
+  .core-card:before{content:"";position:absolute;left:0;top:0;width:3px;height:100%;background:var(--teal);}
+  .core-card:nth-child(2):before{background:var(--blue);} .core-card:nth-child(3):before{background:var(--amber);} .core-card:nth-child(4):before{background:var(--teal);}
+  .cc-head{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
+  .cc-title{font-size:11.3px;font-weight:750;line-height:1.1;}
+  .cc-code{font-family:Consolas,monospace;font-size:7.8px;color:var(--dim);}
+  .cc-sub{font-size:8.2px;color:var(--dim);margin-top:2px;line-height:1.2;font-weight:600;}
+  .cc-list{list-style:none;margin:6px 0 0 0;padding:0;}
+  .cc-list li{position:relative;padding-left:9px;font-size:8.9px;line-height:1.45;color:#40566B;margin-bottom:1px;}
+  .cc-list li:before{content:"";position:absolute;left:0;top:5px;width:3px;height:3px;border-radius:50%;background:var(--teal);}
+  .core-card:nth-child(2) .cc-list li:before{background:var(--blue);} .core-card:nth-child(3) .cc-list li:before{background:var(--amber);} .core-card:nth-child(4) .cc-list li:before{background:var(--teal);}
+
+  .mongo{left:1102px;top:232px;width:462px;height:234px;padding:12px 13px;}
+  .mongo .zone-kicker{color:var(--teal);}
+  .mongo-title{font-size:14px;font-weight:750;margin-top:2px;}
+  .mongo-title span{font-size:9.5px;font-weight:600;color:var(--dim);}
+  .mongo-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px;}
+  .mgroup{border:1px solid var(--line);border-radius:6px;background:#FCFDFE;padding:5px 7px;min-height:48px;}
+  .mg-name{font-size:8.3px;font-weight:750;letter-spacing:.05em;text-transform:uppercase;color:var(--teal);}
+  .mg-list{font-family:Consolas,monospace;font-size:7.5px;color:#52677B;line-height:1.35;margin-top:2px;}
+  .mongo-foot{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:8px;color:var(--dim);}
+  .code-pill{font-family:Consolas,monospace;font-size:7.5px;background:#F1F5F9;border:1px solid var(--line);border-radius:4px;padding:2px 5px;color:#52677B;}
+
+  .python{left:1102px;top:478px;width:462px;height:222px;padding:12px 13px;border-color:var(--amber-line);background:rgba(255,251,243,.92);}
+  .python .zone-kicker{color:var(--amber);}
+  .py-head{display:flex;justify-content:space-between;align-items:flex-start;}
+  .py-title{font-size:14px;font-weight:750;margin-top:2px;}
+  .py-title span{font-size:9.5px;font-weight:600;color:var(--dim);}
+  .advisory{font-size:8px;font-weight:750;letter-spacing:.07em;color:var(--amber);border:1px solid var(--amber-line);background:var(--amber-bg);border-radius:12px;padding:3px 7px;white-space:nowrap;}
+  .py-list{display:grid;grid-template-columns:1fr 1fr;gap:5px 7px;margin-top:8px;}
+  .py-item{display:flex;gap:6px;align-items:flex-start;border-top:1px solid #EEDFC8;padding-top:5px;}
+  .py-num{font-family:Consolas,monospace;font-size:7.4px;color:var(--amber);font-weight:700;width:13px;flex:0 0 13px;padding-top:1px;}
+  .py-name{font-size:8.8px;font-weight:750;line-height:1.15;}
+  .py-detail{font-size:7.5px;color:var(--muted);line-height:1.25;margin-top:1px;}
+  .py-foot{position:absolute;left:13px;right:13px;bottom:9px;font-size:7.8px;color:#8A6A3B;border-top:1px solid #EEDFC8;padding-top:5px;}
+
+  /* bottom */
+  .bottom{left:36px;top:716px;width:1528px;height:128px;display:flex;gap:9px;padding:9px;}
+  .bpanel{border:1px solid var(--line);border-radius:8px;background:#FCFDFE;padding:9px 10px;}
+  .flow{flex:1.55;}
+  .legend{flex:1.0;}
+  .guard{flex:.92;}
+  .bp-k{font-size:8px;font-weight:750;letter-spacing:.13em;color:var(--dim);text-transform:uppercase;}
+  .bp-t{font-size:10.5px;font-weight:700;margin-top:2px;}
+  .steps{display:flex;align-items:center;gap:0;margin-top:8px;}
+  .step{flex:1;min-height:50px;border:1px solid var(--line);border-radius:5px;background:#fff;padding:5px 5px;text-align:center;display:flex;flex-direction:column;justify-content:center;}
+  .step b{font-size:8.2px;display:block;line-height:1.1;}
+  .step span{font-size:6.9px;color:var(--dim);display:block;line-height:1.15;margin-top:2px;}
+  .chev{width:9px;flex:0 0 9px;text-align:center;color:var(--line-strong);font-size:11px;font-weight:700;}
+  .legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:6px;}
+  .leg{display:flex;align-items:center;gap:5px;font-size:8.1px;color:var(--muted);}
+  .swatch{width:7px;height:7px;border-radius:2px;display:inline-block;flex:0 0 7px;}
+  .legend-note{font-size:7.4px;color:var(--dim);line-height:1.25;margin-top:5px;border-top:1px solid var(--line);padding-top:4px;}
+  .guard-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px;}
+  .gchip{font-size:7.4px;background:#F3F7FA;border:1px solid var(--line);border-radius:4px;padding:3px 5px;color:#4A6176;}
+  .guard-note{font-size:7.4px;color:var(--dim);line-height:1.25;margin-top:7px;}
+
+  footer{position:absolute;left:40px;right:40px;bottom:18px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:7px;}
+  .foot-left{font-size:8.8px;color:var(--dim);font-weight:600;}
+  .foot-left b{color:#40566B;}
+  .foot-right{font-size:8.8px;color:var(--teal);font-weight:700;letter-spacing:.02em;}
+
+  .wires{position:absolute;left:0;top:0;width:1600px;height:900px;overflow:visible;z-index:5;pointer-events:none;}
+  .wire{fill:none;stroke:#8DA3B6;stroke-width:1.4;}
+  .wire.dash{stroke-dasharray:4 4;}
+  .wire.teal{stroke:var(--teal);} .wire.amber{stroke:var(--amber);} .wire.blue{stroke:var(--blue);}
+  .wl{position:absolute;z-index:6;font-size:7.3px;font-weight:700;letter-spacing:.035em;color:#667C90;background:rgba(244,247,250,.94);padding:1px 3px;white-space:nowrap;}
+  .wl.teal{color:var(--teal);} .wl.amber{color:var(--amber);} .wl.blue{color:var(--blue);}
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="grid"></div>
+  <div class="top-accent"></div>
+
+  <header>
+    <div>
+      <div class="eyebrow">Metabolic City AI · Technical architecture</div>
+      <h1>One city model, from signal to decision.</h1>
+      <div class="sub">MERN operational core · H3 risk engine · Python spatiotemporal intelligence · evidence-first data boundary</div>
+    </div>
+    <div class="header-right">
+      <div class="stamp"><span class="live-dot"></span> Local prototype · November 2026</div>
+      <div class="status-line">
+        <span class="tag"><span class="dot live"></span> Node API healthy</span>
+        <span class="tag"><span class="dot live"></span> Python healthy</span>
+        <span class="tag"><span class="dot static"></span> 100 H3 cells</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Experience -->
+  <section class="zone exp">
+    <div class="exp-label">
+      <div class="k">01 · Experience</div>
+      <div class="t">Channels &amp; roles</div>
+      <div class="s">Browser only. No Python access.</div>
+    </div>
+    <div class="channel">
+      <div class="hexicon">OP</div>
+      <div><div class="ch-title">Operator console</div><div class="ch-sub">Live H3 map, cell evidence, alerts, decisions, dispatch.</div><div class="ch-role">operator · read + decide</div></div>
+    </div>
+    <div class="channel">
+      <div class="hexicon">FD</div>
+      <div><div class="ch-title">Field crew</div><div class="ch-sub">Tasks, GPS updates, arrival, resolution, photo evidence.</div><div class="ch-role">field · assigned work</div></div>
+    </div>
+    <div class="channel">
+      <div class="hexicon">AD</div>
+      <div><div class="ch-title">Admin</div><div class="ch-sub">Weights, users, source status, audit and system health.</div><div class="ch-role">admin · govern</div></div>
+    </div>
+    <div class="channel">
+      <div class="hexicon">CQ</div>
+      <div><div class="ch-title">Citizen QR</div><div class="ch-sub">Public report flow with geotag, category and rate limit.</div><div class="ch-role">public · no account</div></div>
+    </div>
+  </section>
+
+  <!-- Sources -->
+  <section class="zone sources">
+    <div class="zone-kicker">02 · Signals</div>
+    <div class="zone-title">External sources &amp; adapters</div>
+    <div class="src-list">
+      <div class="src">
+        <div class="src-name"><span>Weather provider chain</span><span class="mini-tag live">LIVE</span></div>
+        <div class="src-detail">5 observations / city · inverse-distance weighted · 100 events</div>
+      </div>
+      <div class="src">
+        <div class="src-name"><span>TomTom traffic flow</span><span class="mini-tag live">LIVE</span></div>
+        <div class="src-detail">Budgeted road probes · 36 current readings</div>
+      </div>
+      <div class="src">
+        <div class="src-name"><span>TomTom incidents</span><span class="mini-tag live">LIVE</span></div>
+        <div class="src-detail">Road disruption · 14 current readings</div>
+      </div>
+      <div class="src">
+        <div class="src-name"><span>OSM + elevation</span><span class="mini-tag static">STATIC</span></div>
+        <div class="src-detail">5,211 road segments · 100 terrain cells</div>
+      </div>
+      <div class="src">
+        <div class="src-name"><span>Citizen / field GPS</span><span class="mini-tag static">AVAILABLE</span></div>
+        <div class="src-detail">Public ingest + field outbox · 0 citizen rows today</div>
+      </div>
+      <div class="src">
+        <div class="src-name"><span>GTFS-Realtime</span><span class="mini-tag warn">DORMANT</span></div>
+        <div class="src-detail">Adapter present · GTFS_RT_URL unset · 0 rows</div>
+      </div>
+    </div>
+    <div class="source-rule">Missing source → confidence penalty, not a zero. The system never invents a reading to fill a gap.</div>
+  </section>
+
+  <!-- Node core -->
+  <section class="zone core">
+    <div class="core-head">
+      <div>
+        <div class="core-kicker">03 · Operational core</div>
+        <div class="core-title">Node.js + Express <span>· system of record</span></div>
+      </div>
+      <div class="trust">TRUST BOUNDARY · JWT / RBAC</div>
+    </div>
+    <div class="core-grid">
+      <div class="core-card">
+        <div class="cc-head"><div class="cc-title">Edge &amp; identity</div><div class="cc-code">/api</div></div>
+        <div class="cc-sub">Every request crosses this layer first.</div>
+        <ul class="cc-list">
+          <li>Helmet headers, strict CORS allow-list</li>
+          <li>300 req/min global + endpoint limits</li>
+          <li>JWT access / refresh, token sessions, RBAC</li>
+          <li>Validation, 100 kb body cap, idempotency keys</li>
+          <li>Audit middleware on every API mutation</li>
+        </ul>
+      </div>
+      <div class="core-card">
+        <div class="cc-head"><div class="cc-title">Public API surface</div><div class="cc-code">/api/v1/*</div></div>
+        <div class="cc-sub">One gateway for every client.</div>
+        <ul class="cc-list">
+          <li>auth · telemetry · spatial-cells · alerts</li>
+          <li>incidents · field · admin · analytics</li>
+          <li>spatial analysis: neighbours, autocorrelation</li>
+          <li>intelligence proxy: internal HTTP to FastAPI</li>
+          <li>citizen ingest: 60 requests / 5 minutes</li>
+        </ul>
+      </div>
+      <div class="core-card">
+        <div class="cc-head"><div class="cc-title">H3 risk engine</div><div class="cc-code">risk.js</div></div>
+        <div class="cc-sub">Deterministic and explainable.</div>
+        <ul class="cc-list">
+          <li>Resolution 8 · 60-min window · 30-min half-life</li>
+          <li>R = 0.4·mobility + 0.4·climate + 0.2·vulnerability</li>
+          <li>Confidence, degradation flags, neighbour cascade</li>
+          <li>Bands: low &lt;3 · moderate 3–5 · high 5–7 · critical ≥7</li>
+          <li>Alert synthesis + 3-hour forecast snapshots</li>
+        </ul>
+      </div>
+      <div class="core-card">
+        <div class="cc-head"><div class="cc-title">Workflow &amp; realtime</div><div class="cc-code">events</div></div>
+        <div class="cc-sub">State that survives a shift change.</div>
+        <ul class="cc-list">
+          <li>60-second cell lock before a decision</li>
+          <li>Incident state machine + field outbox sync</li>
+          <li>SSE cell/alert stream; Socket.IO + Redis option</li>
+          <li>Dead-letter queue, circuit breakers, health checks</li>
+          <li>15-min all-clear grace · 30-min alert expiry</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mongo -->
+  <section class="zone mongo">
+    <div class="zone-kicker">04 · Shared state</div>
+    <div class="mongo-title">MongoDB Atlas <span>· single system of record</span></div>
+    <div class="mongo-grid">
+      <div class="mgroup"><div class="mg-name">Identity</div><div class="mg-list">users<br>tokensessions</div></div>
+      <div class="mgroup"><div class="mg-name">Evidence</div><div class="mg-list">telemetryevents<br>roadsegments · terraincells</div></div>
+      <div class="mgroup"><div class="mg-name">Operations</div><div class="mg-list">spatialcells · alerts<br>incidents · celllocks</div></div>
+      <div class="mgroup"><div class="mg-name">Intelligence</div><div class="mg-list">cell_memories · knowledge_documents<br>agent_runs · forecastsnapshots</div></div>
+    </div>
+    <div class="mongo-foot"><span>Read/write from Node · read/advisory writes from Python</span><span class="code-pill">Mongoose · TLS</span></div>
+  </section>
+
+  <!-- Python -->
+  <section class="zone python">
+    <div class="py-head">
+      <div>
+        <div class="zone-kicker">05 · Intelligence layer</div>
+        <div class="py-title">Python FastAPI <span>· internal only</span></div>
+      </div>
+      <div class="advisory">ADVISORY ONLY</div>
+    </div>
+    <div class="py-list">
+      <div class="py-item"><div class="py-num">01</div><div><div class="py-name">Cell memory</div><div class="py-detail">history, trend, volatility, neighbour correlation</div></div></div>
+      <div class="py-item"><div class="py-num">02</div><div><div class="py-name">Multi-resolution H3</div><div class="py-detail">res 8 street → res 6 → res 4 parent rollup</div></div></div>
+      <div class="py-item"><div class="py-num">03</div><div><div class="py-name">Graph analytics</div><div class="py-detail">centrality, critical hubs, weighted routes</div></div></div>
+      <div class="py-item"><div class="py-num">04</div><div><div class="py-name">Hybrid RAG</div><div class="py-detail">23 docs · spatial + semantic + temporal + outcome</div></div></div>
+      <div class="py-item"><div class="py-num">05</div><div><div class="py-name">LangGraph</div><div class="py-detail">8 advisory nodes · dry-run notifications</div></div></div>
+      <div class="py-item"><div class="py-num">06</div><div><div class="py-name">Same database</div><div class="py-detail">no shadow store, no separate source of truth</div></div></div>
+    </div>
+    <div class="py-foot">Node gateway only · cannot dispatch, send SMS or change incident status.</div>
+  </section>
+
+  <!-- Bottom panels -->
+  <section class="zone bottom">
+    <div class="bpanel flow">
+      <div class="bp-k">End-to-end data flow</div>
+      <div class="steps">
+        <div class="step"><b>01 Source</b><span>poll / report</span></div><div class="chev">›</div>
+        <div class="step"><b>02 Validate</b><span>schema + stamp</span></div><div class="chev">›</div>
+        <div class="step"><b>03 H3 map</b><span>res 8 cell</span></div><div class="chev">›</div>
+        <div class="step"><b>04 Dedupe</b><span>event hash</span></div><div class="chev">›</div>
+        <div class="step"><b>05 Score</b><span>risk + confidence</span></div><div class="chev">›</div>
+        <div class="step"><b>06 Alert</b><span>audit + stream</span></div>
+      </div>
+    </div>
+    <div class="bpanel legend">
+      <div class="bp-k">Evidence boundary</div>
+      <div class="legend-grid">
+        <div class="leg"><span class="swatch" style="background:#0F766E"></span>Measured / live</div>
+        <div class="leg"><span class="swatch" style="background:#1D4ED8"></span>Real static</div>
+        <div class="leg"><span class="swatch" style="background:#B45309"></span>Interpolated / modelled</div>
+        <div class="leg"><span class="swatch" style="background:#B91C1C"></span>Demo / test</div>
+        <div class="leg"><span class="swatch" style="background:#8093A6"></span>Unavailable</div>
+        <div class="leg"><span class="swatch" style="background:#E7F4F1;border:1px solid #A9D8D0"></span>Project-authored</div>
+      </div>
+      <div class="legend-note">The score is a screening and triage aid, not a validated flood forecast or a guarantee of outcomes.</div>
+    </div>
+    <div class="bpanel guard">
+      <div class="bp-k">Cross-cutting guarantees</div>
+      <div class="guard-list">
+        <span class="gchip">audit every mutation</span><span class="gchip">idempotent ingest</span>
+        <span class="gchip">rate limits</span><span class="gchip">retry + DLQ</span>
+        <span class="gchip">circuit breakers</span><span class="gchip">graceful degradation</span>
+        <span class="gchip">no zero-fill</span><span class="gchip">health / 503</span>
+      </div>
+      <div class="guard-note">Redis adapter is optional for multi-pod Socket.IO. Local SSE remains the primary cell/alert stream.</div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="foot-left"><b>Built from the repository, not a concept sketch.</b> &nbsp; 100 cells · 5,211 road segments · 250 telemetry events · 129 alerts · 0 GTFS transit rows</div>
+    <div class="foot-right">No missing value becomes zero.</div>
+  </footer>
+
+  <svg class="wires" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#8DA3B6"/></marker>
+      <marker id="at" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#0F766E"/></marker>
+      <marker id="ab" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#1D4ED8"/></marker>
+      <marker id="aa" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#B45309"/></marker>
+    </defs>
+    <path class="wire teal" d="M560 214 L560 230" marker-end="url(#at)"/>
+    <path class="wire dash teal" d="M897 232 L897 214" marker-end="url(#at)"/>
+    <path class="wire" d="M322 468 L346 468" marker-end="url(#a)"/>
+    <path class="wire blue" d="M1078 334 L1100 334" marker-end="url(#ab)"/>
+    <path class="wire dash blue" d="M1100 350 L1078 350" marker-end="url(#ab)"/>
+    <path class="wire amber" d="M1078 594 L1100 594" marker-end="url(#aa)"/>
+    <path class="wire dash amber" d="M1100 610 L1078 610" marker-end="url(#aa)"/>
+    <path class="wire dash" d="M1506 478 L1506 468" marker-end="url(#a)"/>
+  </svg>
+  <div class="wl teal" style="left:568px;top:216px">HTTPS · JWT</div>
+  <div class="wl teal" style="left:905px;top:213px">SSE · alerts</div>
+  <div class="wl" style="left:314px;top:446px">ingest</div>
+  <div class="wl blue" style="left:1078px;top:314px">Mongoose</div>
+</div>
+</body>
+</html>

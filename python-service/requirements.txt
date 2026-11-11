@@ -1,0 +1,11 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pymongo==4.11.1
+h3==4.1.2
+networkx==3.4.2
+numpy==2.2.1
+python-dotenv==1.0.1
+pydantic==2.10.5
+httpx==0.28.1
+langgraph==0.2.62
+typing-extensions==4.12.2

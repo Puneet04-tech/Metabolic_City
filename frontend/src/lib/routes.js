@@ -94,6 +94,16 @@ export const ROUTES = [
     nav: 'Analytics',
   },
   {
+    id: 'intelligence',
+    path: '/intelligence',
+    title: 'H3 intelligence | Metabolic City',
+    description:
+      'Cell memory, multi-resolution risk, H3 graph analysis, hybrid retrieval and the multi-agent incident workflow.',
+    public: false,
+    roles: [ROLES.OPERATOR, ROLES.ADMINISTRATOR],
+    nav: 'Intelligence',
+  },
+  {
     id: 'unauthorized',
     path: '/unauthorized',
     title: 'Access denied | Metabolic City',

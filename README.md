@@ -1,8 +1,8 @@
 # Metabolic City AI - Urban Intelligence Platform
 
-A software-first urban intelligence command system for municipal operations, field survey management, and real-time incident response. Built for Bhopal, Sehore, and Ashta municipalities in Madhya Pradesh, India.
+A software-first urban intelligence command system for municipal operations, field survey management, and real-time incident response. Built for Bhopal, Indore, and Sehore in Madhya Pradesh, India.
 
-**Latest Commit:** `9c263d4 preparation for deployment` (2026-10-22)
+**Current implementation:** 11 November 2026 — Cloudflare Workers AI, MongoDB change-stream realtime and live data-quality provenance.
 
 ## 🎯 Project Overview
 
@@ -12,10 +12,12 @@ Metabolic City AI is an integrated platform that enables:
 - **Real-time Incident Response** - GPS-tagged reporting with photo evidence
 - **Cross-jurisdiction Data Sharing** - Coordinated operations across municipal boundaries
 - **AI-powered Risk Assessment** - Dynamic risk weights and guardrails for urban infrastructure
-- **Live H3 Telemetry** - Transit, weather, and citizen events mapped to resolution-8 cells
+- **Live H3 Telemetry** - Weather, terrain, TomTom traffic and citizen events mapped to resolution-8 cells; GTFS-RT is opt-in and currently dormant
+- **Live Data Quality** - Source counts, freshness, synthetic/simulated flags and interpolation distance exposed at `/v1/data-quality`
 - **Distributed WebSocket Streaming** - Multi-pod real-time updates across all connected server instances
 - **Async Telemetry Ingestion** - O(1) API response with background job processing
 - **Citizen QR Code Reporting** - Public QR code reporting system for community engagement
+- **H3 Spatiotemporal Intelligence** - Python/FastAPI service for cell memory, multi-resolution rollups, graph analytics, hybrid RAG and LangGraph agent orchestration
 
 ## 🏗️ Architecture
 
@@ -29,6 +31,14 @@ Metabolic City AI is an integrated platform that enables:
 - BullMQ for async job processing
 - Helmet, CORS, rate limiting middleware
 - bcryptjs for password hashing
+
+**Intelligence microservice:**
+- Python 3.11 + FastAPI
+- H3, NetworkX, MongoDB vector store
+- LangGraph multi-agent workflow
+- Cloudflare Workers AI embeddings (`@cf/baai/bge-small-en-v1.5`) and briefs (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`)
+- Deterministic local hashed vectors and template briefs as the no-account fallback
+- MongoDB change streams for realtime memory/retrieval refresh, with polling fallback
 
 **Frontend:**
 - React 18 + Vite
@@ -71,7 +81,7 @@ Metabolic_City/
 │   │   │   └── spatialAnalysis.js # Multi-resolution spatial analysis
 │   │   ├── services/
 │   │   │   ├── cacheService.js     # Redis caching service
-│   │   │   ├── dataPipeline.js     # Open-Meteo + Simulated Transit pipeline
+│   │   │   ├── dataPipeline.js     # Open-Meteo + TomTom traffic pipeline (transit opt-in)
 │   │   │   ├── streamManager.js    # Distributed WebSocket server
 │   │   │   └── spatialAnalysis.js # Spatial intelligence service
 │   │   ├── queues/
@@ -87,6 +97,16 @@ Metabolic_City/
 │   │       └── purgeSimulatedTelemetry.js
 │   ├── .env                       # Environment variables
 │   └── package.json
+├── python-service/
+│   ├── app/
+│   │   ├── main.py              # FastAPI routes and internal API
+│   │   ├── memory_service.py    # H3 cell memory and predictive patterns
+│   │   ├── h3_service.py        # Multi-resolution rollups and graph analytics
+│   │   ├── rag_service.py       # Hybrid spatial/semantic/temporal retrieval
+│   │   ├── data_quality.py       # Live source counts, freshness and provenance
+│   │   └── agents.py            # LangGraph incident-resolution workflow
+│   ├── requirements.txt
+│   └── README.md
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx                # Main React application with route guards
@@ -250,6 +270,13 @@ TWILIO_FROM_NUMBER=your-twilio-phone-number
 # Optional integrations
 OPENWEATHER_API_KEY=your-openweather-key
 GTFS_RT_URL=https://your-transit-feed.com/gtfs-rt
+
+# Python intelligence service (internal)
+INTELLIGENCE_SERVICE_URL=http://127.0.0.1:8001
+INTELLIGENCE_EMBEDDING_PROVIDER=cloudflare
+INTELLIGENCE_BRIEF_PROVIDER=cloudflare
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_API_TOKEN=your-workers-ai-token
 ```
 
 4. **Generate JWT Secret**
@@ -294,6 +321,12 @@ Async telemetry ingestion endpoint (O(1) response time for high-throughput scena
 
 #### GET `/api/v1/spatial-cells`
 Returns current resolution-8 H3 cells and their Mobility, Climate, Vulnerability, and composite risk scores.
+
+#### GET `/api/v1/intelligence/data-quality`
+Returns live provenance for the intelligence layer: telemetry counts by source, freshness, synthetic/simulated flags, weather interpolation method and nearest-station distance, and snapshot time.
+
+#### GET `/api/v1/intelligence/cell/:h3Index`
+Returns advisory cell intelligence, including `dataQuality` for the selected cell.
 
 #### GET `/api/v1/stream/h3`
 Authenticated Server-Sent Events stream. Sends an initial snapshot and cell updates whenever telemetry changes a cell.
@@ -448,8 +481,11 @@ Create a **Web Service** using `render.yaml`. Render reads the configuration, ru
 | `CORS_ORIGINS` | `https://your-vercel-domain.vercel.app` | Update after Vercel deployment |
 | `REDIS_ENABLED` | `true` | Required for distributed WebSocket |
 | `REDIS_URL` | Your Redis connection URL | e.g., `redis://your-redis-url` |
+| `INTELLIGENCE_SERVICE_URL` | Internal Python service URL | e.g., `http://127.0.0.1:8001` |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID | Required only for hosted embeddings/briefs |
+| `CLOUDFLARE_API_TOKEN` | Workers AI token | Required only for hosted embeddings/briefs |
 
-**Optional:** Twilio, OpenWeather, GTFS-RT keys
+**Optional:** Twilio, OpenWeather, GTFS-RT keys and Cloudflare Workers AI credentials. Without Cloudflare credentials the Python service uses deterministic local fallbacks; no OpenAI key is required.
 
 #### Vercel (Frontend)
 

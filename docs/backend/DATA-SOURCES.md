@@ -23,9 +23,38 @@ in the cell detail. A cell with no readings is not a cell with a low score.
 | **Crew road speed** | The field crew app posting its own GPS (`POST /api/v1/field/position`) | Free | Live, wherever a crew is |
 
 The cell set follows from the street network: **a cell exists because there is
-a real street in it.** In Bhopal that is 55 cells over the areas the network
-covers; in Indore it is a similar number over the Saraswati and Khan river
-corridors.
+a real street in it.** The current build has 100 stored res-8 cells: 43 in
+Bhopal, 32 in Indore and 25 in Sehore, over the areas the network covers.
+
+## Live provenance and data quality (11 November 2026)
+
+The Python service aggregates the running database at `GET /v1/data-quality`
+(proxied by Node at `GET /api/v1/intelligence/data-quality`). It reports counts
+by source, the newest event time, freshness, synthetic/simulated flags, the
+weather interpolation method and nearest-station distance, and the snapshot
+time. The same block is embedded in `GET /v1/cells/{h3}/intelligence`.
+
+Current local snapshot:
+
+| Check | Current value |
+| --- | --- |
+| Telemetry events | 260 — 100 weather, 100 terrain/GIS, 60 TomTom traffic |
+| Synthetic events | 0 |
+| Simulated events | 0 |
+| Freshness | fresh |
+| Weather interpolation | inverse-distance weighting; 100 of 100 weather events interpolated |
+| Average nearest weather station | 2.132 km |
+| H3 cells / terrain cells | 100 / 100 |
+| Road segments | 5,211 |
+| Knowledge documents | 23 (13 historical incidents + 10 project-authored playbooks) |
+| Cell memories | 100 |
+| Agent runs | 5, all advisory and dry-run |
+| GTFS-Realtime rows | 0; adapter dormant |
+
+A weather value at a cell centroid is modelled from provider observations, not
+measured by a gauge in that cell. The API therefore returns `exact: false` and
+the interpolation distance alongside the value. The data-quality panel in the
+Intelligence page refreshes every 30 seconds and shows the same provenance.
 
 ## What is not real, and why it is off
 

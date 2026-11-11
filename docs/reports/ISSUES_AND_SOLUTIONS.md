@@ -555,3 +555,31 @@
 **Total Issues Resolved:** 42  
 **Total Issues Monitoring:** 2  
 **System Status:** ✅ Production-Ready with minor optimizations needed
+
+---
+
+## Current implementation status (11 November 2026)
+
+This historical document is retained as written. The following points supersede
+its later-status statements:
+
+- **Runtime:** React/Vite frontend, Node/Express operational core and a Python
+  FastAPI intelligence service on port 8001. Node proxies all intelligence
+  calls; the browser never calls Python directly.
+- **Data:** 100 H3 cells (43 Bhopal, 32 Indore, 25 Sehore), 5,211 OSM road
+  segments, 100 terrain cells, 260 telemetry events (100 weather, 100
+  terrain/GIS, 60 TomTom traffic), 13 workflow/test incidents, 150 alerts,
+  23 knowledge documents, 100 cell memories and 5 agent runs.
+- **Live data quality:** `GET /v1/data-quality` and the Node proxy
+  `/api/v1/intelligence/data-quality` report source counts, freshness,
+  synthetic/simulated flags and interpolation distance. Current data has zero
+  synthetic and zero simulated rows; weather is IDW-interpolated (average
+  nearest station 2.132 km), not a cell-level gauge.
+- **AI:** Cloudflare Workers AI `@cf/baai/bge-small-en-v1.5` embeddings and
+  `@cf/meta/llama-3.3-70b-instruct-fp8-fast` briefs, with deterministic local
+  hashed vectors/templates as fallback. No OpenAI key is required.
+- **Realtime:** MongoDB change streams keep cell memory and incident retrieval
+  documents current; standalone MongoDB falls back to short polling.
+- **Boundaries:** playbooks are project-authored (`isOfficial: false`); agent
+  runs are advisory/dry-run; forecasts are slope projections, not measurements.
+  GTFS-Realtime is dormant (0 rows); there is no live Bhopal municipal feed.

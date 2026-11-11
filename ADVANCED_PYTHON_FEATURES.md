@@ -1,5 +1,16 @@
 # Advanced Python Features - AI-Orchestrated Incident Resolution System
 
+> **Implementation status (11 November 2026):** this document began as a
+> design exploration. The described features now exist in `python-service/`:
+> cell memory, multi-resolution H3, graph analytics, hybrid RAG and the
+> eight-node LangGraph workflow. The hosted AI provider is **Cloudflare
+> Workers AI**, not OpenAI, and vectors live in MongoDB
+> (`knowledge_documents`), not Pinecone or Weaviate. Deterministic local
+> hashed vectors and template briefs remain the no-credential fallback.
+> Playbooks are project-authored (`isOfficial: false`) and agent runs are
+> advisory/dry-run. Code snippets below that still name OpenAI or Pinecone are
+> historical design sketches, not the current implementation.
+
 ## 🧠 Overview
 
 This document outlines advanced AI/ML features to enhance the Metabolic City platform using H3 spatial intelligence, LangGraph multi-agent orchestration, and RAG (Retrieval-Augmented Generation).
@@ -669,15 +680,15 @@ def generate_action_plan_with_rag(incident, cell_data):
 ### Phase 2: RAG Knowledge Base (2-3 weeks)
 
 **Tasks:**
-1. Set up vector database (Pinecone/Weaivate)
+1. Reuse MongoDB `knowledge_documents`; no separate vector database
 2. Embed historical incident descriptions
 3. Embed municipal SOPs
 4. Implement hybrid retrieval (spatial + semantic + temporal)
 5. Create RAG decision-making pipeline
 
 **Dependencies:**
-- OpenAI API for embeddings
-- Pinecone or Weaviate for vector storage
+- Cloudflare Workers AI for embeddings (local hashed fallback)
+- MongoDB `knowledge_documents` for vector storage
 - LangChain for RAG implementation
 
 **Files to Create:**
@@ -707,7 +718,7 @@ def generate_action_plan_with_rag(incident, cell_data):
 
 **Dependencies:**
 - LangGraph for agent orchestration
-- OpenAI API for agent intelligence
+- Cloudflare Workers AI for briefs (deterministic template fallback)
 - Phase 2 RAG system for context
 
 **Files to Create:**
@@ -753,10 +764,10 @@ def generate_action_plan_with_rag(incident, cell_data):
 ### Core Technologies
 - **LangGraph**: Multi-agent orchestration
 - **RAG**: Knowledge retrieval and decision augmentation
-- **Vector Databases**: Pinecone or Weaviate
+- **Vector storage**: MongoDB `knowledge_documents` (no separate vector database)
 - **H3**: Spatial intelligence (already using h3-js)
 - **NetworkX**: Graph analysis
-- **OpenAI**: Embeddings and agent intelligence
+- **Cloudflare Workers AI**: Embeddings and brief generation, with local fallbacks
 - **Python**: Backend agent language
 
 ### Integration Points
@@ -792,7 +803,7 @@ def generate_action_plan_with_rag(incident, cell_data):
 1. **Review this document** with stakeholders
 2. **Prioritize phases** based on business needs
 3. **Allocate resources** (Python developers, ML engineers)
-4. **Set up infrastructure** (vector database, OpenAI API)
+4. **Configure Cloudflare Workers AI** (optional; deterministic fallbacks work without it)
 5. **Begin Phase 1**: H3 Cell Memory implementation
 
 ---

@@ -18,13 +18,14 @@ describe('getNavItems', () => {
     const nav = getNavItems(ROLES.ADMINISTRATOR).map((item) => item.id);
     expect(nav).toContain('admin');
     expect(nav).toContain('analytics');
+    expect(nav).toContain('intelligence');
     expect(nav).not.toContain('operator');
     expect(nav).not.toContain('field');
   });
 
   it('never offers an operator a field-crew route', () => {
     const nav = getNavItems(ROLES.OPERATOR).map((item) => item.id);
-    expect(nav).toEqual(['operator', 'analytics']);
+    expect(nav).toEqual(['operator', 'analytics', 'intelligence']);
   });
 
   it('offers a field crew only the field section', () => {

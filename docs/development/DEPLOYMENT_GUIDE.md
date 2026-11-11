@@ -4,6 +4,7 @@ This guide explains how to deploy the Metabolic City application with:
 - **Frontend:** Vercel
 - **Backend:** Render
 - **Database:** MongoDB Atlas
+- **Intelligence:** Python FastAPI (internal, proxied by Node)
 - **Local Development:** Localhost
 
 ---
@@ -131,6 +132,13 @@ PIPELINE_ENABLED=true
 # H3 Configuration
 H3_RESOLUTION=8
 
+# Python intelligence service (internal)
+INTELLIGENCE_SERVICE_URL=http://127.0.0.1:8001
+INTELLIGENCE_EMBEDDING_PROVIDER=cloudflare
+INTELLIGENCE_BRIEF_PROVIDER=cloudflare
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_API_TOKEN=your-workers-ai-token
+
 # Risk Weights (must sum to 1.0)
 WEIGHT_MOBILITY=0.4
 WEIGHT_CLIMATE=0.3
@@ -141,7 +149,23 @@ REDIS_ENABLED=false
 REDIS_URL=redis://localhost:6379
 ```
 
-### 1.3 Deploy
+### 1.3 Python intelligence service
+
+The Node API proxies intelligence calls, so the FastAPI service must be
+reachable at `INTELLIGENCE_SERVICE_URL`. It is an internal service; do not
+expose port 8001 publicly. On Render, create a second **Web Service** with
+`python-service/` as the root, `pip install -r requirements.txt` as the build
+command and `uvicorn app.main:app --host 0.0.0.0 --port 8001` as the start
+command. Set the same `MONGO_URI`, plus `INTELLIGENCE_ENV=production`.
+
+Cloudflare Workers AI is optional. Set `CLOUDFLARE_ACCOUNT_ID`,
+`CLOUDFLARE_API_TOKEN`, `INTELLIGENCE_EMBEDDING_PROVIDER=cloudflare` and
+`INTELLIGENCE_BRIEF_PROVIDER=cloudflare` to use hosted embeddings and briefs.
+Without them the service uses deterministic local hashed vectors and template
+briefs; no OpenAI key is required. After changing the embedding provider,
+rebuild once with `POST /v1/knowledge/rebuild`.
+
+### 1.4 Deploy
 
 Click **"Create Web Service"** and wait for deployment.
 

@@ -1,6 +1,7 @@
 # Redesign verification checklist
 
-Recorded at the end of phase 7. Every route was checked against the design
+Recorded at the end of phase 7. See the 11 November 2026 intelligence check
+at the end of this file for the current data-quality panel. Every route was checked against the design
 rules, the accessibility rules and the content rules.
 
 ## Route by route
@@ -90,3 +91,26 @@ remaining raw elements are the ones a generic button cannot express:
 - The empty `frontend/src/components/Citizen/` directory could not be removed on
   this machine because the filesystem denied access. It is untracked and
   empty, so it does not affect the build or a checkout.
+
+
+## Intelligence and data quality check — 11 November 2026
+
+Checked against the running local stack (Node 5000, Python 8001, Vite 5173):
+
+| Check | Result |
+| --- | --- |
+| `/operator` cell detail renders computed-score disclaimer, confidence and sub-scores | pass |
+| Selected-cell provenance shows weather interpolation method, nearest-station distance and weather age | pass |
+| Cell update age is shown separately from weather age | pass |
+| `GET /api/v1/intelligence/data-quality` returns source counts, freshness and snapshot time | pass, HTTP 200 |
+| `/v1/data-quality` returns the same overall provenance | pass, HTTP 200 |
+| `/v1/cells/{h3}/intelligence` includes `dataQuality` | pass, HTTP 200 |
+| Synthetic and simulated flags are shown, not hidden | pass; both 0 in the current data |
+| Panel refreshes every 30 seconds | pass; snapshot advanced 4:36:17 PM → 4:37:47 PM → 4:41:00 PM |
+| Weather is labelled interpolated, `exact: false` | pass; 100/100 events interpolated, average nearest 2.132 km |
+| Agents and playbooks are labelled advisory/project-authored | pass; `isOfficial: false` |
+
+The current data has 260 telemetry events (100 weather, 100 terrain/GIS, 60
+TomTom traffic), 0 synthetic and 0 simulated rows. The transit adapter is
+dormant with 0 GTFS rows. These are local dev checks, not a production
+benchmark.
