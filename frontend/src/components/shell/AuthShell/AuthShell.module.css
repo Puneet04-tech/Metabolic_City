@@ -1,6 +1,6 @@
 .shell {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(340px, 0.88fr) minmax(480px, 1.12fr);
   min-height: 100dvh;
   background: var(--bg);
 }
@@ -8,61 +8,187 @@
 .skipLink {
   position: absolute;
   left: var(--space-4);
-  top: -48px;
+  top: -52px;
   z-index: var(--z-header);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
   color: var(--text-primary);
-  transition: top var(--motion-duration) var(--ease-out);
 }
 
 .skipLink:focus {
   top: var(--space-4);
 }
 
+.plate {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.plateImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.82;
+}
+
+.plateImageLight {
+  display: none;
+}
+
+:global([data-theme='light']) .plate {
+  background: var(--bg);
+}
+
+:global([data-theme='light']) .plateImageDark {
+  display: none;
+}
+
+:global([data-theme='light']) .plateImageLight {
+  display: block;
+  opacity: 0.9;
+}
+
+:global([data-theme='light']) .plate::after {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg) 8%, transparent),
+      color-mix(in srgb, var(--bg) 90%, transparent)
+    ),
+    linear-gradient(90deg, color-mix(in srgb, var(--bg) 65%, transparent), transparent 72%);
+}
+
+:global([data-theme='light']) .plateContent,
+:global([data-theme='light']) .plateBrand {
+  color: var(--text-primary);
+}
+
+:global([data-theme='light']) .plateKicker,
+:global([data-theme='light']) .plateFoot {
+  color: var(--text-secondary);
+}
+
+:global([data-theme='light']) .plateBody {
+  color: var(--text-secondary);
+}
+
+.plate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--artwork-plate) 8%, transparent),
+      color-mix(in srgb, var(--artwork-plate) 92%, transparent)
+    ),
+    linear-gradient(90deg, color-mix(in srgb, var(--artwork-plate) 72%, transparent), transparent 70%);
+}
+
+.plateContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-8);
+  color: var(--text-primary);
+}
+
+.plateBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 21px;
+  letter-spacing: -0.025em;
+  text-decoration: none;
+}
+
+.plateBrand:hover {
+  text-decoration: none;
+}
+
+.plateNote {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 440px;
+}
+
+.plateKicker,
+.plateFoot {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--artwork-ink) 55%, transparent);
+}
+
+.plateTitle {
+  font-family: var(--font-display);
+  font-size: clamp(38px, 4vw, 58px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.plateBody {
+  max-width: 34ch;
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--artwork-ink) 70%, transparent);
+}
+
 .main {
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-8) var(--space-6);
 }
 
 .card {
-  width: 100%;
-  max-width: 420px;
   display: grid;
   gap: var(--space-6);
+  width: min(100%, 440px);
   padding: var(--space-8);
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  animation: auth-card-in var(--motion-slow) var(--ease-out);
 }
 
-.brand {
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.topline {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
-.mark {
-  display: inline-flex;
+.mobileBrand {
+  display: none;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-control);
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-size: var(--text-2xs);
-  font-weight: var(--weight-semibold);
-}
-
-.wordmark {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
+  gap: var(--space-2);
   color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 17px;
+  text-decoration: none;
 }
 
 .header {
@@ -70,18 +196,27 @@
   gap: var(--space-2);
 }
 
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+
 .title {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-tight);
+  font-family: var(--font-display);
+  font-size: clamp(32px, 3.2vw, 44px);
+  font-weight: 400;
+  line-height: 1.05;
   color: var(--text-primary);
   text-wrap: balance;
 }
 
 .description {
   font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
   color: var(--text-secondary);
-  line-height: var(--leading-normal);
   text-wrap: pretty;
 }
 
@@ -96,4 +231,30 @@
 
 .footer a {
   color: var(--accent-text);
+  font-weight: var(--weight-medium);
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plate {
+    display: none;
+  }
+
+  .main {
+    align-items: flex-start;
+    min-height: 100dvh;
+    padding: var(--space-5) var(--space-4) var(--space-10);
+  }
+
+  .card {
+    width: min(100%, 520px);
+    padding: var(--space-5);
+  }
+
+  .mobileBrand {
+    display: inline-flex;
+  }
 }

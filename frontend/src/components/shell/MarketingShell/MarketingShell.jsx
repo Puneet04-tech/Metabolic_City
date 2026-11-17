@@ -1,12 +1,15 @@
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../../ui/Button/Button';
+import BrandMark from '../../ui/BrandMark/BrandMark';
+import ThemeToggle from '../../ui/ThemeToggle/ThemeToggle';
 import { cn } from '../../ui/cn';
 import styles from './MarketingShell.module.css';
 
 /**
- * Public shell: sticky solid header, content column, quiet footer.
- * No gradients, no floating decoration.
+ * Public shell: sticky paper header, an editorial content column and a quiet
+ * footer. The only decoration is the coordinate grid in the page background.
  */
 export default function MarketingShell({ nav = [], children, footerLinks = [] }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -20,12 +23,10 @@ export default function MarketingShell({ nav = [], children, footerLinks = [] })
 
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <a className={styles.brand} href="/">
-            <span className={styles.mark} aria-hidden="true">
-              MC
-            </span>
+          <Link className={styles.brand} to="/" aria-label="Metabolic City home">
+            <BrandMark size={32} />
             <span className={styles.wordmark}>Metabolic City</span>
-          </a>
+          </Link>
 
           <nav className={cn(styles.nav, menuOpen && styles.navOpen)} aria-label="Main">
             {nav.map((item) => (
@@ -34,6 +35,7 @@ export default function MarketingShell({ nav = [], children, footerLinks = [] })
               </a>
             ))}
             <div className={styles.navActions}>
+              <ThemeToggle />
               <Button variant="ghost" size="sm" href="/login">
                 Log in
               </Button>
@@ -43,15 +45,18 @@ export default function MarketingShell({ nav = [], children, footerLinks = [] })
             </div>
           </nav>
 
-          <button
-            type="button"
-            className={styles.menuButton}
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          >
-            {menuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
-          </button>
+          <div className={styles.mobileUtilities}>
+            <ThemeToggle compact />
+            <button
+              type="button"
+              className={styles.menuButton}
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {menuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -61,7 +66,10 @@ export default function MarketingShell({ nav = [], children, footerLinks = [] })
 
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
-          <p className={styles.copyright}>© {year} Metabolic City</p>
+          <div className={styles.footerBrand}>
+            <BrandMark size={24} />
+            <p className={styles.copyright}>© {year} Metabolic City</p>
+          </div>
           {footerLinks.length ? (
             <nav className={styles.footerLinks} aria-label="Footer">
               {footerLinks.map((item) => (

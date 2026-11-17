@@ -3,30 +3,28 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
+  min-width: max-content;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   font-weight: var(--weight-medium);
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
   transition:
-    background-color var(--motion-duration) var(--ease-out),
-    border-color var(--motion-duration) var(--ease-out),
-    color var(--motion-duration) var(--ease-out);
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    color var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.985);
 }
 
 .button:hover {
   text-decoration: none;
-}
-
-/* The icon and the label sit in one row, both centred on the same line. */
-.icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  line-height: 0;
 }
 
 .label {
@@ -64,6 +62,16 @@
 .button[data-variant='primary'] {
   background: var(--accent);
   color: var(--text-on-accent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--text-on-accent) 18%, transparent) inset,
+    0 1px 2px color-mix(in srgb, var(--artwork-plate) 22%, transparent);
+}
+
+:global([data-theme='light']) .button[data-variant='primary'] {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--text-on-accent) 16%, transparent) inset,
+    0 1px 2px color-mix(in srgb, var(--artwork-plate) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-active) 18%, transparent);
 }
 
 .button[data-variant='primary']:hover:not(:disabled) {
@@ -75,15 +83,14 @@
 }
 
 .button[data-variant='secondary'] {
-  background: var(--surface);
   border-color: var(--border-strong);
-  border-width: 1.5px;
+  background: var(--surface);
   color: var(--text-primary);
 }
 
 .button[data-variant='secondary']:hover:not(:disabled) {
-  background: var(--surface-raised);
   border-color: var(--accent-border);
+  background: var(--surface-raised);
 }
 
 .button[data-variant='ghost'] {
@@ -106,9 +113,9 @@
 }
 
 .button:disabled {
-  opacity: 0.5;
+  opacity: 0.48;
 }
 
 .button[data-loading='true'] .label {
-  opacity: 0.85;
+  opacity: 0.8;
 }

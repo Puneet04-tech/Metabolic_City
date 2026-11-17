@@ -2,11 +2,12 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  height: 20px;
+  height: 21px;
   padding: 0 var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
-  font-size: var(--text-2xs);
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: var(--weight-medium);
   line-height: 1;
   white-space: nowrap;

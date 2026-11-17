@@ -1,12 +1,27 @@
 .wrapper {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
   min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  min-height: 0;
   overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-panel);
   background: var(--surface-sunken);
+  box-shadow: var(--shadow-panel);
+}
+
+:global([data-theme='light']) .wrapper {
+  border-color: var(--border);
+  box-shadow: var(--shadow-panel);
+}
+
+:global([data-theme='light']) .legend {
+  border-color: var(--border);
+  background: var(--surface-raised);
+}
+
+:global([data-theme='light']) .fitButton {
+  background: var(--surface-raised);
 }
 
 .canvas {
@@ -17,29 +32,34 @@
 
 .legend {
   position: absolute;
-  bottom: var(--space-4);
-  left: var(--space-4);
+  bottom: var(--space-3);
+  left: var(--space-3);
   z-index: 500;
   display: grid;
-  gap: var(--space-1);
+  gap: 3px;
+  max-width: 230px;
   margin: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   list-style: none;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--surface-scrim);
+  box-shadow: var(--shadow-overlay);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-secondary);
-  max-width: 220px;
 }
 
 .legendTitle {
-  font-family: var(--font-sans);
-  font-size: 10px;
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
   margin-bottom: var(--space-1);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
 }
 
 .legendItem {
@@ -49,10 +69,10 @@
 }
 
 .legendSwatch {
-  width: 10px;
-  height: 10px;
   flex: 0 0 auto;
-  border-radius: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
 }
 
 .swatchCritical {
@@ -67,18 +87,18 @@
   background: var(--normal);
 }
 
-/* The map controls sit inside the map, clear of its edge. */
 .fitButton {
   position: absolute;
-  top: var(--space-4);
-  right: var(--space-4);
+  top: var(--space-3);
+  right: var(--space-3);
   z-index: 500;
+  border-color: var(--border-strong);
   background: var(--surface-scrim);
 }
 
 .fitButton:hover {
+  border-color: var(--accent-border);
   color: var(--text-primary);
-  border-color: var(--border-stronger);
 }
 
 .error {
@@ -88,30 +108,30 @@
   min-height: 0;
   padding: var(--space-8);
   border: 1px solid var(--critical-border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   background: var(--critical-soft);
   color: var(--critical-text);
   font-size: var(--text-sm);
 }
 
-/* ---------- Leaflet chrome, styled to match the product ---------- */
+/* ---------- Leaflet chrome ---------- */
 .wrapper :global(.leaflet-container) {
   background: var(--surface-sunken);
   font-family: var(--font-sans);
 }
 
 .wrapper :global(.leaflet-bar) {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
   overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
   box-shadow: var(--shadow-overlay);
 }
 
 .wrapper :global(.leaflet-bar a),
 .wrapper :global(.leaflet-bar a:hover) {
+  border-bottom: 1px solid var(--border);
   background: var(--surface-raised);
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border);
 }
 
 .wrapper :global(.leaflet-bar a:first-child) {
@@ -119,16 +139,16 @@
 }
 
 .wrapper :global(.leaflet-bar a:last-child) {
-  border-radius: 0;
   border-bottom: 0;
+  border-radius: 0;
 }
 
 .wrapper :global(.leaflet-control-attribution) {
+  padding: 1px 6px;
+  border-radius: var(--radius-control) 0 0 0;
   background: var(--surface-scrim);
   color: var(--text-secondary);
-  font-size: 10px;
-  border-radius: var(--radius-control) 0 0 0;
-  padding: 1px 6px;
+  font-size: 9px;
 }
 
 .wrapper :global(.leaflet-control-attribution a) {
@@ -136,7 +156,7 @@
 }
 
 .wrapper :global(.leaflet-control-scale-line) {
-  background: var(--surface-scrim);
   border-color: var(--text-disabled);
+  background: var(--surface-scrim);
   color: var(--text-secondary);
 }

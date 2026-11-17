@@ -1,17 +1,22 @@
 .panel {
   display: grid;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border: 1.5px solid var(--border-strong);
+  align-content: start;
+  height: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
+  box-shadow: var(--shadow-panel);
 }
 
 .heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
 }
 
 .label {
@@ -22,14 +27,13 @@
 
 .model {
   font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  color: var(--text-secondary);
+  font-size: 9px;
+  color: var(--accent-text);
 }
 
 .metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  display: grid;
+  gap: 3px;
   font-size: var(--text-2xs);
   color: var(--text-secondary);
 }
@@ -41,7 +45,7 @@
 
 .note {
   margin: 0;
-  font-size: var(--text-2xs);
-  line-height: var(--leading-normal);
+  font-size: 10px;
+  line-height: 1.55;
   color: var(--text-disabled);
 }

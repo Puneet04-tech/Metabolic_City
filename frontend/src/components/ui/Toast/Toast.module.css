@@ -21,7 +21,8 @@
   width: 320px;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-card);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
   background: var(--surface-raised);
   box-shadow: var(--shadow-overlay);
   pointer-events: auto;

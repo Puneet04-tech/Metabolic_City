@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import ErrorBoundary from './ErrorBoundary';
 import RequireAuth from './RequireAuth';
 import useDocumentMeta from './lib/useDocumentMeta.js';
@@ -40,11 +40,14 @@ function RouteFrame({ routeId, children }) {
 const withFrame = (routeId, element) => <RouteFrame routeId={routeId}>{element}</RouteFrame>;
 
 export default function App() {
+  const location = useLocation();
+
   return (
     <ErrorBoundary>
       <Suspense
         fallback={<RouteFallback />}
       >
+        <div className="page-transition" key={location.pathname}>
         <Routes errorElement={<RouteError />}>
         <Route path="/" element={withFrame('home', <Landing />)} />
         <Route path="/login" element={withFrame('login', <SignIn />)} />
@@ -115,6 +118,7 @@ export default function App() {
           />
         ) : null}
         </Routes>
+        </div>
       </Suspense>
       <SessionGuard />
     </ErrorBoundary>

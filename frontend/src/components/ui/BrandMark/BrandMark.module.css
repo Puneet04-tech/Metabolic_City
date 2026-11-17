@@ -1,0 +1,5 @@
+.mark {
+  flex: 0 0 auto;
+  color: var(--accent);
+  overflow: visible;
+}

@@ -99,6 +99,21 @@ describe('Analytics', () => {
     expect(status.value).toBe('APPROVED');
   });
 
+  it('defaults to the recorded incident range when the address has no dates', async () => {
+    const recordedFrom = '2026-10-01';
+    const recordedTo = '2026-10-11';
+    apiRequest.mockImplementation((path) => {
+      if (path.includes('telemetry-volume')) return Promise.resolve({ period: 'last_24h', data: [] });
+      if (path.includes('risk-heatmap')) return Promise.resolve({ count: 0, cells: [] });
+      return Promise.resolve({ ...summary, incidentRange: { from: recordedFrom, to: recordedTo } });
+    });
+
+    renderAt(<Analytics />);
+
+    await waitFor(() => expect(screen.getByLabelText('From').value).toBe(recordedFrom));
+    expect(screen.getByLabelText('To').value).toBe(recordedTo);
+  });
+
   it('re-reads the summary when the page regains focus', async () => {
     renderAt(<Analytics />);
 

@@ -1,11 +1,12 @@
 .card {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   align-content: start;
-  padding: var(--space-5);
+  padding: var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   background: var(--surface);
+  box-shadow: var(--shadow-panel);
 }
 
 .header {
@@ -13,11 +14,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
 }
 
 .heading {
   display: grid;
-  gap: var(--space-1);
+  gap: 2px;
   min-width: 0;
 }
 
@@ -28,9 +31,10 @@
 }
 
 .question {
-  font-size: var(--text-2xs);
-  color: var(--text-secondary);
+  max-width: 56ch;
+  font-size: 10px;
   line-height: var(--leading-normal);
+  color: var(--text-secondary);
 }
 
 .plot {
@@ -39,7 +43,7 @@
 }
 
 .plot[data-size='md'] {
-  height: 240px;
+  height: 238px;
 }
 
 .plot[data-size='sm'] {

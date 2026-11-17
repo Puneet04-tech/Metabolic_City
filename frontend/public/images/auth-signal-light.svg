@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" role="img" aria-labelledby="title desc">
+  <title id="title">City signal field, day surface</title>
+  <desc id="desc">A limestone field plate with contour lines and a small cluster of monitored city cells.</desc>
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#445243" stroke-opacity=".1"/>
+    </pattern>
+    <radialGradient id="glow" cx="62%" cy="46%" r="55%">
+      <stop offset="0" stop-color="#dde7d9"/>
+      <stop offset="1" stop-color="#eef1ec"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1100" fill="url(#glow)"/>
+  <rect width="900" height="1100" fill="url(#grid)"/>
+
+  <g fill="none" stroke="#526352" stroke-opacity=".25">
+    <ellipse cx="560" cy="500" rx="390" ry="300"/>
+    <ellipse cx="560" cy="500" rx="325" ry="246"/>
+    <ellipse cx="560" cy="500" rx="260" ry="192"/>
+    <ellipse cx="560" cy="500" rx="195" ry="138"/>
+    <ellipse cx="560" cy="500" rx="130" ry="84"/>
+    <path d="M110 870C285 770 370 800 470 650s180-210 360-230"/>
+    <path d="M60 915C245 805 335 850 435 690s205-215 405-230"/>
+  </g>
+
+  <g stroke="#f8faf6" stroke-width="5">
+    <g fill="#21644a" fill-opacity=".14">
+      <path d="M465 385l66 38v76l-66 38-66-38v-76z"/>
+      <path d="M597 461l66 38v76l-66 38-66-38v-76z"/>
+      <path d="M465 537l66 38v76l-66 38-66-38v-76z"/>
+    </g>
+    <g fill="#8c5a0b" fill-opacity=".18">
+      <path d="M597 613l66 38v76l-66 38-66-38v-76z"/>
+    </g>
+    <g fill="#a9342d" fill-opacity=".22">
+      <path d="M597 309l66 38v76l-66 38-66-38v-76z"/>
+    </g>
+  </g>
+  <g fill="none" stroke-width="1.8">
+    <path d="M465 385l66 38v76l-66 38-66-38v-76z" stroke="#21644a" stroke-opacity=".72"/>
+    <path d="M597 461l66 38v76l-66 38-66-38v-76z" stroke="#21644a" stroke-opacity=".6"/>
+    <path d="M465 537l66 38v76l-66 38-66-38v-76z" stroke="#21644a" stroke-opacity=".52"/>
+    <path d="M597 613l66 38v76l-66 38-66-38v-76z" stroke="#8c5a0b" stroke-opacity=".8"/>
+    <path d="M597 309l66 38v76l-66 38-66-38v-76z" stroke="#a9342d" stroke-width="2.4"/>
+  </g>
+
+  <path d="M170 760c150-60 200 20 295-70s120-80 210-180" fill="none" stroke="#b44116" stroke-width="3" stroke-dasharray="9 9"/>
+  <circle cx="170" cy="760" r="7" fill="#b44116"/>
+  <circle cx="675" cy="510" r="7" fill="#b44116"/>
+
+  <g fill="#4d574c" font-family="monospace" font-size="13" letter-spacing="2">
+    <text x="70" y="80">SIGNAL FIELD / 08</text>
+    <text x="70" y="108">MOBILITY · CLIMATE · TERRAIN</text>
+    <text x="70" y="1010">EVIDENCE BEFORE SCORE</text>
+  </g>
+  <g stroke="#141a15" stroke-opacity=".22" fill="none">
+    <rect x="44" y="44" width="812" height="1012"/>
+    <path d="M44 226h18M44 872h18"/>
+  </g>
+</svg>

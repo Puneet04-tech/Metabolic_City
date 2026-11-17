@@ -6,6 +6,14 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: var(--space-1);
+  animation: detail-in var(--motion-duration) var(--ease-out);
+}
+
+@keyframes detail-in {
+  from {
+    opacity: 0;
+    transform: translateX(5px);
+  }
 }
 
 .header {
@@ -13,6 +21,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
 }
 
 .title {
@@ -24,10 +34,11 @@
 }
 
 .cellName {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
   color: var(--text-primary);
-  letter-spacing: -0.01em;
 }
 
 .section {
@@ -38,16 +49,17 @@
 }
 
 .sectionTitle {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-semibold);
-  color: var(--text-secondary);
-  text-transform: uppercase;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: var(--weight-medium);
   letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-disabled);
 }
 
 .scoreRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px 36px;
+  grid-template-columns: minmax(0, 1fr) 96px 38px;
   align-items: center;
   gap: var(--space-3);
 }
@@ -59,24 +71,24 @@
   padding: 0;
   border: 0;
   background: transparent;
-  font: inherit;
-  font-size: var(--text-sm);
   color: var(--text-primary);
+  font: inherit;
+  font-size: var(--text-xs);
   text-align: left;
   cursor: help;
 }
 
 .scoreCode {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-disabled);
 }
 
 .scoreTrack {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--surface-raised);
+  height: 4px;
   overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-sunken);
 }
 
 .scoreFill {
@@ -84,6 +96,7 @@
   height: 100%;
   border-radius: 999px;
   background: var(--normal);
+  transition: width var(--motion-slow) var(--ease-out);
 }
 
 .scoreFill[data-level='medium'] {
@@ -96,7 +109,7 @@
 
 .scoreValue {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: 10px;
   color: var(--text-secondary);
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -115,7 +128,7 @@
 }
 
 .directive {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   line-height: var(--leading-relaxed);
   color: var(--text-primary);
 }
@@ -128,7 +141,7 @@
 }
 
 .incidentRisk {
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   color: var(--text-secondary);
 }
 
@@ -140,27 +153,28 @@
 
 .fact {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
+  grid-template-columns: 82px minmax(0, 1fr);
   gap: var(--space-3);
   align-items: baseline;
 }
 
 .fact dt {
-  font-size: var(--text-2xs);
-  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  color: var(--text-disabled);
 }
 
 .fact dd {
   margin: 0;
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-primary);
   line-height: var(--leading-normal);
 }
 
 .empty {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
@@ -182,16 +196,18 @@
 }
 
 .degraded {
-  font-size: var(--text-xs);
-  line-height: var(--leading-normal);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--caution-border);
   border-radius: var(--radius-control);
-  background: var(--surface-raised);
+  background: var(--caution-soft);
   color: var(--caution-text);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
 }
 
 .degraded[data-tone='missing'] {
+  border-color: var(--critical-border);
+  background: var(--critical-soft);
   color: var(--critical-text);
 }
 
@@ -205,17 +221,17 @@
 
 .source {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-columns: 30px minmax(0, 1fr);
   align-items: baseline;
   gap: var(--space-3);
 }
 
 .sourceCount {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
   color: var(--text-primary);
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .sourceText {
@@ -224,18 +240,18 @@
 }
 
 .sourceLabel {
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   color: var(--text-primary);
 }
 
 .sourceHint {
-  font-size: var(--text-2xs);
+  font-size: 10px;
   line-height: var(--leading-normal);
   color: var(--text-secondary);
 }
 
 .observed {
-  font-size: var(--text-2xs);
+  font-size: 10px;
   color: var(--text-disabled);
 }
 
@@ -244,7 +260,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2);
-  font-size: var(--text-xs);
+  font-size: var(--text-2xs);
   line-height: var(--leading-normal);
   color: var(--text-secondary);
 }
@@ -271,18 +287,18 @@
 
 .alert {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto auto;
+  grid-template-columns: 7px minmax(0, 1fr) auto auto;
   align-items: start;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface-raised);
+  padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
+  background: var(--surface-raised);
 }
 
 .alertDot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   margin-top: 5px;
   border-radius: 50%;
   background: var(--caution);
@@ -299,19 +315,19 @@
 }
 
 .alertTitle {
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   color: var(--text-primary);
 }
 
 .alertDetail {
-  font-size: var(--text-2xs);
+  font-size: 10px;
   line-height: var(--leading-normal);
   color: var(--text-secondary);
 }
 
 .alertScore {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: 10px;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -324,20 +340,20 @@
 .alertAction {
   padding: 2px 6px;
   border: 1px solid var(--border-strong);
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--surface);
   color: var(--text-secondary);
-  font-size: var(--text-2xs);
+  font-size: 10px;
   cursor: pointer;
 }
 
 .alertAction:hover {
-  border-color: var(--accent);
+  border-color: var(--accent-border);
   color: var(--text-primary);
 }
 
 .alertNote {
-  font-size: var(--text-2xs);
+  font-size: 10px;
   line-height: var(--leading-normal);
   color: var(--text-disabled);
 }
@@ -352,7 +368,7 @@
 
 .forecastRow {
   display: grid;
-  grid-template-columns: 34px 44px minmax(0, 1fr);
+  grid-template-columns: 32px 42px minmax(0, 1fr);
   align-items: baseline;
   gap: var(--space-2);
   padding: var(--space-1) 0;
@@ -360,15 +376,15 @@
 
 .forecastTime {
   font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-size: 9px;
   color: var(--text-disabled);
 }
 
 .forecastRisk {
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
   color: var(--normal-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .forecastRisk[data-band='critical'] {
@@ -380,6 +396,6 @@
 }
 
 .forecastDetail {
-  font-size: var(--text-2xs);
+  font-size: 10px;
   color: var(--text-secondary);
 }

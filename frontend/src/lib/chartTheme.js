@@ -1,7 +1,7 @@
 /**
  * Chart theme — one place that reads the design tokens and hands them to
- * Recharts. The four chart modules used to carry their own copies of the
- * palette, the axis colours and the tooltip style.
+ * Recharts. The cache is keyed by the active theme, so switching between the
+ * ink and paper surfaces updates every chart without a reload.
  */
 
 const TOKEN_NAMES = [
@@ -20,14 +20,15 @@ const TOKEN_NAMES = [
   '--shadow-overlay',
 ];
 
-/**
- * When there is no document (SSR or a test), the theme falls back to
- * `currentColor` rather than duplicating hex values here. The tokens file is
- * the only place a colour literal may live.
- */
 const FALLBACK = Object.fromEntries(TOKEN_NAMES.map((name) => [name, 'currentColor']));
 
 let cachedTheme = null;
+let cachedKey = null;
+
+const themeKey = () =>
+  typeof document === 'undefined'
+    ? 'dark'
+    : document.documentElement.dataset.theme || 'dark';
 
 const readTokens = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') return { ...FALLBACK };
@@ -41,7 +42,8 @@ const readTokens = () => {
 };
 
 export const getChartTheme = () => {
-  if (cachedTheme) return cachedTheme;
+  const key = themeKey();
+  if (cachedTheme && cachedKey === key) return cachedTheme;
 
   const tokens = readTokens();
 
@@ -57,11 +59,11 @@ export const getChartTheme = () => {
     },
     grid: {
       stroke: tokens['--border'],
-      strokeDasharray: '3 3',
+      strokeDasharray: '2 4',
     },
     axis: {
       stroke: tokens['--text-secondary'],
-      tick: { fill: tokens['--text-secondary'], fontSize: 12 },
+      tick: { fill: tokens['--text-secondary'], fontSize: 11 },
     },
     tooltip: {
       contentStyle: {
@@ -69,7 +71,7 @@ export const getChartTheme = () => {
         border: `1px solid ${tokens['--border-strong']}`,
         borderRadius: '8px',
         color: tokens['--text-primary'],
-        fontSize: 13,
+        fontSize: 12,
         boxShadow: tokens['--shadow-overlay'],
       },
       itemStyle: { color: tokens['--text-primary'] },
@@ -80,6 +82,7 @@ export const getChartTheme = () => {
       text: tokens['--text-secondary'],
     },
   };
+  cachedKey = key;
 
   return cachedTheme;
 };

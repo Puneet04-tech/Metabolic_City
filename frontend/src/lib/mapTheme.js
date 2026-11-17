@@ -1,6 +1,7 @@
 /**
  * Map theme — one place that reads the design tokens and hands them to
- * Leaflet. Replaces the palette that was hard-coded inside the map component.
+ * Leaflet. The cache is keyed by the active theme so the tile filter and cell
+ * layer can be refreshed when the user switches surfaces.
  */
 
 const TOKEN_NAMES = [
@@ -28,14 +29,15 @@ const TOKEN_NAMES = [
   '--bg',
 ];
 
-/**
- * When there is no document (SSR or a test), the theme falls back to
- * `currentColor` rather than duplicating hex values here. The tokens file is
- * the only place a colour literal may live.
- */
 const FALLBACK = Object.fromEntries(TOKEN_NAMES.map((name) => [name, 'currentColor']));
 
 let cachedTheme = null;
+let cachedKey = null;
+
+const themeKey = () =>
+  typeof document === 'undefined'
+    ? 'dark'
+    : document.documentElement.dataset.theme || 'dark';
 
 const readTokens = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') return { ...FALLBACK };
@@ -49,7 +51,8 @@ const readTokens = () => {
 };
 
 export const getMapTheme = () => {
-  if (cachedTheme) return cachedTheme;
+  const key = themeKey();
+  if (cachedTheme && cachedKey === key) return cachedTheme;
 
   const tokens = readTokens();
 
@@ -60,10 +63,6 @@ export const getMapTheme = () => {
       caution: tokens['--caution'],
       normal: tokens['--normal'],
     },
-    /**
-     * The ramp used when every cell is in the same band. It is a position,
-     * never a severity, and the interface says so.
-     */
     relative: [
       tokens['--relative-1'],
       tokens['--relative-2'],
@@ -73,7 +72,6 @@ export const getMapTheme = () => {
     ],
     selectedStroke: tokens['--text-primary'],
     accent: tokens['--accent'],
-    /** The dark line drawn under a cell outline so the shape reads. */
     outline: tokens['--surface-sunken'],
     grid: {
       stroke: tokens['--accent'],
@@ -87,14 +85,14 @@ export const getMapTheme = () => {
     tile: {
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      // The public tile set is light; a single filter on the tile layer keeps
-      // the map inside the dark palette without touching the tile source.
       filter: tokens['--map-tile-filter'],
     },
   };
+  cachedKey = key;
 
   return cachedTheme;
 };
+
 /** Severity → hex, for the canvas cell layer. */
 export const severityHex = (severity) => {
   const { severity: palette } = getMapTheme();

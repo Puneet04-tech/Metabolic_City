@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Report a place</title>
+  <desc id="desc">A dark city plate with a highlighted cell and a route from a citizen report to the operations centre.</desc>
+  <defs>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
+      <path d="M34 0H0V34" fill="none" stroke="#9caa9e" stroke-opacity=".07"/>
+    </pattern>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111611"/>
+      <stop offset="1" stop-color="#0a0d0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="500" fill="url(#bg)"/>
+  <rect width="1200" height="500" fill="url(#grid)"/>
+  <g fill="none" stroke="#6f806f" stroke-opacity=".18">
+    <path d="M-30 430C180 320 275 380 420 260s250-150 420-60 200 10 390-100"/>
+    <path d="M-20 470C210 355 310 415 455 292s255-145 410-58 205 8 370-80"/>
+    <path d="M-50 390C170 282 260 342 405 220s260-150 425-60 190 12 390-105"/>
+  </g>
+
+  <g stroke="#0a0d0b" stroke-width="4">
+    <g fill="#6fae8d" fill-opacity=".13">
+      <path d="M420 190l62 36v72l-62 36-62-36v-72z"/>
+      <path d="M544 262l62 36v72l-62 36-62-36v-72z"/>
+      <path d="M420 334l62 36v72l-62 36-62-36v-72z"/>
+      <path d="M668 190l62 36v72l-62 36-62-36v-72z"/>
+    </g>
+    <g fill="#e8652f" fill-opacity=".3">
+      <path d="M544 118l62 36v72l-62 36-62-36v-72z"/>
+    </g>
+    <g fill="#d5a142" fill-opacity=".2">
+      <path d="M668 334l62 36v72l-62 36-62-36v-72z"/>
+    </g>
+  </g>
+  <g fill="none" stroke-width="1.6">
+    <path d="M420 190l62 36v72l-62 36-62-36v-72z" stroke="#6fae8d" stroke-opacity=".65"/>
+    <path d="M544 262l62 36v72l-62 36-62-36v-72z" stroke="#6fae8d" stroke-opacity=".55"/>
+    <path d="M420 334l62 36v72l-62 36-62-36v-72z" stroke="#6fae8d" stroke-opacity=".5"/>
+    <path d="M668 190l62 36v72l-62 36-62-36v-72z" stroke="#6fae8d" stroke-opacity=".45"/>
+    <path d="M544 118l62 36v72l-62 36-62-36v-72z" stroke="#e8652f" stroke-width="3"/>
+    <path d="M668 334l62 36v72l-62 36-62-36v-72z" stroke="#d5a142" stroke-opacity=".75"/>
+  </g>
+
+  <path d="M544 190c-90 0-110 35-180 42s-130-40-195 24" fill="none" stroke="#e8652f" stroke-width="3" stroke-dasharray="8 8"/>
+  <circle cx="544" cy="190" r="8" fill="#e8652f" stroke="#0a0d0b" stroke-width="3"/>
+  <circle cx="169" cy="256" r="5" fill="#e8652f"/>
+
+  <g fill="#a6b0a4" font-family="monospace" font-size="13" letter-spacing="2">
+    <text x="60" y="70">PUBLIC REPORT / LOCATION LOCKED</text>
+    <text x="760" y="430">CELL 883D914F17BFFFF</text>
+  </g>
+  <g stroke="#f1eee5" stroke-opacity=".18" fill="none">
+    <rect x="34" y="34" width="1132" height="432"/>
+  </g>
+</svg>

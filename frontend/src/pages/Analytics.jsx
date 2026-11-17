@@ -99,17 +99,23 @@ export default function Analytics() {
   const user = getStoredUser();
   const navItems = useMemo(() => getNavItems(user.role), [user.role]);
 
-  const fallback = defaultRange();
-  const from = searchParams.get('from') || fallback.from;
-  const to = searchParams.get('to') || fallback.to;
-  const status = searchParams.get('status') || 'all';
-
-  const [data, setData] = useState(null);
-  const [telemetry, setTelemetry] = useState(null);
-  const [cells, setCells] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+    const fallback = defaultRange();
+  const requestedFrom = searchParams.get('from');
+  const requestedTo = searchParams.get('to');
+  const status = searchParams.get('status') || 'all';
+
+  const [data, setData] = useState(null);
+  const [telemetry, setTelemetry] = useState(null);
+  const [cells, setCells] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const requestInFlight = useRef(false);
+
+  // Use an explicit filter when one is in the address. Otherwise follow the
+  // recorded incident window from the API so older stored data is not hidden
+  // by a hard-coded last-30-days default.
+  const from = requestedFrom || data?.incidentRange?.from || fallback.from;
+  const to = requestedTo || data?.incidentRange?.to || fallback.to;
 
   const setFilter = useCallback(
     (key, value) => {
@@ -263,8 +269,9 @@ export default function Analytics() {
     >
       <div className={styles.page}>
         <header className={styles.header}>
-          <div className={styles.headerText}>
-            <h2 className={styles.title}>Analytics</h2>
+                      <div className={styles.headerText}>
+              <p className={styles.eyebrow}>Measurement / recorded outcomes</p>
+              <h2 className={styles.title}>Analytics</h2>
             <p className={styles.description}>
               What the city did in the selected range. The filters are part of the address, so a view can be shared.
             </p>

@@ -93,8 +93,27 @@ router.get('/summary', protect, authorize('operator', 'admin'), async (req, res,
 
     const metrics = velocityMetrics(recentIncidents);
 
+    // The console defaults its range to the recorded incident window rather
+    // than a fixed "last 30 days". Without this, a database whose latest
+    // incident is older than 30 days renders as an empty analytics page even
+    // though the summary contains incidents.
+    const incidentDates = recentIncidents
+      .map((incident) => incident.detectedAt || incident.createdAt)
+      .filter(Boolean)
+      .map((value) => new Date(value).getTime())
+      .filter(Number.isFinite);
+    const incidentRange = incidentDates.length
+      ? {
+          // Start at the first recorded incident and end today, so the range
+          // covers both stored incidents and current audit activity.
+          from: new Date(Math.min(...incidentDates)).toISOString().slice(0, 10),
+          to: new Date(Math.max(Math.max(...incidentDates), Date.now())).toISOString().slice(0, 10),
+        }
+      : null;
+
     return res.json({
       threshold,
+      incidentRange,
       statusCounts: counts,
       incidents: recentIncidents,
       auditLogs: audits,

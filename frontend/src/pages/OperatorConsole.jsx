@@ -13,6 +13,7 @@ import SummaryStrip from '../components/Operator/SummaryStrip';
 import TelemetryStatus from '../components/Operator/TelemetryStatus';
 import SearchInput from '../components/ui/SearchInput/SearchInput';
 import Select from '../components/ui/Select/Select';
+import Skeleton from '../components/ui/Skeleton/Skeleton';
 import { apiRequest, clearSession, getStoredUser } from '../api.js';
 import {
   allInOneBand,
@@ -68,6 +69,7 @@ export default function OperatorConsole() {
   const [forecastAccuracy, setForecastAccuracy] = useState(null);
 
   const navItems = useMemo(() => getNavItems(user.role), [user.role]);
+  const initialLoading = connection === 'connecting' && cells.length === 0;
 
   // The threshold is configurable by an admin, so read the one the engine is
   // actually using instead of hardcoding it in the console.
@@ -289,12 +291,17 @@ export default function OperatorConsole() {
       <div className={styles.console}>
         <header className={styles.header}>
           <div className={styles.headerText}>
+            <p className={styles.eyebrow}>Operations / live field</p>
             <h2 className={styles.title}>Operator console</h2>
             <p className={styles.description}>
               The cells the city is watching, the risk in each one, and the source of every
               reading behind them.
             </p>
           </div>
+          <p className={styles.headerNote}>
+            <span className={styles.headerRule} aria-hidden="true" />
+            Human decision required before dispatch
+          </p>
         </header>
 
         <div className={styles.toolbar}>
@@ -344,9 +351,11 @@ export default function OperatorConsole() {
           />
         </div>
 
-        <LiveAlerts alerts={alerts} threshold={threshold} onSelect={selectAlert} />
-        <ReportVerificationPanel alerts={alerts} onSelect={selectAlert} />
-        <ForecastModelPanel accuracy={forecastAccuracy} />
+        <div className={styles.signalRail} aria-label="Live signals">
+          <LiveAlerts alerts={alerts} threshold={threshold} onSelect={selectAlert} />
+          <ReportVerificationPanel alerts={alerts} onSelect={selectAlert} />
+          <ForecastModelPanel accuracy={forecastAccuracy} />
+        </div>
 
         {relative && relativeAvailable ? (
           <p className={styles.relativeNote}>
@@ -355,19 +364,30 @@ export default function OperatorConsole() {
           </p>
         ) : null}
 
-        <div className={styles.body}>
-          <MapCanvas
-            className={styles.map}
-            cells={cityCells}
-            mode={mode}
-            threshold={threshold}
-            relative={relative && relativeAvailable}
-            fitKey={city}
-            selectedId={selected ? selected.h3Index : null}
-            highlightId={hovered ? hovered.h3Index : null}
-            onSelect={selectCell}
-            onHover={setHovered}
-          />
+        <div className={styles.body} data-loading={initialLoading ? 'true' : undefined} aria-busy={initialLoading || undefined}>
+          <div className={styles.mapWrap}>
+            <MapCanvas
+              className={styles.map}
+              cells={cityCells}
+              mode={mode}
+              threshold={threshold}
+              relative={relative && relativeAvailable}
+              fitKey={city}
+              selectedId={selected ? selected.h3Index : null}
+              highlightId={hovered ? hovered.h3Index : null}
+              onSelect={selectCell}
+              onHover={setHovered}
+            />
+            {initialLoading ? (
+              <div className={styles.mapLoading} aria-hidden="true">
+                <Skeleton height="100%" radius="0" />
+                <div className={styles.mapLoadingCopy}>
+                  <span className={styles.loadingPulse} />
+                  Receiving the first cell field
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           <aside className={styles.panel} aria-label="Cell details">
             <SummaryStrip

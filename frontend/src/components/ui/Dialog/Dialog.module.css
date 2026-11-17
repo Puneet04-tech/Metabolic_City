@@ -16,10 +16,14 @@
   transform: translate(-50%, -50%);
   padding: var(--space-6);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   background: var(--surface-raised);
   box-shadow: var(--shadow-overlay);
   animation: dialog-in var(--motion-duration) var(--ease-out);
+}
+
+:global([data-theme='light']) .content {
+  border-color: var(--border);
 }
 
 @keyframes dialog-in {
@@ -38,9 +42,11 @@
 }
 
 .title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-tight);
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
   text-wrap: balance;
 }
 

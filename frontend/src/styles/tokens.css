@@ -1,81 +1,72 @@
 /*
- * Metabolic City — design tokens
+ * Metabolic City — Field Instrument design tokens
  *
- * Single source of truth for colour, radius, spacing, type, motion and
- * stacking. This file is the ONLY place raw hex values are allowed;
- * stylelint's `color-no-hex` rule is disabled for this path.
+ * The only file where raw colours live. Dark is the default theme; the light
+ * theme is a limestone work surface, not an inverted dark theme.
  */
 
-:root {
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
   /* ---------- Surfaces ---------- */
-  --bg: #0b0f17;
-  --surface: #111826;
-  --surface-raised: #162033;
-  --surface-sunken: #0e1420;
-  --border: #1f2a3d;
-  --border-strong: #2b3a55;
-  --border-stronger: #3a4a6a;
-  /* QR codes are read by scanners and must stay black on white. */
+  --bg: #0c0f0d;
+  --surface: #131814;
+  --surface-raised: #1a211b;
+  --surface-sunken: #090c0a;
+  --surface-paper: #e8e2d4;
+  --border: #29332b;
+  --border-strong: #3a473c;
+  --border-stronger: #4e5d50;
   --qr-surface: #ffffff;
+  --artwork-plate: #0b0e0c;
+  --artwork-ink: #f1eee5;
 
   /* ---------- Scrims ---------- */
-  /* Modal backdrop. */
-  --overlay: rgba(3, 6, 12, 0.72);
-  /* Control backgrounds that sit on top of map tiles. */
-  --surface-scrim: rgba(11, 15, 23, 0.86);
-  /* Map grid and label strokes. */
-  --accent-grid: rgba(76, 141, 255, 0.22);
-  --accent-label: rgba(127, 171, 255, 0.75);
-  /*
-   * The public tile set is light. It is turned dark first and darkened
-   * after, so the map sits in the palette without the roads disappearing:
-   * the hue rotation puts the water back to blue and the greyscale keeps
-   * the basemap out of the way of the cells.
-   */
-  --map-tile-filter: invert(0.9) hue-rotate(180deg) grayscale(0.55) brightness(0.62) contrast(1.1);
+  --overlay: rgba(5, 7, 5, 0.76);
+  --surface-scrim: rgba(12, 15, 13, 0.88);
+  --accent-grid: rgba(232, 101, 47, 0.16);
+  --accent-label: rgba(243, 139, 95, 0.82);
+  --grid-line: rgba(164, 174, 163, 0.045);
+  --map-tile-filter: invert(0.9) hue-rotate(175deg) grayscale(0.7) sepia(0.08) brightness(0.58) contrast(1.12);
 
-  /*
-   * The relative ramp: one hue in five steps. It is used only when every
-   * cell sits in the same severity band, where a severity colour would say
-   * nothing, and the interface always labels it as a position rather than
-   * a severity.
-   */
-  --relative-1: #2b3a55;
-  --relative-2: #35608f;
-  --relative-3: #3d74b8;
-  --relative-4: #4488e0;
-  --relative-5: #4c8dff;
+  /* ---------- Relative ramp ---------- */
+  --relative-1: #34443a;
+  --relative-2: #4b664f;
+  --relative-3: #6a8463;
+  --relative-4: #b1844d;
+  --relative-5: #e8652f;
 
   /* ---------- Text ---------- */
-  --text-primary: #e6eaf2;
-  --text-secondary: #9aa6ba;
-  --text-disabled: #5b677d;
-  --text-on-accent: #06101f;
+  --text-primary: #f1eee5;
+  --text-secondary: #a6b0a4;
+  --text-disabled: #6d786d;
+  --text-on-accent: #160b05;
   --text-on-status: #ffffff;
 
-  /* ---------- Accent (single) ---------- */
-  --accent: #4c8dff;
-  --accent-hover: #6ba1ff;
-  --accent-active: #3a76e0;
-  --accent-soft: rgba(76, 141, 255, 0.12);
-  --accent-border: rgba(76, 141, 255, 0.36);
-  --accent-text: #7fabff;
+  /* ---------- Accent ---------- */
+  --accent: #e8652f;
+  --accent-hover: #f17b48;
+  --accent-active: #cf5422;
+  --accent-soft: rgba(232, 101, 47, 0.13);
+  --accent-border: rgba(232, 101, 47, 0.38);
+  --accent-text: #f39a72;
 
-  /* ---------- Status (severity only — never decorative) ---------- */
-  --critical: #f0524f;
-  --critical-soft: rgba(240, 82, 79, 0.12);
-  --critical-border: rgba(240, 82, 79, 0.4);
-  --critical-text: #ff807d;
+  /* ---------- Status ---------- */
+  --critical: #df554d;
+  --critical-soft: rgba(223, 85, 77, 0.13);
+  --critical-border: rgba(223, 85, 77, 0.42);
+  --critical-text: #f28b84;
 
-  --caution: #f2a93b;
-  --caution-soft: rgba(242, 169, 59, 0.12);
-  --caution-border: rgba(242, 169, 59, 0.4);
-  --caution-text: #f7c069;
+  --caution: #d5a142;
+  --caution-soft: rgba(213, 161, 66, 0.13);
+  --caution-border: rgba(213, 161, 66, 0.42);
+  --caution-text: #e9bd6d;
 
-  --normal: #2fbf8f;
-  --normal-soft: rgba(47, 191, 143, 0.12);
-  --normal-border: rgba(47, 191, 143, 0.4);
-  --normal-text: #63d4ae;
+  --normal: #6fae8d;
+  --normal-soft: rgba(111, 174, 141, 0.13);
+  --normal-border: rgba(111, 174, 141, 0.42);
+  --normal-text: #91cdb0;
 
   --info: var(--accent);
   --info-soft: var(--accent-soft);
@@ -84,10 +75,11 @@
 
   /* ---------- Radius ---------- */
   --radius-control: 6px;
-  --radius-card: 8px;
+  --radius-card: 10px;
+  --radius-panel: 14px;
   --radius-pill: 999px;
 
-  /* ---------- Spacing (4px grid) ---------- */
+  /* ---------- Spacing ---------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -102,19 +94,20 @@
   --space-24: 96px;
 
   /* ---------- Type ---------- */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
 
-  --text-2xs: 12px;
-  --text-xs: 13px;
-  --text-sm: 14px;
-  --text-md: 16px;
-  --text-lg: 20px;
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 19px;
   --text-xl: 24px;
   --text-2xl: 32px;
-  --text-3xl: 48px;
+  --text-3xl: 52px;
 
-  --leading-tight: 1.25;
+  --leading-tight: 1.18;
   --leading-normal: 1.5;
   --leading-relaxed: 1.65;
 
@@ -122,12 +115,15 @@
   --weight-medium: 500;
   --weight-semibold: 600;
 
-  /* ---------- Elevation (one overlay shadow only) ---------- */
-  --shadow-overlay: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  /* ---------- Elevation ---------- */
+  --shadow-overlay: 0 18px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 
   /* ---------- Motion ---------- */
-  --motion-duration: 150ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 120ms;
+  --motion-duration: 220ms;
+  --motion-slow: 360ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ---------- Stacking ---------- */
   --z-base: 0;
@@ -137,4 +133,67 @@
   --z-drawer: 300;
   --z-modal: 400;
   --z-toast: 500;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* A limestone work surface, not a newspaper. The cooler base keeps data
+     colours legible while still feeling warmer than a default white app. */
+  --bg: #eef1ec;
+  --surface: #f8faf6;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e1e6df;
+  --surface-paper: #ffffff;
+  --artwork-plate: #0b0e0c;
+  --artwork-ink: #f1eee5;
+  --border: #bcc6b9;
+  --border-strong: #849181;
+  --border-stronger: #6f7d6c;
+
+  --overlay: rgba(31, 38, 30, 0.46);
+  --surface-scrim: rgba(248, 250, 246, 0.94);
+  --accent-grid: rgba(150, 52, 18, 0.14);
+  --accent-label: rgba(128, 43, 13, 0.84);
+  --grid-line: rgba(45, 54, 43, 0.065);
+  --map-tile-filter: saturate(0.76) sepia(0.06) contrast(0.98) brightness(1.03);
+
+  --relative-1: #c4ccc0;
+  --relative-2: #a8b39f;
+  --relative-3: #8f9d77;
+  --relative-4: #b5784d;
+  --relative-5: #a94116;
+
+  --text-primary: #141a15;
+  --text-secondary: #4d574c;
+  --text-disabled: #626d60;
+  --text-on-accent: #ffffff;
+  --text-on-status: #ffffff;
+
+  /* A deeper burnt orange keeps the operational accent while achieving a
+     clear ratio against the limestone surface. */
+  --accent: #b44116;
+  --accent-hover: #9c3510;
+  --accent-active: #842c0d;
+  --accent-soft: rgba(180, 65, 22, 0.1);
+  --accent-border: rgba(180, 65, 22, 0.38);
+  --accent-text: #8f3510;
+
+  --critical: #a9342d;
+  --critical-soft: rgba(169, 52, 45, 0.09);
+  --critical-border: rgba(169, 52, 45, 0.34);
+  --critical-text: #8d2923;
+
+  --caution: #8c5a0b;
+  --caution-soft: rgba(140, 90, 11, 0.09);
+  --caution-border: rgba(140, 90, 11, 0.34);
+  --caution-text: #754a07;
+
+  --normal: #21644a;
+  --normal-soft: rgba(33, 100, 74, 0.09);
+  --normal-border: rgba(33, 100, 74, 0.34);
+  --normal-text: #1b553e;
+
+  --shadow-overlay: 0 18px 44px rgba(43, 52, 42, 0.2), 0 2px 6px rgba(43, 52, 42, 0.12);
+  --shadow-panel: 0 1px 2px rgba(43, 52, 42, 0.08), 0 8px 24px rgba(43, 52, 42, 0.05);
 }

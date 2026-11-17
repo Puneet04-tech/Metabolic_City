@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { Crosshair } from 'lucide-react';
 import HexLayer from './HexLayer';
 import { getMapTheme } from '../../lib/mapTheme.js';
+import { useTheme } from '../../lib/theme.jsx';
 import { LENS_CODES, LENS_NAMES, lensScale } from '../../lib/cells/index.js';
 import { cn } from '../ui/cn';
 import Button from '../ui/Button/Button';
@@ -34,6 +35,7 @@ export default function MapCanvas({
   const mapRef = useRef(null);
   const layerRef = useRef(null);
   const [failed, setFailed] = useState(false);
+  const { theme: activeTheme } = useTheme();
   const theme = getMapTheme();
 
   const onSelectRef = useRef(onSelect);
@@ -147,6 +149,19 @@ export default function MapCanvas({
     if (!layerRef.current) return;
     layerRef.current.setCells(cells, mode, threshold, { relative });
   }, [cells, mode, threshold, relative]);
+
+  // Follow the theme switch: retint the tiles and repaint the cell canvas.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const next = getMapTheme();
+    map.eachLayer((layer) => {
+      if (layer instanceof L.TileLayer) {
+        layer.getContainer()?.style.setProperty('filter', next.tile.filter);
+      }
+    });
+    layerRef.current?.setCells(cells, mode, threshold, { relative });
+  }, [activeTheme, cells, mode, threshold, relative]);
 
   // Highlight and selection.
   useEffect(() => {

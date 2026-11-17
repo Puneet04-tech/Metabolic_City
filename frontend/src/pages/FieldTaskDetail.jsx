@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, ExternalLink, MapPin } from 'lucide-react';
 import AppShell from '../components/shell/AppShell/AppShell';
 import MapSnippet from '../components/Field/MapSnippet';
-import MobileNav from '../components/Field/MobileNav';
 import OfflineBanner from '../components/Field/OfflineBanner';
 import StatusStepper from '../components/Field/StatusStepper';
 import Button from '../components/ui/Button/Button';
@@ -364,8 +363,6 @@ export default function FieldTaskDetail() {
           </p>
         </DialogContent>
       </Dialog>
-
-      <MobileNav navItems={navItems} onSignOut={handleSignOut} />
     </AppShell>
   );
 }

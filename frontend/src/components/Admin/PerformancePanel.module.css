@@ -2,20 +2,23 @@
   display: grid;
   gap: var(--space-5);
   align-content: start;
-  max-width: 960px;
+  max-width: 1080px;
 }
 
 .header {
   display: grid;
   gap: var(--space-2);
   justify-items: start;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
 }
 
 .title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
+  font-family: var(--font-display);
+  font-size: clamp(32px, 3.4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.035em;
   color: var(--text-primary);
-  letter-spacing: -0.015em;
 }
 
 .description {
@@ -27,17 +30,17 @@
 .statGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
 .loading {
   display: grid;
   gap: var(--space-4);
-  max-width: 672px;
+  max-width: 760px;
 }

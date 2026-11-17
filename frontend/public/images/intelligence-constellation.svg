@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">Cell constellation</title>
+  <desc id="desc">A dark network plate showing adjacent H3 cells, risk propagation and evidence links.</desc>
+  <defs>
+    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0H0V30" fill="none" stroke="#9caa9e" stroke-opacity=".06"/>
+    </pattern>
+    <radialGradient id="glow" cx="70%" cy="40%" r="55%">
+      <stop offset="0" stop-color="#20342a"/>
+      <stop offset="1" stop-color="#0a0d0b"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="500" fill="url(#glow)"/>
+  <rect width="1200" height="500" fill="url(#grid)"/>
+
+  <g fill="none" stroke="#6fae8d" stroke-opacity=".3" stroke-width="1.2">
+    <path d="M790 250L920 178M790 250L920 322M790 250L680 178M790 250L680 322M920 178L1035 250M920 322L1035 250M680 178L560 250M680 322L560 250M560 250L430 178M560 250L430 322"/>
+    <path d="M680 178L560 106M680 322L560 394M920 178L1035 106M920 322L1035 394"/>
+  </g>
+
+  <g fill="#131814" stroke-width="1.8">
+    <path d="M790 204l40 23v46l-40 23-40-23v-46z" stroke="#e8652f" stroke-width="3"/>
+    <path d="M920 132l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d"/>
+    <path d="M920 276l40 23v46l-40 23-40-23v-46z" stroke="#d5a142"/>
+    <path d="M680 132l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d"/>
+    <path d="M680 276l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d"/>
+    <path d="M560 204l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d"/>
+    <path d="M430 132l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d" stroke-opacity=".7"/>
+    <path d="M430 276l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d" stroke-opacity=".7"/>
+    <path d="M1035 60l40 23v46l-40 23-40-23v-46z" stroke="#df554d" stroke-opacity=".8"/>
+    <path d="M1035 348l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d" stroke-opacity=".5"/>
+    <path d="M560 60l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d" stroke-opacity=".5"/>
+    <path d="M560 348l40 23v46l-40 23-40-23v-46z" stroke="#6fae8d" stroke-opacity=".5"/>
+  </g>
+
+  <g fill="#e8652f">
+    <circle cx="790" cy="250" r="4"/>
+    <circle cx="920" cy="178" r="3"/>
+    <circle cx="680" cy="322" r="3"/>
+  </g>
+
+  <g fill="#a6b0a4" font-family="monospace" font-size="12" letter-spacing="2">
+    <text x="60" y="70">H3 GRAPH / PROPAGATION</text>
+    <text x="60" y="440">CENTRALITY · NEIGHBOURS · MEMORY</text>
+    <text x="964" y="70">EVIDENCE</text>
+  </g>
+  <g stroke="#f1eee5" stroke-opacity=".18" fill="none">
+    <rect x="34" y="34" width="1132" height="432"/>
+  </g>
+</svg>

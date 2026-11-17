@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, RefreshCw } from 'lucide-react';
 import AppShell from '../components/shell/AppShell/AppShell';
-import MobileNav from '../components/Field/MobileNav';
 import OfflineBanner from '../components/Field/OfflineBanner';
 import TaskCard from '../components/Field/TaskCard';
 import Button from '../components/ui/Button/Button';
@@ -141,6 +140,17 @@ export default function FieldTasks() {
       <div className={styles.page}>
         <OfflineBanner offline={offline} pending={pending} onSync={sync} />
 
+        <section className={styles.briefing} aria-label="Field route">
+          <img src="/images/field-route.svg" alt="" />
+          <div className={styles.briefingCopy}>
+            <p className={styles.briefingKicker}>Field board / today</p>
+            <p className={styles.briefingTitle}>One task at a time.</p>
+            <p className={styles.briefingBody}>
+              Accept, travel, arrive and resolve. Each step is written to the incident record.
+            </p>
+          </div>
+        </section>
+
         <div className={styles.toolbar}>
           <SegmentedControl
             options={SORTS}
@@ -186,7 +196,6 @@ export default function FieldTasks() {
         {syncing ? <p className={styles.syncing}>Sending queued updates…</p> : null}
       </div>
 
-      <MobileNav navItems={navItems} onSignOut={handleSignOut} />
     </AppShell>
   );
 }

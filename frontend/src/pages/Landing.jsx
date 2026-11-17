@@ -1,4 +1,4 @@
-import { Activity, Hexagon, Route, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowUpRight, Hexagon, Route, ShieldCheck } from 'lucide-react';
 import MarketingShell from '../components/shell/MarketingShell/MarketingShell';
 import Button from '../components/ui/Button/Button';
 import Notice from '../components/ui/Notice/Notice';
@@ -27,14 +27,17 @@ const ROLES = [
   {
     title: 'Operator',
     body: 'Watches the live cell list and the map, and approves or overrides each alert before a crew is sent.',
+    note: 'Risk · alerts · dispatch',
   },
   {
     title: 'Field crew',
     body: 'Works from a phone: takes the task, travels to the cell, records what was found and closes it with a note and a photo.',
+    note: 'Accept · arrive · resolve',
   },
   {
     title: 'Administrator',
     body: 'Manages weights, thresholds and user access, and reviews the audit trail of every decision that was made.',
+    note: 'Weights · access · audit',
   },
 ];
 
@@ -57,44 +60,11 @@ const SCORING = [
   },
 ];
 
-/** A static, honest schematic of the operator console. */
-function ConsolePreview() {
-  return (
-    <figure className={styles.preview}>
-      <div className={styles.previewFrame} role="img" aria-label="Schematic of the operator console: a map of risk cells on the left, a ranked list of cells in the middle and the cell detail on the right.">
-        <div className={styles.previewBar}>
-          <span className={styles.previewDot} />
-          <span className={styles.previewBarText}>Operator console</span>
-        </div>
-        <div className={styles.previewBody}>
-          <div className={styles.previewMap}>
-            <div className={styles.previewHexes}>
-              <Hexagon className={styles.hexNormal} size={40} aria-hidden="true" />
-              <Hexagon className={styles.hexCaution} size={40} aria-hidden="true" />
-              <Hexagon className={styles.hexCritical} size={40} aria-hidden="true" />
-              <Hexagon className={styles.hexNormal} size={40} aria-hidden="true" />
-            </div>
-          </div>
-          <div className={styles.previewList}>
-            <span className={styles.previewRow} data-tone="critical">
-              <span className={styles.previewId} />
-              <span className={styles.previewScore}>Critical</span>
-            </span>
-            <span className={styles.previewRow} data-tone="caution">
-              <span className={styles.previewId} />
-              <span className={styles.previewScore}>Caution</span>
-            </span>
-            <span className={styles.previewRow} data-tone="normal">
-              <span className={styles.previewId} />
-              <span className={styles.previewScore}>Normal</span>
-            </span>
-          </div>
-        </div>
-      </div>
-      <figcaption className={styles.previewCaption}>Preview — the operator console</figcaption>
-    </figure>
-  );
-}
+const PROCESS = [
+  ['01', 'Read', 'Weather, road speed, terrain and field reports'],
+  ['02', 'Score', 'One evidence record and one risk score per cell'],
+  ['03', 'Act', 'A human decision, a crew and an audit trail'],
+];
 
 export default function Landing() {
   const notice = useAuthNotice();
@@ -121,7 +91,10 @@ export default function Landing() {
 
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
-          <p className={styles.eyebrow}>Urban risk operations</p>
+          <p className={styles.eyebrow}>
+            <span className={styles.eyebrowRule} aria-hidden="true" />
+            Urban risk operations / field instrument
+          </p>
           <h1 className={styles.heroTitle}>Know which cells need attention before the call comes in.</h1>
           <p className={styles.heroSubhead}>
             Metabolic City divides the city into H3 hexagons and scores each one from mobility, climate and
@@ -130,30 +103,74 @@ export default function Landing() {
           <div className={styles.heroActions}>
             <Button variant="primary" href="/signup">
               Create an account
+              <ArrowUpRight size={15} aria-hidden="true" />
             </Button>
             <Button variant="secondary" href="#how-it-works">
               See how it works
             </Button>
           </div>
+          <dl className={styles.heroFacts}>
+            <div>
+              <dt>Unit</dt>
+              <dd>H3 hexagon</dd>
+            </div>
+            <div>
+              <dt>Score</dt>
+              <dd>Deterministic</dd>
+            </div>
+            <div>
+              <dt>Decision</dt>
+              <dd>Human</dd>
+            </div>
+          </dl>
         </div>
 
-        <ConsolePreview />
+        <figure className={styles.heroPlate}>
+          <div className={styles.plateFrame}>
+            <img
+              src="/images/atlas-hero.svg"
+              alt="An operational map plate showing H3 risk cells, contour lines and a response route across a city."
+            />
+            <span className={styles.plateCornerTop} aria-hidden="true">MC / ATLAS 08</span>
+            <span className={styles.plateCornerBottom} aria-hidden="true">EVIDENCE FIRST</span>
+          </div>
+          <figcaption className={styles.plateCaption}>
+            <span>Risk cells, not a city-wide average.</span>
+            <span>Bhopal · Indore · Sehore</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section className={styles.process} aria-label="How the platform works">
+        {PROCESS.map(([index, title, body]) => (
+          <div key={index} className={styles.processStep}>
+            <span className={styles.processIndex}>{index}</span>
+            <span className={styles.processTitle}>{title}</span>
+            <span className={styles.processBody}>{body}</span>
+          </div>
+        ))}
       </section>
 
       <section className={styles.section} id="capabilities">
         <div className={styles.sectionHeading}>
-          <h2 className={styles.sectionTitle}>What the platform does</h2>
+          <p className={styles.sectionKicker}>01 / Capabilities</p>
+          <h2 className={styles.sectionTitle}>A working loop, not a wall of charts.</h2>
           <p className={styles.sectionIntro}>
             Three things happen in order: readings are collected per cell, cells are scored, and a response is
             dispatched against the ones that need it.
           </p>
         </div>
-        <div className={styles.capabilityGrid}>
-          {CAPABILITIES.map((item) => (
-            <article key={item.title} className={styles.capability}>
-              <item.icon className={styles.capabilityIcon} size={20} aria-hidden="true" />
-              <h3 className={styles.capabilityTitle}>{item.title}</h3>
-              <p className={styles.capabilityBody}>{item.body}</p>
+        <div className={styles.featureList}>
+          {CAPABILITIES.map((item, index) => (
+            <article key={item.title} className={styles.feature}>
+              <span className={styles.featureIndex}>{String(index + 1).padStart(2, '0')}</span>
+              <span className={styles.featureIcon}>
+                <item.icon size={20} strokeWidth={1.6} aria-hidden="true" />
+              </span>
+              <div className={styles.featureText}>
+                <h3 className={styles.featureTitle}>{item.title}</h3>
+                <p className={styles.featureBody}>{item.body}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -161,12 +178,17 @@ export default function Landing() {
 
       <section className={styles.section} id="roles">
         <div className={styles.sectionHeading}>
+          <p className={styles.sectionKicker}>02 / Roles</p>
           <h2 className={styles.sectionTitle}>Who uses it</h2>
-            <p className={styles.sectionIntro}>Three roles share one record of what the city is doing right now.</p>
+          <p className={styles.sectionIntro}>Three roles share one record of what the city is doing right now.</p>
         </div>
         <div className={styles.roleGrid}>
-          {ROLES.map((role) => (
+          {ROLES.map((role, index) => (
             <article key={role.title} className={styles.roleCard}>
+              <div className={styles.roleTop}>
+                <span className={styles.roleIndex}>0{index + 1}</span>
+                <span className={styles.roleNote}>{role.note}</span>
+              </div>
               <h3 className={styles.roleTitle}>{role.title}</h3>
               <p className={styles.roleBody}>{role.body}</p>
             </article>
@@ -176,36 +198,71 @@ export default function Landing() {
 
       <section className={styles.section} id="how-it-works">
         <div className={styles.sectionHeading}>
+          <p className={styles.sectionKicker}>03 / Platform</p>
           <h2 className={styles.sectionTitle}>How the scoring works</h2>
           <p className={styles.sectionIntro}>
             The same numbers run in the console, in the field app and in the analytics, so a risk score means one
             thing everywhere.
           </p>
         </div>
-        <div className={styles.scoringGrid}>
-          {SCORING.map((item) => (
-            <article key={item.title} className={styles.scoringCard}>
-              <ShieldCheck className={styles.scoringIcon} size={18} aria-hidden="true" />
-              <h3 className={styles.scoringTitle}>{item.title}</h3>
-              <p className={styles.scoringBody}>{item.body}</p>
-            </article>
-          ))}
+
+        <div className={styles.platformGrid}>
+          <aside className={styles.formulaPanel}>
+            <span className={styles.formulaLabel}>Composite risk</span>
+            <p className={styles.formula}>Rc = Wm·Sm + Wc·Sc + Wv·Sv</p>
+            <dl className={styles.formulaFacts}>
+              <div>
+                <dt>Wm / Wc / Wv</dt>
+                <dd>Municipal weights</dd>
+              </div>
+              <div>
+                <dt>Sm / Sc / Sv</dt>
+                <dd>Mobility · climate · vulnerability</dd>
+              </div>
+              <div>
+                <dt>Window</dt>
+                <dd>60 minutes · 30-minute half-life</dd>
+              </div>
+            </dl>
+            <p className={styles.formulaNote}>
+              A score without its evidence is not an operational answer. Every cell keeps the sources, age and
+              confidence behind the number.
+            </p>
+          </aside>
+
+          <div className={styles.scoringList}>
+            {SCORING.map((item) => (
+              <article key={item.title} className={styles.scoringRow}>
+                <ShieldCheck className={styles.scoringIcon} size={18} strokeWidth={1.6} aria-hidden="true" />
+                <div>
+                  <h3 className={styles.scoringTitle}>{item.title}</h3>
+                  <p className={styles.scoringBody}>{item.body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className={styles.closing}>
-        <h2 className={styles.closingTitle}>Set up your municipality&rsquo;s risk picture.</h2>
-        <p className={styles.closingBody}>
-          Create an account with your city code and you can open the console and see the cells that are already
-          reporting.
-        </p>
-        <div className={styles.closingActions}>
-          <Button variant="primary" href="/signup">
-            Create an account
-          </Button>
-          <Button variant="secondary" href="#roles">
-            See the roles
-          </Button>
+        <div>
+          <p className={styles.closingKicker}>Ready when the city is</p>
+          <h2 className={styles.closingTitle}>Set up your municipality&rsquo;s risk picture.</h2>
+        </div>
+        <div className={styles.closingSide}>
+          <p className={styles.closingBody}>
+            Create an account with your city code and you can open the console and see the cells that are already
+            reporting.
+          </p>
+          <div className={styles.closingActions}>
+            <Button variant="primary" href="/signup">
+              Create an account
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </Button>
+            <Button variant="secondary" href="#roles">
+              See the roles
+            </Button>
+          </div>
         </div>
       </section>
     </MarketingShell>

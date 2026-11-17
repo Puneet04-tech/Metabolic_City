@@ -6,31 +6,34 @@
 
 .select {
   width: 100%;
-  height: 40px;
-  padding: 0 32px 0 var(--space-4);
-  border: 1.5px solid var(--border);
+  height: 42px;
+  padding: 0 32px 0 var(--space-3);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
-  background: var(--surface);
+  background: var(--surface-sunken);
   color: var(--text-primary);
   font-size: var(--text-sm);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.005em;
   appearance: none;
   cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
 }
 
 .select:hover:not(:disabled) {
-  border-color: var(--border-strong);
+  border-color: var(--border-stronger);
 }
 
 .select:focus {
-  outline: none;
   border-color: var(--accent);
-  background: var(--surface-raised);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .select:disabled {
-  color: var(--text-disabled);
   background: var(--surface-sunken);
+  color: var(--text-disabled);
   cursor: not-allowed;
 }
 

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title desc">
+  <title id="title">Empty atlas</title>
+  <desc id="desc">A quiet grid plate with one isolated highlighted cell.</desc>
+  <defs>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#9caa9e" stroke-opacity=".08"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="600" fill="#0d110e"/>
+  <rect width="800" height="600" fill="url(#grid)"/>
+  <g fill="none" stroke="#6f806f" stroke-opacity=".18">
+    <circle cx="400" cy="300" r="210"/>
+    <circle cx="400" cy="300" r="150"/>
+    <circle cx="400" cy="300" r="90"/>
+    <path d="M40 470C190 380 260 410 360 310s190-130 390-40"/>
+  </g>
+  <path d="M400 246l54 31v62l-54 31-54-31v-62z" fill="#e8652f" fill-opacity=".12" stroke="#e8652f" stroke-width="2"/>
+  <circle cx="400" cy="308" r="5" fill="#e8652f"/>
+  <g fill="#a6b0a4" font-family="monospace" font-size="11" letter-spacing="2">
+    <text x="40" y="54">NO CELL IN VIEW</text>
+    <text x="560" y="556">MC / ATLAS</text>
+  </g>
+  <rect x="28" y="28" width="744" height="544" fill="none" stroke="#f1eee5" stroke-opacity=".16"/>
+</svg>

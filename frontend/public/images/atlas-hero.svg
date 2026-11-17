@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" role="img" aria-labelledby="title desc">
+  <title id="title">H3 city atlas</title>
+  <desc id="desc">A dark operational map plate with hexagonal risk cells, contour lines and a response route.</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#9caa9e" stroke-opacity=".075" stroke-width="1"/>
+    </pattern>
+    <pattern id="fine" width="10" height="10" patternUnits="userSpaceOnUse">
+      <path d="M10 0H0V10" fill="none" stroke="#9caa9e" stroke-opacity=".025" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#151c16"/>
+      <stop offset="1" stop-color="#0b0e0c"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+
+  <rect width="1400" height="1000" fill="url(#fade)"/>
+  <rect width="1400" height="1000" fill="url(#grid)"/>
+  <rect width="1400" height="1000" fill="url(#fine)"/>
+
+  <g fill="none" stroke="#5f7163" stroke-opacity=".22" stroke-width="1.2">
+    <path d="M-80 760C190 600 280 675 450 550S720 390 930 500s250 70 560-110"/>
+    <path d="M-50 810C210 655 305 725 470 605s275-155 480-45 245 60 535-105"/>
+    <path d="M-120 710C160 540 245 620 415 495S700 335 900 445s260 85 610-100"/>
+    <path d="M80 920C300 800 390 845 560 710s270-170 480-50 230 70 450-30"/>
+    <path d="M-20 660C220 510 350 590 500 460s300-130 500-20 250 90 470-10"/>
+  </g>
+
+  <g opacity=".28" filter="url(#soft)">
+    <ellipse cx="1050" cy="390" rx="260" ry="210" fill="#6fae8d"/>
+    <ellipse cx="650" cy="670" rx="250" ry="180" fill="#e8652f"/>
+  </g>
+
+  <g stroke="#0b0e0c" stroke-width="5">
+    <g fill="#6fae8d" fill-opacity=".16">
+      <path d="M760 340l78 45v90l-78 45-78-45v-90z"/>
+      <path d="M916 430l78 45v90l-78 45-78-45v-90z"/>
+      <path d="M760 520l78 45v90l-78 45-78-45v-90z"/>
+      <path d="M604 430l78 45v90l-78 45-78-45v-90z"/>
+      <path d="M604 250l78 45v90l-78 45-78-45v-90z"/>
+    </g>
+    <g fill="#d5a142" fill-opacity=".18">
+      <path d="M916 610l78 45v90l-78 45-78-45v-90z"/>
+      <path d="M1072 520l78 45v90l-78 45-78-45v-90z"/>
+    </g>
+    <g fill="#df554d" fill-opacity=".28">
+      <path d="M916 250l78 45v90l-78 45-78-45v-90z"/>
+      <path d="M760 160l78 45v90l-78 45-78-45v-90z"/>
+    </g>
+  </g>
+
+  <g fill="none" stroke-width="1.6">
+    <path d="M760 340l78 45v90l-78 45-78-45v-90z" stroke="#6fae8d" stroke-opacity=".8"/>
+    <path d="M916 430l78 45v90l-78 45-78-45v-90z" stroke="#6fae8d" stroke-opacity=".65"/>
+    <path d="M760 520l78 45v90l-78 45-78-45v-90z" stroke="#6fae8d" stroke-opacity=".7"/>
+    <path d="M604 430l78 45v90l-78 45-78-45v-90z" stroke="#6fae8d" stroke-opacity=".55"/>
+    <path d="M604 250l78 45v90l-78 45-78-45v-90z" stroke="#6fae8d" stroke-opacity=".5"/>
+    <path d="M916 610l78 45v90l-78 45-78-45v-90z" stroke="#d5a142" stroke-opacity=".85"/>
+    <path d="M1072 520l78 45v90l-78 45-78-45v-90z" stroke="#d5a142" stroke-opacity=".6"/>
+    <path d="M916 250l78 45v90l-78 45-78-45v-90z" stroke="#df554d" stroke-opacity=".95"/>
+    <path d="M760 160l78 45v90l-78 45-78-45v-90z" stroke="#df554d" stroke-opacity=".8"/>
+  </g>
+
+  <path d="M604 520c120 18 150 90 234 90s104-82 207-138 107-37 185-126" fill="none" stroke="#e8652f" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 9"/>
+  <g fill="#e8652f" stroke="#0b0e0c" stroke-width="3">
+    <circle cx="604" cy="520" r="7"/>
+    <circle cx="838" cy="610" r="7"/>
+    <circle cx="1045" cy="472" r="7"/>
+    <circle cx="1230" cy="346" r="7"/>
+  </g>
+
+  <g fill="#a6b0a4" font-family="monospace" font-size="15" letter-spacing="2">
+    <text x="70" y="84">23.2599 N / 77.4126 E</text>
+    <text x="70" y="112">BHOPAL · H3 RES 8</text>
+    <text x="1080" y="930">OPERATIONAL FIELD / 100 CELLS</text>
+  </g>
+  <g stroke="#e8652f" stroke-opacity=".7">
+    <path d="M70 142h80M70 142v-14M150 142v-14"/>
+    <path d="M1210 920h110M1210 920v-12M1320 920v-12"/>
+  </g>
+
+  <g transform="translate(70 860)" font-family="monospace" font-size="12" fill="#a6b0a4">
+    <text y="0">Rc</text>
+    <rect x="42" y="-10" width="140" height="8" fill="#29332b"/>
+    <rect x="42" y="-10" width="84" height="8" fill="#d5a142"/>
+    <text x="196" y="0">0.61</text>
+  </g>
+
+  <g fill="none" stroke="#f1eee5" stroke-opacity=".2">
+    <rect x="42" y="42" width="1316" height="916"/>
+    <path d="M42 372h20M42 702h20M1358 372h-20M1358 702h-20"/>
+  </g>
+</svg>

@@ -4,20 +4,21 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
   background: var(--surface);
-  font-size: var(--text-sm);
+  font-size: var(--text-xs);
   line-height: var(--leading-normal);
 }
 
 .icon {
   flex: 0 0 auto;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .body {
   display: grid;
-  gap: var(--space-1);
+  gap: 2px;
   min-width: 0;
 }
 

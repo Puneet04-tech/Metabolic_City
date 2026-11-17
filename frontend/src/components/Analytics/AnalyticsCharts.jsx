@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import ChartFrame from './ChartFrame';
 import { getChartTheme } from '../../lib/chartTheme.js';
+import { useTheme } from '../../lib/theme.jsx';
 import { incidentStatusLabel } from '../../lib/taskStatus.js';
 import styles from './AnalyticsCharts.module.css';
 
@@ -30,6 +31,7 @@ const dayLabel = (key) =>
 
 /** Incidents per day in the selected range. */
 export const IncidentsPerDayChart = memo(function IncidentsPerDayChart({ incidents }) {
+  useTheme();
   const theme = getChartTheme();
 
   const data = useMemo(() => {
@@ -75,6 +77,7 @@ export const IncidentsPerDayChart = memo(function IncidentsPerDayChart({ inciden
  * It counts the incidents that were raised at or above the critical threshold.
  */
 export const CriticalIncidentsPerDayChart = memo(function CriticalIncidentsPerDayChart({ incidents, threshold }) {
+  useTheme();
   const theme = getChartTheme();
 
   const data = useMemo(() => {
@@ -128,6 +131,7 @@ const PIPELINE_ORDER = ['APPROVED', 'DISPATCHED', 'ACKNOWLEDGED', 'ARRIVED', 'RE
 
 /** Where the incidents sit in the response pipeline — a stacked proportion bar. */
 export const ResponsePipelineChart = memo(function ResponsePipelineChart({ statusCounts }) {
+  useTheme();
   const rows = useMemo(() => {
     const counts = new Map((statusCounts || []).map((entry) => [entry._id, entry.count]));
     const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
@@ -182,6 +186,7 @@ export const ResponsePipelineChart = memo(function ResponsePipelineChart({ statu
 
 /** Telemetry readings per hour, split by source. */
 export const TelemetryByHourChart = memo(function TelemetryByHourChart({ telemetryData }) {
+  useTheme();
   const theme = getChartTheme();
 
   const { rows, sources } = useMemo(() => {
@@ -255,6 +260,7 @@ export const TelemetryByHourChart = memo(function TelemetryByHourChart({ telemet
 
 /** The risk band of every cell that reported in the last day. */
 export const CellRiskBandsChart = memo(function CellRiskBandsChart({ cells }) {
+  useTheme();
   const theme = getChartTheme();
 
   const rows = useMemo(() => {

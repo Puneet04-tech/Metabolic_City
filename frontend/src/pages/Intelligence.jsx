@@ -303,6 +303,7 @@ export default function Intelligence() {
     >
       <div className={styles.page}>
         <header className={styles.header}>
+          <img className={styles.headerArt} src="/images/intelligence-constellation.svg" alt="" />
           <div className={styles.headerText}>
             <div className={styles.eyebrow}>
               <BrainCircuit size={14} aria-hidden="true" />
